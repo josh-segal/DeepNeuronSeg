@@ -3,12 +3,14 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QTabWidget,
                            QPushButton, QFileDialog, QSpinBox, QComboBox,
                            QProgressBar, QListWidget, QDoubleSpinBox, 
                            QCheckBox, QLineEdit, QGridLayout)
-from PyQt5.QtCore import Qt, pyqtSignal, QPoint
+from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QRect
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QPen
 import sys
 from dataclasses import dataclass
 from typing import List, Dict, Any
 import json
+import os
+
 
 @dataclass
 class ImageMetadata:
@@ -17,46 +19,96 @@ class ImageMetadata:
     brain_region: str
     additional_metadata: Dict[str, Any]
 
-class ImageDisplay(QLabel):
-    """Widget for displaying and interacting with images"""
+class ImageLabel(QLabel):
+    """Custom QLabel to handle mouse clicks on the image area only."""
     click_registered = pyqtSignal(QPoint)
     
     def __init__(self):
         super().__init__()
-        self.setMinimumSize(400, 400)
-        self.setAlignment(Qt.AlignCenter)
-        
+        self.displayed_pixmap = None
+
+    def set_pixmap_with_scaling(self, pixmap, parent_size):
+        # Scale and set pixmap, keeping track of scaled size
+        self.displayed_pixmap = pixmap.scaled(parent_size, aspectRatioMode=Qt.KeepAspectRatio, transformMode=Qt.SmoothTransformation)
+        self.setPixmap(self.displayed_pixmap)
+
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.click_registered.emit(event.pos())
+        # Check if click is within displayed image bounds
+        print("mouse click")
+        if self.displayed_pixmap and self.geometry().contains(event.pos()):
+            pixmap_rect = self.geometry().center() - QPoint(self.displayed_pixmap.width() // 2, self.displayed_pixmap.height() // 2)
+            image_rect = QRect(pixmap_rect, self.displayed_pixmap.size())
+            if image_rect.contains(event.pos()):
+                self.click_registered.emit(event.pos() - pixmap_rect)  # Emit position relative to image
+
+
+class ImageDisplay(QWidget):
+    """Widget for displaying and interacting with images"""
+    
+    def __init__(self):
+        super().__init__()
+        self.layout = QVBoxLayout(self)
+        self.image_label = ImageLabel()
+        self.text_label = QLabel()
+        
+        self.layout.addWidget(self.image_label)
+        self.layout.addWidget(self.text_label)
+
+        self.image_label.setMinimumSize(400, 400)
+        self.image_label.setAlignment(Qt.AlignCenter)
+
+        self.text_label.setAlignment(Qt.AlignBottom | Qt.AlignCenter)
+
+    def display_image(self, image_path, image_num, total_images):
+        """Load and display an image from the given file path and show image number."""
+        self.pixmap = QPixmap(image_path)
+        if not self.pixmap.isNull():
+            self.image_label.set_pixmap_with_scaling(self.pixmap, self.size())
+            # self.image_label.setPixmap(self.pixmap.scaled(self.size(), aspectRatioMode=Qt.KeepAspectRatio, transformMode=Qt.SmoothTransformation))
+            self.text_label.setText(f"{image_num} / {total_images}")
+        else:
+            print("Failed to load image")
+
 
 class UploadTab(QWidget):
     def __init__(self):
         super().__init__()
+        self.data_file = 'image_metadata.json'
+        self.uploaded_files = []
         layout = QVBoxLayout()
         
         # File selection
         self.upload_btn = QPushButton("Upload Images")
+        self.next_btn = QPushButton("Next Image")
+
         self.upload_btn.clicked.connect(self.upload_images)
+        self.next_btn.clicked.connect(self.show_next_image)
         
         # Metadata input fields
         metadata_layout = QGridLayout()
-        self.exp_id = QLineEdit()
+        self.project = QLineEdit()
+        self.cohort = QLineEdit()
         self.brain_region = QLineEdit()
-        metadata_layout.addWidget(QLabel("Experiment ID:"), 0, 0)
-        metadata_layout.addWidget(self.exp_id, 0, 1)
-        metadata_layout.addWidget(QLabel("Brain Region:"), 1, 0)
-        metadata_layout.addWidget(self.brain_region, 1, 1)
+        self.image_id = QLineEdit()
+        metadata_layout.addWidget(QLabel("Project:"), 0, 0)
+        metadata_layout.addWidget(self.project, 0, 1)
+        metadata_layout.addWidget(QLabel("Cohort:"), 1, 0)
+        metadata_layout.addWidget(self.cohort, 1, 1)
+        metadata_layout.addWidget(QLabel("Brain Region:"), 2, 0)
+        metadata_layout.addWidget(self.brain_region, 2, 1)
+        metadata_layout.addWidget(QLabel("Image ID:"), 3, 0)
+        metadata_layout.addWidget(self.image_id, 3, 1)
         
         # Image preview
-        self.image_preview = ImageDisplay()
+        self.image_display = ImageDisplay()
         
         # File list
         self.file_list = QListWidget()
         
         layout.addWidget(self.upload_btn)
+        layout.addWidget(self.next_btn)
         layout.addLayout(metadata_layout)
-        layout.addWidget(self.image_preview)
+        layout.addWidget(self.image_display)
         layout.addWidget(self.file_list)
         self.setLayout(layout)
     
@@ -67,17 +119,60 @@ class UploadTab(QWidget):
         2. Save metadata alongside images
         3. Update UI with selected images
         """
-        files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
-        # TODO: Implement metadata storage and image preview
+        self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
+        new_metadata = []
+        for file in self.uploaded_files:
+            # TODO: check if file is already in metadata
+            new_metadata.append({
+                "file_path": file,
+                "project": self.project.text(),
+                "cohort": self.cohort.text(),
+                "brain_region": self.brain_region.text(),
+                "image_id": self.image_id.text(),
+                "labels": []
+            })
+
+        if os.path.exists(self.data_file):
+            with open(self.data_file, 'r') as f:
+                existing_metadata = json.load(f)
+                # print(existing_metadata)
+            existing_metadata.extend(new_metadata)
+            metadata = existing_metadata
+        else:
+            metadata = new_metadata
+        
+        with open(self.data_file, 'w') as f:
+            json.dump(metadata, f)
+
+        if self.uploaded_files:
+            self.current_index = 0
+            self.image_display.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
+    
+    def show_next_image(self):
+        """Display the next image in the list."""
+        if self.uploaded_files:
+            self.current_index = (self.current_index + 1) % len(self.uploaded_files)  # Wrap around
+            self.image_display.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
+    
+    def update_file_list(self):
+        self.file_list.clear()
+        self.file_list.addItems(self.selected_files)
+
 
 class LabelingTab(QWidget):
     def __init__(self):
         super().__init__()
+        self.data_file = 'image_metadata.json'
         layout = QVBoxLayout()
-        
+        self.load_btn = QPushButton("Load Data")
+        self.next_btn = QPushButton("Next Image")
+        self.next_btn.clicked.connect(self.show_next_image)
+        self.load_btn.clicked.connect(self.load_data)
+    
         # Image display with cell marking
         self.image_display = ImageDisplay()
-        self.image_display.click_registered.connect(self.add_cell_marker)
+
+        self.image_display.image_label.click_registered.connect(self.add_cell_marker)
         
         # Controls
         controls_layout = QHBoxLayout()
@@ -89,10 +184,35 @@ class LabelingTab(QWidget):
         controls_layout.addWidget(self.save_btn)
         
         layout.addWidget(self.image_display)
+        layout.addWidget(self.next_btn)
+        layout.addWidget(self.load_btn)
         layout.addLayout(controls_layout)
         self.setLayout(layout)
         
+        # TODO: load from json first
         self.cell_positions = []
+
+       
+    def load_data(self):
+        if os.path.exists(self.data_file):
+            with open(self.data_file, 'r') as f:
+                    data = json.load(f)
+
+            self.uploaded_files = [image["file_path"] for image in data if "file_path" in image]
+
+            if self.uploaded_files:
+                self.current_index = 0
+                self.image_display.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
+        else:
+            print("No data loaded, please upload data first")
+
+
+    def show_next_image(self):
+        """Display the next image in the list."""
+        if self.uploaded_files:
+            self.current_index = (self.current_index + 1) % len(self.uploaded_files)  # Wrap around
+            self.image_display.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
+
     
     def add_cell_marker(self, pos):
         """
@@ -101,12 +221,24 @@ class LabelingTab(QWidget):
         2. Update image overlay with markers
         3. Save labeled image and coordinates
         """
+        print("adding cell")
         self.cell_positions.append(pos)
         self.update_display()
     
     def update_display(self):
         """Update image with cell markers"""
         # TODO: Implement overlay drawing
+        pixmap = self.image_display.pixmap
+        painter = QPainter(pixmap)
+        painter.setPen(QColor("red"))
+
+        for pos in self.cell_positions:
+            painter.drawEllipse(pos, 1, 1)
+
+        self.image_display.image_label.setPixmap(pixmap)
+
+        print(self.cell_positions)
+
 
 class DatasetTab(QWidget):
     def __init__(self):
@@ -155,6 +287,7 @@ class DatasetTab(QWidget):
         """
         pass
 
+
 class TrainingTab(QWidget):
     def __init__(self):
         super().__init__()
@@ -193,6 +326,7 @@ class TrainingTab(QWidget):
         layout.addWidget(self.stop_btn)
         self.setLayout(layout)
 
+
 class EvaluationTab(QWidget):
     def __init__(self):
         super().__init__()
@@ -220,6 +354,7 @@ class EvaluationTab(QWidget):
         3. Load and compare model predictions
         """
 
+
 class AnalysisTab(QWidget):
     def __init__(self):
         super().__init__()
@@ -242,6 +377,7 @@ class AnalysisTab(QWidget):
         layout.addWidget(self.results_list)
         layout.addWidget(self.save_btn)
         self.setLayout(layout)
+
 
 class OutlierTab(QWidget):
     def __init__(self):
@@ -275,6 +411,7 @@ class OutlierTab(QWidget):
         3. Update dataset with confirmed/relabeled data
         """
 
+
 class ModelZooTab(QWidget):
     def __init__(self):
         super().__init__()
@@ -305,6 +442,7 @@ class ModelZooTab(QWidget):
         3. Display and save results
         """
 
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -332,6 +470,7 @@ class MainWindow(QMainWindow):
         tabs.addTab(ModelZooTab(), "Model Zoo")
         
         layout.addWidget(tabs)
+
 
 def main():
     app = QApplication(sys.argv)
