@@ -308,7 +308,7 @@ class ModelZooTab(QWidget):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Cell Detection Suite")
+        self.setWindowTitle("DeepNeuronSeg")
         self.setMinimumSize(1024, 768)
         
         # Create main widget and layout
