@@ -12,6 +12,7 @@ import json
 import os
 
 from utils import get_data, set_data
+from inference import segment
 
 
 # @dataclass
@@ -279,15 +280,18 @@ class GenerateLabelsTab(QWidget):
         # print(result)
         # print(self.uploaded_files)
         # print(self.labels)
+        # print(len(result))
+        self.progress.setValue(0)
         self.progress.setMaximum(len(result))
         for i, (uploaded_file, label) in enumerate(zip(self.uploaded_files, self.labels)):
+            # print(i)
             self.progress.setValue(i+1)
             if label is None:
                 print("No labels provided for image", uploaded_file)
                 continue
 
             # add TQDM progress bar before images are shown
-            generated_label = self.generate_label(uploaded_file)
+            generated_label = self.generate_label(uploaded_file, label)
             # save somewhere somehow in relation to uploaded_file
         
         # display image label pairs with button to see next pair
@@ -298,14 +302,16 @@ class GenerateLabelsTab(QWidget):
 
         # allow user editing of generated labels
 
-    def generate_label(self, image_path):
+    def generate_label(self, image_path, labels):
         """
         INTEGRATION POINT:
         1. Implement label generation
         2. Display generated labels
         3. Save generated labels
         """
-        pass    
+        masks, scores = segment(image_path, labels)
+        final_image, num_masks, instances_list = composite_mask(masks)
+        return final_image
 
     def show_next_image(self):
         """Display the next image in the list."""
