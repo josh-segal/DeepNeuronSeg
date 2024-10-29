@@ -2,44 +2,57 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QTabWidget,
                            QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, 
                            QPushButton, QFileDialog, QSpinBox, QComboBox,
                            QProgressBar, QListWidget, QDoubleSpinBox, 
-                           QCheckBox, QLineEdit, QGridLayout)
-from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QRect
-from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QPen
+                           QCheckBox, QLineEdit, QGridLayout, QProgressBar)
+from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QRect, QPointF
+from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QPen 
 import sys
 from dataclasses import dataclass
 from typing import List, Dict, Any
 import json
 import os
 
+from utils import get_data, set_data
 
-@dataclass
-class ImageMetadata:
-    filepath: str
-    experiment_id: str
-    brain_region: str
-    additional_metadata: Dict[str, Any]
+
+# @dataclass
+# class ImageMetadata:
+#     filepath: str
+#     experiment_id: str
+#     brain_region: str
+#     additional_metadata: Dict[str, Any]
 
 class ImageLabel(QLabel):
     """Custom QLabel to handle mouse clicks on the image area only."""
-    click_registered = pyqtSignal(QPoint)
+    click_registered = pyqtSignal(QPointF)
     
     def __init__(self):
         super().__init__()
-        self.displayed_pixmap = None
+        self.pixmap = None
 
-    def set_pixmap_with_scaling(self, pixmap, parent_size):
-        # Scale and set pixmap, keeping track of scaled size
-        self.displayed_pixmap = pixmap.scaled(parent_size, aspectRatioMode=Qt.KeepAspectRatio, transformMode=Qt.SmoothTransformation)
-        self.setPixmap(self.displayed_pixmap)
+    def set_pixmap(self, pixmap):
+        self.pixmap = pixmap
+        self.setPixmap(pixmap)
 
     def mousePressEvent(self, event):
-        # Check if click is within displayed image bounds
-        print("mouse click")
-        if self.displayed_pixmap and self.geometry().contains(event.pos()):
-            pixmap_rect = self.geometry().center() - QPoint(self.displayed_pixmap.width() // 2, self.displayed_pixmap.height() // 2)
-            image_rect = QRect(pixmap_rect, self.displayed_pixmap.size())
-            if image_rect.contains(event.pos()):
-                self.click_registered.emit(event.pos() - pixmap_rect)  # Emit position relative to image
+        # print("mouse click")
+        if self.pixmap:
+            # print("pixmap present")
+            click_pos = event.pos()
+            self.click_registered.emit(click_pos)
+
+    def adjust_pos(self, pos):
+        """Adjust the position to the image coordinates."""
+        adjusted_x = pos.x() - (self.width() - self.pixmap.width()) / 2
+        adjusted_pos = QPointF(adjusted_x, pos.y())
+        return adjusted_pos
+
+    def draw_points(self, labels):
+        """Draw a point on the image at the given position."""
+        painter = QPainter(self.pixmap)
+        painter.setPen(QPen(Qt.red, 5))
+        for pos in labels:
+            painter.drawPoint(QPointF(pos[0], pos[1]))
+        self.setPixmap(self.pixmap)
 
 
 class ImageDisplay(QWidget):
@@ -63,7 +76,7 @@ class ImageDisplay(QWidget):
         """Load and display an image from the given file path and show image number."""
         self.pixmap = QPixmap(image_path)
         if not self.pixmap.isNull():
-            self.image_label.set_pixmap_with_scaling(self.pixmap, self.size())
+            self.image_label.set_pixmap(self.pixmap)
             # self.image_label.setPixmap(self.pixmap.scaled(self.size(), aspectRatioMode=Qt.KeepAspectRatio, transformMode=Qt.SmoothTransformation))
             self.text_label.setText(f"{image_num} / {total_images}")
         else:
@@ -133,16 +146,13 @@ class UploadTab(QWidget):
             })
 
         if os.path.exists(self.data_file):
-            with open(self.data_file, 'r') as f:
-                existing_metadata = json.load(f)
-                # print(existing_metadata)
+            existing_metadata = get_data(self.data_file)
             existing_metadata.extend(new_metadata)
             metadata = existing_metadata
         else:
             metadata = new_metadata
-        
-        with open(self.data_file, 'w') as f:
-            json.dump(metadata, f)
+
+        set_data(self.data_file, metadata)
 
         if self.uploaded_files:
             self.current_index = 0
@@ -188,21 +198,17 @@ class LabelingTab(QWidget):
         layout.addWidget(self.load_btn)
         layout.addLayout(controls_layout)
         self.setLayout(layout)
-        
-        # TODO: load from json first
-        self.cell_positions = []
-
        
     def load_data(self):
         if os.path.exists(self.data_file):
-            with open(self.data_file, 'r') as f:
-                    data = json.load(f)
-
-            self.uploaded_files = [image["file_path"] for image in data if "file_path" in image]
+            self.data = get_data(self.data_file)
+            result = [(image["file_path"], image["labels"]) for image in self.data if "file_path" in image]
+            self.uploaded_files, self.labels = zip(*result)
 
             if self.uploaded_files:
                 self.current_index = 0
                 self.image_display.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
+                self.image_display.image_label.draw_points(self.labels[self.current_index])
         else:
             print("No data loaded, please upload data first")
 
@@ -212,6 +218,7 @@ class LabelingTab(QWidget):
         if self.uploaded_files:
             self.current_index = (self.current_index + 1) % len(self.uploaded_files)  # Wrap around
             self.image_display.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
+            self.image_display.image_label.draw_points(self.labels[self.current_index])
 
     
     def add_cell_marker(self, pos):
@@ -221,23 +228,94 @@ class LabelingTab(QWidget):
         2. Update image overlay with markers
         3. Save labeled image and coordinates
         """
-        print("adding cell")
-        self.cell_positions.append(pos)
-        self.update_display()
+        # print("adding cell")
+        # TODO: change to store in files labels
+        adjusted_pos = self.image_display.image_label.adjust_pos(pos)
+        if adjusted_pos.x() < 0 or adjusted_pos.y() < 0 or adjusted_pos.x() > 512 or adjusted_pos.y() > 512:
+            return
+        self.labels[self.current_index].append((adjusted_pos.x(), adjusted_pos.y()))
+        self.image_display.image_label.draw_points(self.labels[self.current_index])
+
+        for image in self.data:
+            if image["file_path"] == self.uploaded_files[self.current_index]:
+                image["labels"] = [(pos[0], pos[1]) for pos in self.labels[self.current_index]]
+                break
+            
+        set_data(self.data_file, self.data)
+
+
+class GenerateLabelsTab(QWidget):
+    def __init__(self):
+        super().__init__()
+        layout = QHBoxLayout()
+        config_layout = QGridLayout()
+
+        self.progress = QProgressBar(self)
+        self.progress.setAlignment(Qt.AlignCenter)
+
+        self.left_image = ImageDisplay()
+        self.right_image = ImageDisplay()
+
+        self.generate_btn = QPushButton("Generate Labels")
+        self.next_btn = QPushButton("Next Image")
+        self.generate_btn.clicked.connect(self.display_labels)
+        self.next_btn.clicked.connect(self.show_next_image)
+
+        
+        config_layout.addWidget(self.generate_btn)
+        config_layout.addWidget(self.next_btn)
+
+        layout.addLayout(config_layout)
+        layout.addWidget(self.progress)
+        layout.addWidget(self.left_image)
+        layout.addWidget(self.right_image)
+
+        self.setLayout(layout)
+
+    def display_labels(self):
+        self.data = get_data()
+        result = [(image["file_path"], image["labels"]) for image in self.data if "file_path" in image]
+        self.uploaded_files, self.labels = zip(*result)
+        # print(result)
+        # print(self.uploaded_files)
+        # print(self.labels)
+        self.progress.setMaximum(len(result))
+        for i, (uploaded_file, label) in enumerate(zip(self.uploaded_files, self.labels)):
+            self.progress.setValue(i+1)
+            if label is None:
+                print("No labels provided for image", uploaded_file)
+                continue
+
+            # add TQDM progress bar before images are shown
+            generated_label = self.generate_label(uploaded_file)
+            # save somewhere somehow in relation to uploaded_file
+        
+        # display image label pairs with button to see next pair
+        self.current_index = 0
+        self.left_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
+        self.right_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
+        
+
+        # allow user editing of generated labels
+
+    def generate_label(self, image_path):
+        """
+        INTEGRATION POINT:
+        1. Implement label generation
+        2. Display generated labels
+        3. Save generated labels
+        """
+        pass    
+
+    def show_next_image(self):
+        """Display the next image in the list."""
+        if self.uploaded_files:
+            self.current_index = (self.current_index + 1) % len(self.uploaded_files)  # Wrap around
+            self.left_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
+            self.right_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
     
-    def update_display(self):
-        """Update image with cell markers"""
-        # TODO: Implement overlay drawing
-        pixmap = self.image_display.pixmap
-        painter = QPainter(pixmap)
-        painter.setPen(QColor("red"))
 
-        for pos in self.cell_positions:
-            painter.drawEllipse(pos, 1, 1)
 
-        self.image_display.image_label.setPixmap(pixmap)
-
-        print(self.cell_positions)
 
 
 class DatasetTab(QWidget):
@@ -285,7 +363,7 @@ class DatasetTab(QWidget):
         3. Create train/test split
         4. Save dataset configuration
         """
-        pass
+        
 
 
 class TrainingTab(QWidget):
@@ -462,6 +540,7 @@ class MainWindow(QMainWindow):
         # Create and add all tabs
         tabs.addTab(UploadTab(), "Upload Data")
         tabs.addTab(LabelingTab(), "Label Data")
+        tabs.addTab(GenerateLabelsTab(), "Generate Labels")
         tabs.addTab(DatasetTab(), "Create Dataset")
         tabs.addTab(TrainingTab(), "Train Network")
         tabs.addTab(EvaluationTab(), "Evaluate Network")
