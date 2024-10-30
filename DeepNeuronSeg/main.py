@@ -10,17 +10,11 @@ from dataclasses import dataclass
 from typing import List, Dict, Any
 import json
 import os
+import random
 
-from utils import get_data, set_data
-from inference import segment
+from utils import get_data, set_data, save_label
+from inference import segment, composite_mask, mask_to_bboxes, mask_to_polygons
 
-
-# @dataclass
-# class ImageMetadata:
-#     filepath: str
-#     experiment_id: str
-#     brain_region: str
-#     additional_metadata: Dict[str, Any]
 
 class ImageLabel(QLabel):
     """Custom QLabel to handle mouse clicks on the image area only."""
@@ -291,34 +285,47 @@ class GenerateLabelsTab(QWidget):
                 continue
 
             # add TQDM progress bar before images are shown
-            generated_label = self.generate_label(uploaded_file, label)
+            label_data = self.generate_label(uploaded_file, label)
+            for image in self.data:
+                if image["file_path"] == uploaded_file:
+                    image["mask_data"] = label_data
+                    break
+
             # save somewhere somehow in relation to uploaded_file
-        
+            set_data(metadata=self.data)
         # display image label pairs with button to see next pair
+        self.uploaded_labels = [image["mask_data"] for image in self.data if "file_path" in image]
+
         self.current_index = 0
         self.left_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
-        self.right_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
-        
-
+        self.right_image.display_image(self.uploaded_labels[self.current_index]["mask_path"], self.current_index + 1, len(self.uploaded_labels))
         # allow user editing of generated labels
 
     def generate_label(self, image_path, labels):
-        """
-        INTEGRATION POINT:
-        1. Implement label generation
-        2. Display generated labels
-        3. Save generated labels
-        """
+        """Generate labels for the given image."""
         masks, scores = segment(image_path, labels)
-        final_image, num_masks, instances_list = composite_mask(masks)
-        return final_image
+        final_image, num_cells, instances_list = composite_mask(masks)
+
+        final_image_path = save_label(final_image=final_image, image_path=image_path)
+        scores_numpy = scores.detach().numpy().tolist()
+        # save final_image to labeled_data folder
+        print("final_image_path", final_image_path)
+        print("scores", scores_numpy)
+        print("num_cells", num_cells)
+        print("instances_list", instances_list)
+        return {
+            "mask_path": final_image_path,
+            "scores": scores_numpy,
+            "num_cells": num_cells,
+            "instances_list": instances_list
+        }
 
     def show_next_image(self):
         """Display the next image in the list."""
         if self.uploaded_files:
             self.current_index = (self.current_index + 1) % len(self.uploaded_files)  # Wrap around
             self.left_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
-            self.right_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
+            self.right_image.display_image(self.uploaded_labels[self.current_index]["mask_path"], self.current_index + 1, len(self.uploaded_labels))
     
 
 
@@ -369,7 +376,39 @@ class DatasetTab(QWidget):
         3. Create train/test split
         4. Save dataset configuration
         """
+        data = get_data()
+        uploaded_files = [image["file_path"] for image in data if "file_path" in image and "mask_data" in image]
         
+        # Shuffle the list of uploaded files
+        random.shuffle(uploaded_files)
+
+        # Calculate the split index
+        split_index = int(len(uploaded_files) * self.train_split.value())
+
+        # Split the list into training and testing sets
+        train_files = uploaded_files[:split_index]
+        test_files = uploaded_files[split_index:]
+
+        # Save the dataset configuration
+        dataset_config = {
+            "train_files": train_files,
+            "test_files": test_files,
+            "augmentation": {
+            "flip_horizontal": self.flip_horizontal.isChecked(),
+            "flip_vertical": self.flip_vertical.isChecked(),
+            "enable_rotation": self.enable_rotation.isChecked(),
+            "enable_crop": self.enable_crop.isChecked()
+            }
+        }
+
+        dataset_filename = 'dataset.json'
+        counter = 0
+        dataset_path = f"{dataset_filename}_{counter}.json"
+        while os.path.exists(dataset_path):
+            counter += 1
+            dataset_path = f"{dataset_filename}_{counter}.json"
+        
+        set_data(dataset_path, dataset_config)
 
 
 class TrainingTab(QWidget):
@@ -378,7 +417,9 @@ class TrainingTab(QWidget):
         layout = QVBoxLayout()
         
         # Model selection
+        self.model = None
         self.model_selector = QComboBox()
+        self.model_selector.addItems(["YOLOv8n-seg", "FasterRCNN"])
         # TODO: Populate with available models
         
         # Training parameters
@@ -388,6 +429,7 @@ class TrainingTab(QWidget):
         self.batch_size = QSpinBox()
         self.batch_size.setRange(1, 128)
         self.model_name = QLineEdit()
+        self.denoise = QCheckBox("Use Denoising Network")
         
         params_layout.addWidget(QLabel("Epochs:"), 0, 0)
         params_layout.addWidget(self.epochs, 0, 1)
@@ -395,6 +437,7 @@ class TrainingTab(QWidget):
         params_layout.addWidget(self.batch_size, 1, 1)
         params_layout.addWidget(QLabel("Model Name:"), 2, 0)
         params_layout.addWidget(self.model_name, 2, 1)
+        params_layout.addWidget(self.denoise, 3, 1)
         
         # Progress tracking
         self.progress = QProgressBar()
@@ -402,6 +445,8 @@ class TrainingTab(QWidget):
         # Control buttons
         self.train_btn = QPushButton("Start Training")
         self.stop_btn = QPushButton("Stop")
+
+        self.train_btn.clicked.connect(self.trainer)
         
         layout.addWidget(self.model_selector)
         layout.addLayout(params_layout)
@@ -409,6 +454,17 @@ class TrainingTab(QWidget):
         layout.addWidget(self.train_btn)
         layout.addWidget(self.stop_btn)
         self.setLayout(layout)
+
+    def trainer(self):
+        """
+        INTEGRATION POINT:
+        1. Load selected model
+        2. Train model with selected parameters
+        3. Track and display training progress
+        """
+        if self.model_selector.currentText() == "YOLOv8n-seg":
+            print("Training YOLOv8n-seg")
+            self.model = YOLO("models/yolov8n-seg.pt")
 
 
 class EvaluationTab(QWidget):

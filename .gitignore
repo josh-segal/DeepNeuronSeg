@@ -1,3 +1,5 @@
 .gitignore
 *.json
 *__pycache__/
+labeled_data/
+models/

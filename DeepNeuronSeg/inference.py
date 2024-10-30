@@ -1,19 +1,24 @@
-from transformers import TFSamModel, SamProcessor
 import numpy as np
 import cv2
+from PIL import Image
 
-model = TFSamModel.from_pretrained("facebook/sam-vit-base")
-processor = SamProcessor.from_pretrained("facebook/sam-vit-base")
+def segment(image_path, input_points):
+    # Load when used not on startup
+    from transformers import SamModel, SamProcessor
 
-def segment(raw_image, input_points):
-    inputs = processor(raw_image, input_points=input_points, return_tensors="tf")
+    model = SamModel.from_pretrained("facebook/sam-vit-base")
+    processor = SamProcessor.from_pretrained("facebook/sam-vit-base")
+
+    raw_image = Image.open(image_path)
+    input_points_nested = [[[[coord[0], coord[1]]] for coord in input_points]]
+    inputs = processor(raw_image, input_points=input_points_nested, return_tensors="pt")
     outputs = model(**inputs)
 
     masks = processor.image_processor.post_process_masks(
         outputs.pred_masks,
         inputs["original_sizes"],
         inputs["reshaped_input_sizes"],
-        return_tensors="tf",
+        return_tensors="pt",
     )
     scores = outputs.iou_scores
 
@@ -42,15 +47,14 @@ def composite_mask(masks):
 
     return final_image, num_masks, instances_list
 
-    def mask_to_polygons(mask):
-        contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        polygons = []
-        for contour in contours:
-            if len(contour) > 2:
-                poly = contour.reshape(-1).tolist()
-            #    if len(poly) > 4: #Ensures valid polygon
-                polygons.append(poly)
-        return polygons[0]
+def mask_to_polygons(mask):
+    contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    polygons = []
+    for contour in contours:
+        if len(contour) > 2:
+            poly = contour.reshape(-1).tolist()
+            polygons.append(poly)
+    return polygons[0]
 
 def mask_to_bboxes(mask):
     contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
