@@ -11,8 +11,9 @@ from typing import List, Dict, Any
 import json
 import os
 import random
+import shutil
 
-from utils import get_data, set_data, save_label
+from utils import get_data, set_data, save_label, get_image_mask_label_tuples, create_yaml
 from inference import segment, composite_mask, mask_to_bboxes, mask_to_polygons
 
 
@@ -130,24 +131,32 @@ class UploadTab(QWidget):
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
         new_metadata = []
         for file in self.uploaded_files:
+            data_subdir = 'data_images'
+            data_dir = os.path.join('data', data_subdir)
+            os.makedirs(data_dir, exist_ok=True)
+            image_name = os.path.basename(file)
+            
+            image_path = os.path.join(data_dir, image_name)
+
+            shutil.copy(file, image_path)
             # TODO: check if file is already in metadata
             new_metadata.append({
-                "file_path": file,
+                "file_path": image_path,
                 "project": self.project.text(),
                 "cohort": self.cohort.text(),
                 "brain_region": self.brain_region.text(),
                 "image_id": self.image_id.text(),
                 "labels": []
             })
-
-        if os.path.exists(self.data_file):
-            existing_metadata = get_data(self.data_file)
+        data_path = os.path.join('data', self.data_file)
+        if os.path.exists(data_path):
+            existing_metadata = get_data()
             existing_metadata.extend(new_metadata)
             metadata = existing_metadata
         else:
             metadata = new_metadata
 
-        set_data(self.data_file, metadata)
+        set_data(metadata=metadata)
 
         if self.uploaded_files:
             self.current_index = 0
@@ -195,8 +204,9 @@ class LabelingTab(QWidget):
         self.setLayout(layout)
        
     def load_data(self):
-        if os.path.exists(self.data_file):
-            self.data = get_data(self.data_file)
+        self.data_path = os.path.join('data', self.data_file)
+        if os.path.exists(self.data_path):
+            self.data = get_data()
             result = [(image["file_path"], image["labels"]) for image in self.data if "file_path" in image]
             self.uploaded_files, self.labels = zip(*result)
 
@@ -236,7 +246,7 @@ class LabelingTab(QWidget):
                 image["labels"] = [(pos[0], pos[1]) for pos in self.labels[self.current_index]]
                 break
             
-        set_data(self.data_file, self.data)
+        set_data(metadata=self.data)
 
 
 class GenerateLabelsTab(QWidget):
@@ -340,6 +350,7 @@ class DatasetTab(QWidget):
         config_layout = QGridLayout()
         self.train_split = QDoubleSpinBox()
         self.train_split.setRange(0.1, 0.9)
+        self.train_split.setSingleStep(0.05)
         self.train_split.setValue(0.8)
         
         # Augmentation options
@@ -377,38 +388,95 @@ class DatasetTab(QWidget):
         4. Save dataset configuration
         """
         data = get_data()
-        uploaded_files = [image["file_path"] for image in data if "file_path" in image and "mask_data" in image]
-        
-        # Shuffle the list of uploaded files
-        random.shuffle(uploaded_files)
+        uploaded_images, uploaded_masks, uploaded_labels = zip(*[
+            (
+                image["file_path"], 
+                image["mask_data"]["mask_path"], 
+                [instance["segmentation"] for instance in image["mask_data"]["instances_list"]]
+                ) 
+                for image in data if "file_path" in image and "mask_data" in image
+                ])
+        dataset_parent_dir = os.path.join('data', 'datasets')
+        os.makedirs(dataset_parent_dir, exist_ok=True)
 
-        # Calculate the split index
-        split_index = int(len(uploaded_files) * self.train_split.value())
-
-        # Split the list into training and testing sets
-        train_files = uploaded_files[:split_index]
-        test_files = uploaded_files[split_index:]
-
-        # Save the dataset configuration
-        dataset_config = {
-            "train_files": train_files,
-            "test_files": test_files,
-            "augmentation": {
-            "flip_horizontal": self.flip_horizontal.isChecked(),
-            "flip_vertical": self.flip_vertical.isChecked(),
-            "enable_rotation": self.enable_rotation.isChecked(),
-            "enable_crop": self.enable_crop.isChecked()
-            }
-        }
-
-        dataset_filename = 'dataset.json'
+        dataset_dir = 'dataset'
         counter = 0
-        dataset_path = f"{dataset_filename}_{counter}.json"
-        while os.path.exists(dataset_path):
+        self.dataset_path = os.path.join(dataset_parent_dir, f"{dataset_dir}_{counter}")
+        while os.path.exists(self.dataset_path):
             counter += 1
-            dataset_path = f"{dataset_filename}_{counter}.json"
-        
-        set_data(dataset_path, dataset_config)
+            self.dataset_path = os.path.join(dataset_parent_dir, f"{dataset_dir}_{counter}")
+
+        os.makedirs(self.dataset_path, exist_ok=False)
+        os.makedirs(os.path.join(self.dataset_path, "images"), exist_ok=False)
+        os.makedirs(os.path.join(self.dataset_path, "masks"), exist_ok=False)
+        os.makedirs(os.path.join(self.dataset_path, "labels"), exist_ok=False)
+
+        for image, mask, labels in zip(uploaded_images, uploaded_masks, uploaded_labels):
+            # print(labels,"\n", "\n")
+            image_name = os.path.basename(image)
+            mask_name = os.path.basename(mask)
+            
+            image_path = os.path.join(self.dataset_path, "images", image_name)
+            mask_path = os.path.join(self.dataset_path, "masks", mask_name)
+            label_path = os.path.join(self.dataset_path, "labels", f"{os.path.splitext(image_name)[0]}.txt")
+
+            shutil.copy(image, image_path)
+            shutil.copy(mask, mask_path)
+
+            with open(label_path, "w") as f:
+                for label in labels:
+                    # print(label, "\n")
+                    normalized_label = [format(coord / 512 if i % 2 == 0 else coord / 512, ".6f") for i, coord in enumerate(label)]
+                    f.write(f"0 " + " ".join(normalized_label) + "\n")
+
+        self.create_shuffle()
+
+    def create_shuffle(self):
+        image_paths, mask_paths, label_paths = get_image_mask_label_tuples(self.dataset_path)
+
+        combined = list(zip(image_paths, mask_paths, label_paths))
+        random.shuffle(combined)
+        shuffled_image_paths, shuffled_mask_paths, shuffled_label_paths = zip(*combined)
+
+        split_index = int(len(shuffled_image_paths) * self.train_split.value())
+
+        train_images = shuffled_image_paths[:split_index]
+        val_images = shuffled_image_paths[split_index:]
+        train_masks = shuffled_mask_paths[:split_index]
+        val_masks = shuffled_mask_paths[split_index:]
+        train_labels = shuffled_label_paths[:split_index]
+        val_labels = shuffled_label_paths[split_index:]
+
+        counter = 0
+        shuffle_path = os.path.join(self.dataset_path, f"shuffle_{counter}")
+        while os.path.exists(shuffle_path):
+            counter += 1
+            shuffle_path = os.path.join(self.dataset_path, f"shuffle_{counter}")
+
+        os.makedirs(shuffle_path, exist_ok=False)
+
+        train_images_dir = os.path.join(shuffle_path, "train", "images")
+        val_images_dir = os.path.join(shuffle_path, "val", "images")
+
+        create_yaml(os.path.join(shuffle_path, "data.yaml"), train_images_dir, val_images_dir)
+
+        os.makedirs(train_images_dir, exist_ok=False)
+        os.makedirs(os.path.join(shuffle_path, "train", "masks"), exist_ok=False)
+        os.makedirs(os.path.join(shuffle_path, "train", "labels"), exist_ok=False)
+
+        os.makedirs(val_images_dir, exist_ok=False)
+        os.makedirs(os.path.join(shuffle_path, "val", "masks"), exist_ok=False)
+        os.makedirs(os.path.join(shuffle_path, "val", "labels"), exist_ok=False)
+
+        for image, mask, label in zip(train_images, train_masks, train_labels):
+            shutil.copy(image, os.path.join(shuffle_path, "train", "images", os.path.basename(image)))
+            shutil.copy(mask, os.path.join(shuffle_path, "train", "masks", os.path.basename(mask)))
+            shutil.copy(label, os.path.join(shuffle_path, "train", "labels", os.path.basename(label)))
+
+        for image, mask, label in zip(val_images, val_masks, val_labels):
+            shutil.copy(image, os.path.join(shuffle_path, "val", "images", os.path.basename(image)))
+            shutil.copy(mask, os.path.join(shuffle_path, "val", "masks", os.path.basename(mask)))
+            shutil.copy(label, os.path.join(shuffle_path, "val", "labels", os.path.basename(label)))
 
 
 class TrainingTab(QWidget):
@@ -420,10 +488,11 @@ class TrainingTab(QWidget):
         self.model = None
         self.model_selector = QComboBox()
         self.model_selector.addItems(["YOLOv8n-seg", "FasterRCNN"])
-        # TODO: Populate with available models
         
         # Training parameters
         params_layout = QGridLayout()
+        self.dataset = QSpinBox()
+        self.dataset.setRange(1, 100)
         self.epochs = QSpinBox()
         self.epochs.setRange(1, 1000)
         self.batch_size = QSpinBox()
@@ -431,13 +500,15 @@ class TrainingTab(QWidget):
         self.model_name = QLineEdit()
         self.denoise = QCheckBox("Use Denoising Network")
         
-        params_layout.addWidget(QLabel("Epochs:"), 0, 0)
-        params_layout.addWidget(self.epochs, 0, 1)
-        params_layout.addWidget(QLabel("Batch Size:"), 1, 0)
-        params_layout.addWidget(self.batch_size, 1, 1)
-        params_layout.addWidget(QLabel("Model Name:"), 2, 0)
-        params_layout.addWidget(self.model_name, 2, 1)
-        params_layout.addWidget(self.denoise, 3, 1)
+        params_layout.addWidget(QLabel("Dataset:"), 0, 0)
+        params_layout.addWidget(self.dataset, 0, 1)
+        params_layout.addWidget(QLabel("Epochs:"), 1, 0)
+        params_layout.addWidget(self.epochs, 1, 1)
+        params_layout.addWidget(QLabel("Batch Size:"), 2, 0)
+        params_layout.addWidget(self.batch_size, 2, 1)
+        params_layout.addWidget(QLabel("Model Name:"), 3, 0)
+        params_layout.addWidget(self.model_name, 3, 1)
+        params_layout.addWidget(self.denoise, 4, 1)
         
         # Progress tracking
         self.progress = QProgressBar()
@@ -464,7 +535,9 @@ class TrainingTab(QWidget):
         """
         if self.model_selector.currentText() == "YOLOv8n-seg":
             print("Training YOLOv8n-seg")
-            self.model = YOLO("models/yolov8n-seg.pt")
+            
+            # self.model = YOLO("models/yolov8n-seg.pt")
+
 
 
 class EvaluationTab(QWidget):
