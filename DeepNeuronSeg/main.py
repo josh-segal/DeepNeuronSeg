@@ -8,6 +8,7 @@ from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QPen
 import sys
 from dataclasses import dataclass
 from typing import List, Dict, Any
+from ultralytics import YOLO
 import json
 import os
 import random
@@ -455,16 +456,16 @@ class DatasetTab(QWidget):
 
         os.makedirs(shuffle_path, exist_ok=False)
 
-        train_images_dir = os.path.join(shuffle_path, "train", "images")
-        val_images_dir = os.path.join(shuffle_path, "val", "images")
+        train_images_dir = os.path.join( "train", "images")
+        val_images_dir = os.path.join( "val", "images")
 
         create_yaml(os.path.join(shuffle_path, "data.yaml"), train_images_dir, val_images_dir)
 
-        os.makedirs(train_images_dir, exist_ok=False)
+        os.makedirs(os.path.join(shuffle_path, train_images_dir), exist_ok=False)
         os.makedirs(os.path.join(shuffle_path, "train", "masks"), exist_ok=False)
         os.makedirs(os.path.join(shuffle_path, "train", "labels"), exist_ok=False)
 
-        os.makedirs(val_images_dir, exist_ok=False)
+        os.makedirs(os.path.join(shuffle_path, val_images_dir), exist_ok=False)
         os.makedirs(os.path.join(shuffle_path, "val", "masks"), exist_ok=False)
         os.makedirs(os.path.join(shuffle_path, "val", "labels"), exist_ok=False)
 
@@ -535,8 +536,16 @@ class TrainingTab(QWidget):
         """
         if self.model_selector.currentText() == "YOLOv8n-seg":
             print("Training YOLOv8n-seg")
-            
-            # self.model = YOLO("models/yolov8n-seg.pt")
+            self.model = YOLO("models/yolov8n-seg.pt")
+            self.model.train(
+                data = 'C:/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/data/datasets/dataset_0/shuffle_0/data.yaml',
+                project = 'data/datasets/dataset_0/shuffle_0/results',
+                name = self.model_name.text(),
+                epochs = self.epochs.value(),
+                patience = 0,
+                batch = self.batch_size.value(),
+                imgsz = 1024
+            )
 
 
 
@@ -575,22 +584,37 @@ class AnalysisTab(QWidget):
         
         # Model selection
         self.model_selector = QComboBox()
+        self.model_selector.addItems(["YOLOv8n-seg", "FasterRCNN"])
         
         # Image upload/selection
         self.select_btn = QPushButton("Select Images")
         
         # Results display
         self.results_list = QListWidget()
-        
-        # Save button
-        self.save_btn = QPushButton("Save Results")
+
+        self.select_btn.clicked.connect(self.select_images)
         
         layout.addWidget(self.model_selector)
         layout.addWidget(self.select_btn)
         layout.addWidget(self.results_list)
-        layout.addWidget(self.save_btn)
         self.setLayout(layout)
 
+    # select multiple models and compare results / ensemble ?
+    def select_images(self):
+        self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
+        self.model = inference_model = YOLO('data/datasets/dataset_0/shuffle_0/results/testModel/weights/best.pt')
+        inference_dir = os.path.join('data/datasets/dataset0/shuffle0/results/testModel', 'inference')
+        os.makedirs(inference_dir, exist_ok=True)
+        for file in self.uploaded_files:
+            inference_result = self.model.predict(file, conf=0.3, visualize=False, save=False, show_labels=False, max_det=1000)
+
+            for result in inference_result:
+                masks = result.masks
+                mask_num = len(masks)
+                save_path = os.path.join(inference_dir, f'{os.path.splitext(file)[0]}_{mask_num}.png')
+                mask_image = result.plot(labels=False, conf=False, boxes=False)
+                mask_image = Image.fromarray(mask_image)
+                mask_image.save(save_path)
 
 class OutlierTab(QWidget):
     def __init__(self):
