@@ -12,7 +12,7 @@ def get_data(file_path='data/image_metadata.json'):
 def set_data(file_path='data/image_metadata.json', metadata=None):
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, 'w') as f:
-        json.dump(metadata, f, indent=4)
+        json.dump(metadata, f, indent=1)
 
 def save_label(data_labels_dir='data_labels', final_image=None, image_path=None):
     data_labels_dir = os.path.join('data', data_labels_dir)

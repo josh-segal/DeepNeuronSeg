@@ -8,11 +8,11 @@ from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QPen
 import sys
 from dataclasses import dataclass
 from typing import List, Dict, Any
-from ultralytics import YOLO
 import json
 import os
 import random
 import shutil
+from PIL import Image
 
 from utils import get_data, set_data, save_label, get_image_mask_label_tuples, create_yaml
 from inference import segment, composite_mask, mask_to_bboxes, mask_to_polygons
@@ -55,22 +55,23 @@ class ImageLabel(QLabel):
 class ImageDisplay(QWidget):
     """Widget for displaying and interacting with images"""
     
-    def __init__(self):
+    def __init__(self, upload_tab):
         super().__init__()
         self.layout = QVBoxLayout(self)
         self.image_label = ImageLabel()
         self.text_label = QLabel()
+        self.upload_tab = upload_tab
         
         self.layout.addWidget(self.image_label)
         self.layout.addWidget(self.text_label)
 
         self.image_label.setMinimumSize(400, 400)
         self.image_label.setAlignment(Qt.AlignCenter)
-
         self.text_label.setAlignment(Qt.AlignBottom | Qt.AlignCenter)
 
     def display_image(self, image_path, image_num, total_images):
         """Load and display an image from the given file path and show image number."""
+        print(image_path, '<----------------------')
         self.pixmap = QPixmap(image_path)
         if not self.pixmap.isNull():
             self.image_label.set_pixmap(self.pixmap)
@@ -79,20 +80,59 @@ class ImageDisplay(QWidget):
         else:
             print("Failed to load image")
 
+    def show_image(self):
+        """Display the next image in the list."""
+        if self.upload_tab.uploaded_files:
+            self.display_image(self.upload_tab.uploaded_files[self.upload_tab.current_index], self.upload_tab.current_index + 1, len(self.upload_tab.uploaded_files))
+
+    def show_mask(self):
+        """Display the next image in the list."""
+        if self.upload_tab.uploaded_labels:
+            self.display_image(self.upload_tab.uploaded_labels[self.upload_tab.current_index], self.upload_tab.current_index + 1, len(self.upload_tab.uploaded_labels))
+
+    def show_next_image(self):
+        """Display the next image in the list."""
+        self.upload_tab.current_index = (self.upload_tab.current_index + 1) % len(self.upload_tab.uploaded_files)  # Wrap around
+        self.show_image()
+
+    def show_next_mask(self):
+        """Display the next image in the list."""
+        self.upload_tab.current_index = (self.upload_tab.current_index + 1) % len(self.upload_tab.uploaded_labels)  # Wrap around
+        self.show_mask()
+
+    def show_image_with_points(self):
+        """Display the next image in the list."""
+        self.show_image()
+        self.image_label.draw_points(self.upload_tab.labels[self.upload_tab.current_index])
+
+
+    def show_next_image_with_points(self):
+        """Display the next image in the list."""
+        self.show_next_image()
+        self.image_label.draw_points(self.upload_tab.labels[self.upload_tab.current_index])
+
+    
 
 class UploadTab(QWidget):
     def __init__(self):
         super().__init__()
         self.data_file = 'image_metadata.json'
+        self.current_index = 0
         self.uploaded_files = []
         layout = QVBoxLayout()
+
+         # Image preview
+        self.image_display = ImageDisplay(self)
+        
+        # File list
+        self.file_list = QListWidget()
         
         # File selection
         self.upload_btn = QPushButton("Upload Images")
         self.next_btn = QPushButton("Next Image")
 
         self.upload_btn.clicked.connect(self.upload_images)
-        self.next_btn.clicked.connect(self.show_next_image)
+        self.next_btn.clicked.connect(self.image_display.show_next_image)
         
         # Metadata input fields
         metadata_layout = QGridLayout()
@@ -109,11 +149,7 @@ class UploadTab(QWidget):
         metadata_layout.addWidget(QLabel("Image ID:"), 3, 0)
         metadata_layout.addWidget(self.image_id, 3, 1)
         
-        # Image preview
-        self.image_display = ImageDisplay()
-        
-        # File list
-        self.file_list = QListWidget()
+       
         
         layout.addWidget(self.upload_btn)
         layout.addWidget(self.next_btn)
@@ -159,15 +195,7 @@ class UploadTab(QWidget):
 
         set_data(metadata=metadata)
 
-        if self.uploaded_files:
-            self.current_index = 0
-            self.image_display.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
-    
-    def show_next_image(self):
-        """Display the next image in the list."""
-        if self.uploaded_files:
-            self.current_index = (self.current_index + 1) % len(self.uploaded_files)  # Wrap around
-            self.image_display.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
+        self.image_display.show_image()
     
     def update_file_list(self):
         self.file_list.clear()
@@ -177,15 +205,17 @@ class UploadTab(QWidget):
 class LabelingTab(QWidget):
     def __init__(self):
         super().__init__()
+        # Image display with cell marking
+        self.current_index = 0
+        self.image_display = ImageDisplay(self)
         self.data_file = 'image_metadata.json'
         layout = QVBoxLayout()
         self.load_btn = QPushButton("Load Data")
         self.next_btn = QPushButton("Next Image")
-        self.next_btn.clicked.connect(self.show_next_image)
+        self.next_btn.clicked.connect(self.image_display.show_next_image_with_points)
         self.load_btn.clicked.connect(self.load_data)
     
-        # Image display with cell marking
-        self.image_display = ImageDisplay()
+        
 
         self.image_display.image_label.click_registered.connect(self.add_cell_marker)
         
@@ -211,20 +241,10 @@ class LabelingTab(QWidget):
             result = [(image["file_path"], image["labels"]) for image in self.data if "file_path" in image]
             self.uploaded_files, self.labels = zip(*result)
 
-            if self.uploaded_files:
-                self.current_index = 0
-                self.image_display.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
-                self.image_display.image_label.draw_points(self.labels[self.current_index])
-        else:
-            print("No data loaded, please upload data first")
+            self.image_display.show_image_with_points()
 
 
-    def show_next_image(self):
-        """Display the next image in the list."""
-        if self.uploaded_files:
-            self.current_index = (self.current_index + 1) % len(self.uploaded_files)  # Wrap around
-            self.image_display.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
-            self.image_display.image_label.draw_points(self.labels[self.current_index])
+
 
     
     def add_cell_marker(self, pos):
@@ -256,20 +276,26 @@ class GenerateLabelsTab(QWidget):
         layout = QHBoxLayout()
         config_layout = QGridLayout()
 
+        self.current_index = 0
+
         self.progress = QProgressBar(self)
         self.progress.setAlignment(Qt.AlignCenter)
 
-        self.left_image = ImageDisplay()
-        self.right_image = ImageDisplay()
+        self.left_image = ImageDisplay(self)
+        self.right_image = ImageDisplay(self)
 
         self.generate_btn = QPushButton("Generate Labels")
         self.next_btn = QPushButton("Next Image")
-        self.generate_btn.clicked.connect(self.display_labels)
-        self.next_btn.clicked.connect(self.show_next_image)
+        self.display_btn = QPushButton("Display Labels")
+        self.generate_btn.clicked.connect(self.generate_labels)
+        self.next_btn.clicked.connect(self.left_image.show_next_image)
+        self.next_btn.clicked.connect(self.right_image.show_mask)
+        self.display_btn.clicked.connect(self.display_labels)
 
         
         config_layout.addWidget(self.generate_btn)
         config_layout.addWidget(self.next_btn)
+        config_layout.addWidget(self.display_btn)
 
         layout.addLayout(config_layout)
         layout.addWidget(self.progress)
@@ -278,10 +304,11 @@ class GenerateLabelsTab(QWidget):
 
         self.setLayout(layout)
 
-    def display_labels(self):
         self.data = get_data()
         result = [(image["file_path"], image["labels"]) for image in self.data if "file_path" in image]
         self.uploaded_files, self.labels = zip(*result)
+
+    def generate_labels(self):
         # print(result)
         # print(self.uploaded_files)
         # print(self.labels)
@@ -305,11 +332,7 @@ class GenerateLabelsTab(QWidget):
             # save somewhere somehow in relation to uploaded_file
             set_data(metadata=self.data)
         # display image label pairs with button to see next pair
-        self.uploaded_labels = [image["mask_data"] for image in self.data if "file_path" in image]
-
-        self.current_index = 0
-        self.left_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
-        self.right_image.display_image(self.uploaded_labels[self.current_index]["mask_path"], self.current_index + 1, len(self.uploaded_labels))
+        self.display_labels()
         # allow user editing of generated labels
 
     def generate_label(self, image_path, labels):
@@ -331,14 +354,10 @@ class GenerateLabelsTab(QWidget):
             "instances_list": instances_list
         }
 
-    def show_next_image(self):
-        """Display the next image in the list."""
-        if self.uploaded_files:
-            self.current_index = (self.current_index + 1) % len(self.uploaded_files)  # Wrap around
-            self.left_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
-            self.right_image.display_image(self.uploaded_labels[self.current_index]["mask_path"], self.current_index + 1, len(self.uploaded_labels))
-    
-
+    def display_labels(self):
+        self.uploaded_labels = [image["mask_data"]["mask_path"] for image in self.data if "file_path" in image]
+        self.left_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
+        self.right_image.display_image(self.uploaded_labels[self.current_index], self.current_index + 1, len(self.uploaded_labels))
 
 
 
@@ -488,7 +507,7 @@ class TrainingTab(QWidget):
         # Model selection
         self.model = None
         self.model_selector = QComboBox()
-        self.model_selector.addItems(["YOLOv8n-seg", "FasterRCNN"])
+        self.model_selector.addItems(["YOLOv8n-seg"])
         
         # Training parameters
         params_layout = QGridLayout()
@@ -535,6 +554,7 @@ class TrainingTab(QWidget):
         3. Track and display training progress
         """
         if self.model_selector.currentText() == "YOLOv8n-seg":
+            from ultralytics import YOLO
             print("Training YOLOv8n-seg")
             self.model = YOLO("models/yolov8n-seg.pt")
             self.model.train(
@@ -556,6 +576,10 @@ class EvaluationTab(QWidget):
         
         # Model selection
         self.model_selector = QComboBox()
+        self.model_selector.addItems(["trained-models-appear-here"])
+
+        self.dataset_selector = QComboBox()
+        self.dataset_selector.addItems(["datasets-appear-here"])
         
         # Visualization area (placeholder for distribution plots)
         self.plot_area = QLabel("Distribution Plot Will Appear Here")
@@ -576,6 +600,18 @@ class EvaluationTab(QWidget):
         3. Load and compare model predictions
         """
 
+        # check if metrics already calculated for model
+        # load the dataset images
+        # inference trained model on dataset images
+        # calculate metrics / distributions across inferences
+        # display metrics and distributions in meaningful way
+        # in analyze data return quality score of inferenced image
+
+    def calculate_metrics(self):
+        model = self.model_selector.currentText()
+        dataset = self.dataset_selector.currentText()
+
+        metrics = DetectionQAMetrics(model, dataset)
 
 class AnalysisTab(QWidget):
     def __init__(self):
@@ -584,7 +620,7 @@ class AnalysisTab(QWidget):
         
         # Model selection
         self.model_selector = QComboBox()
-        self.model_selector.addItems(["YOLOv8n-seg", "FasterRCNN"])
+        self.model_selector.addItems(["YOLOv8n-seg"])
         
         # Image upload/selection
         self.select_btn = QPushButton("Select Images")
@@ -599,11 +635,12 @@ class AnalysisTab(QWidget):
         layout.addWidget(self.results_list)
         self.setLayout(layout)
 
-    # select multiple models and compare results / ensemble ?
+    # TODO: select multiple models and compare results / ensemble ?
     def select_images(self):
+        from ultralytics import YOLO
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
-        self.model = inference_model = YOLO('data/datasets/dataset_0/shuffle_0/results/testModel/weights/best.pt')
-        inference_dir = os.path.join('data/datasets/dataset0/shuffle0/results/testModel', 'inference')
+        self.model = inference_model = YOLO('C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt')
+        inference_dir = os.path.join('data/datasets/dataset_0/shuffle_0/results/testModel', 'inference')
         os.makedirs(inference_dir, exist_ok=True)
         for file in self.uploaded_files:
             inference_result = self.model.predict(file, conf=0.3, visualize=False, save=False, show_labels=False, max_det=1000)
@@ -611,9 +648,11 @@ class AnalysisTab(QWidget):
             for result in inference_result:
                 masks = result.masks
                 mask_num = len(masks)
-                save_path = os.path.join(inference_dir, f'{os.path.splitext(file)[0]}_{mask_num}.png')
+                print(file, '------------')
+                save_path = os.path.join(inference_dir, f'{os.path.splitext(os.path.basename(file))[0]}_{mask_num}.png')
                 mask_image = result.plot(labels=False, conf=False, boxes=False)
                 mask_image = Image.fromarray(mask_image)
+                print(save_path)
                 mask_image.save(save_path)
 
 class OutlierTab(QWidget):
@@ -622,7 +661,7 @@ class OutlierTab(QWidget):
         layout = QVBoxLayout()
         
         # Image display
-        self.image_display = ImageDisplay()
+        self.image_display = ImageDisplay(self)
         
         # Outlier controls
         controls_layout = QHBoxLayout()
