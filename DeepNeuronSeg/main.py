@@ -343,10 +343,10 @@ class GenerateLabelsTab(QWidget):
         final_image_path = save_label(final_image=final_image, image_path=image_path)
         scores_numpy = scores.detach().numpy().tolist()
         # save final_image to labeled_data folder
-        print("final_image_path", final_image_path)
-        print("scores", scores_numpy)
-        print("num_cells", num_cells)
-        print("instances_list", instances_list)
+        # print("final_image_path", final_image_path)
+        # print("scores", scores_numpy)
+        # print("num_cells", num_cells)
+        # print("instances_list", instances_list)
         return {
             "mask_path": final_image_path,
             "scores": scores_numpy,
@@ -589,6 +589,7 @@ class EvaluationTab(QWidget):
         self.stats_display = QLabel()
         
         layout.addWidget(self.model_selector)
+        layout.addWidget(self.dataset_selector)
         layout.addWidget(self.plot_area)
         layout.addWidget(self.stats_display)
         self.setLayout(layout)
@@ -639,7 +640,7 @@ class AnalysisTab(QWidget):
     def select_images(self):
         from ultralytics import YOLO
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
-        self.model = inference_model = YOLO('C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt')
+        self.model = YOLO('C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt')
         inference_dir = os.path.join('data/datasets/dataset_0/shuffle_0/results/testModel', 'inference')
         os.makedirs(inference_dir, exist_ok=True)
         for file in self.uploaded_files:
