@@ -3,24 +3,25 @@ from PIL import Image
 import torch
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
+from torchvision import transforms
 
-@dataclass
-class ImageMetrics:
-    """Class to store computed metrics for a single image"""
-    mean_confidence: float
-    confidence_std: float
-    num_detections: int
-    avg_area: float
-    spatial_coverage: float
-    mask_complexity: float
-    edge_proximity: float
-    overlap_ratio: float
+
+# @dataclass
+# class ImageMetrics:
+#     """Class to store computed metrics for a single image"""
+#     mean_confidence: float
+#     confidence_std: float
+#     num_detections: int
+#     avg_area: float
+#     area_std: float
+#     overlap_ratio: float
+
 
 class ImageDataset(Dataset):
     def __init__(self, root_dir, transform=None):
         self.root_dir = root_dir
-        self.transform = transform
-        self.image_files = [f for f in os.listdir(root_dir) if f.endswith('.jpg') or f.endswith('.png')]
+        self.transform = transform or transforms.ToTensor()
+        self.image_files = [f for f in os.listdir(root_dir) if f.endswith('.png')]
 
     def __len__(self):
         return len(self.image_files)
@@ -34,49 +35,115 @@ class ImageDataset(Dataset):
         
         return image
 
-class DetectionQAMetrics:
 
+class DetectionQAMetrics:
     def __init__(self, model_path, dataset_path):
-        self.model = load_model(model_path)
-        self.dataset = load_dataset(dataset_path)
-        self.metrics = []
+        self.model = self.load_model(model_path)
+        print('loaded model')
+        self.dataset = self.load_dataset(dataset_path)
+        print('loaded dataset')
+        self.dataset_metrics = {
+            'confidence_mean': [],
+            'confidence_std': [],
+            'num_detections': [],
+            'area_mean': [],
+            'area_std': [],
+            'overlap_ratio': []
+        }
+        self.confidences = []
+        self.bbox_bounds = []
+
+        self.compute_metrics()
 
     def compute_metrics(self):
         for images in self.dataset:
             # Get the predictions
-            preds = self.model.predict(image)
+            preds = self.model.predict(images)
+            print('got predictions from batch')
             # Format the predictions
-            confs, boxes = format_predictions(preds)
+            self.format_predictions(preds)
 
-            # Compute metrics
-            image_metrics = compute_single_metric(confs, boxes)
+        for img_conf, img_bboxes in zip(self.confidences, self.bbox_bounds):
+            img_metrics = self.compute_image_metrics(img_conf, img_bboxes)
 
-            # Add predictions to dataset metrics
-            self.metrics.append(image_metrics)
+            self.dataset_metrics["confidence_mean"].append(img_metrics["confidence_mean"])
+            self.dataset_metrics["confidence_std"].append(img_metrics["confidence_std"])
+            self.dataset_metrics["num_detections"].append(img_metrics["num_detections"])
+            self.dataset_metrics["area_mean"].append(img_metrics["area_mean"])
+            self.dataset_metrics["area_std"].append(img_metrics["area_std"])
+            self.dataset_metrics["overlap_ratio"].append(img_metrics["overlap_ratio"])
+            
+        self.dataset_metrics_mean_std = {
+            'confidence_mean_mean': np.mean(self.dataset_metrics['confidence_mean']),
+            'confidence_mean_std': np.std(self.dataset_metrics['confidence_mean']),
+            'confidence_std_mean': np.mean(self.dataset_metrics['confidence_std']),
+            'confidence_std_std': np.std(self.dataset_metrics['confidence_std']),
+            'num_detections_mean': np.mean(self.dataset_metrics['num_detections']),
+            'num_detections_std': np.std(self.dataset_metrics['num_detections']),
+            'area_mean_mean': np.mean(self.dataset_metrics['area_mean']),
+            'area_mean_std': np.std(self.dataset_metrics['area_mean']),
+            'area_std_mean': np.mean(self.dataset_metrics['area_std']),
+            'area_std_std': np.std(self.dataset_metrics['area_std']),
+            'overlap_ratio_mean': np.mean(self.dataset_metrics['overlap_ratio']),
+            'overlap_ratio_std': np.std(self.dataset_metrics['overlap_ratio'])
+        }
+        print('done computing metrics')
 
     def format_predictions(self, predictions):
-        confidences = []
-        bbox_bounds = []
         for pred in predictions:
             conf = pred.boxes.conf
             boxes = pred.boxes.xyxy
 
-            confidences.append(conf)
-            bbox_bounds.append(boxes)
+            self.confidences.append(conf)
+            self.bbox_bounds.append(boxes)
 
-        return confidences, bbox_bounds
-
-
-
-    def compute_single_metric(self, confidences, bbox_bounds):
-        mean_confidence = np.mean(confidences)
-        confidence_std = np.std(confidences)
-        num_detections = len(confidences)
-        areas = [(b[2] - b[0]) * (b[3] - b[1]) for b in bbox_bounds]
-        avg_area = np.mean(areas)
+    def compute_image_metrics(self, confs, boxes):
+        confidence_mean = np.mean(confs.numpy())
+        confidence_std = np.std(confs.numpy())
+        num_dets = len(confs.numpy())
+        areas = [(b[2] - b[0]) * (b[3] - b[1]) for b in boxes]
+        area_mean = np.mean(areas)
         area_std = np.std(areas)
+        overlap_ratio = self.compute_overlap(boxes)
         
-
+        return {
+            'confidence_mean': confidence_mean,
+            'confidence_std': confidence_std,
+            'num_detections': num_dets,
+            'area_mean': area_mean,
+            'area_std': area_std,
+            'overlap_ratio': overlap_ratio
+        }
+    
+    def compute_overlap(self, boxes):
+        """ Calculate the overlap ratio between bounding boxes: 1 means 100% overlap, 0 means no overlap """
+        intersection_areas = []
+        box_areas = []
+    
+        for i in range(len(boxes)):
+            for j in range(i + 1, len(boxes)):
+                A = boxes[i]
+                B = boxes[j]
+                
+                # Calculate intersection area
+                x1_intersection = max(A[0], B[0])
+                y1_intersection = max(A[1], B[1])
+                x2_intersection = min(A[2], B[2])
+                y2_intersection = min(A[3], B[3])
+                intersection_area = max(0, x2_intersection - x1_intersection) * max(0, y2_intersection - y1_intersection)
+                intersection_areas.append(intersection_area)
+                
+                # Calculate box areas
+                box_area_A = (A[2] - A[0]) * (A[3] - A[1])
+                box_area_B = (B[2] - B[0]) * (B[3] - B[1])
+                box_areas.append(box_area_A)
+                box_areas.append(box_area_B)
+        
+        total_area = sum(box_areas)
+        if total_area == 0:
+            return 0
+        else:
+            return sum(intersection_areas) / total_area
 
     def load_model(self, model_path):
         # Load the model from the specified path

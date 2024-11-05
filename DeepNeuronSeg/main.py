@@ -16,7 +16,7 @@ from PIL import Image
 
 from utils import get_data, set_data, save_label, get_image_mask_label_tuples, create_yaml
 from inference import segment, composite_mask, mask_to_bboxes, mask_to_polygons
-
+from qa import DetectionQAMetrics
 
 class ImageLabel(QLabel):
     """Custom QLabel to handle mouse clicks on the image area only."""
@@ -584,6 +584,9 @@ class EvaluationTab(QWidget):
         # Visualization area (placeholder for distribution plots)
         self.plot_area = QLabel("Distribution Plot Will Appear Here")
         self.plot_area.setMinimumSize(400, 300)
+
+        self.calculate_metrics_btn = QPushButton("Calculate Metrics")
+        self.calculate_metrics_btn.clicked.connect(self.calculate_metrics)
         
         # Statistics display
         self.stats_display = QLabel()
@@ -592,6 +595,7 @@ class EvaluationTab(QWidget):
         layout.addWidget(self.dataset_selector)
         layout.addWidget(self.plot_area)
         layout.addWidget(self.stats_display)
+        layout.addWidget(self.calculate_metrics_btn)
         self.setLayout(layout)
         
         """
@@ -609,10 +613,13 @@ class EvaluationTab(QWidget):
         # in analyze data return quality score of inferenced image
 
     def calculate_metrics(self):
-        model = self.model_selector.currentText()
-        dataset = self.dataset_selector.currentText()
+        # model_path = self.model_selector.currentText()
+        model_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt'
+        # dataset_path = self.dataset_selector.currentText()
+        dataset_path = 'C:/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/data/datasets/dataset_0/images'
 
-        metrics = DetectionQAMetrics(model, dataset)
+        metrics = DetectionQAMetrics(model_path, dataset_path)
+        print(metrics.dataset_metrics_mean_std)
 
 class AnalysisTab(QWidget):
     def __init__(self):
