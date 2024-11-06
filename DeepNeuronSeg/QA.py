@@ -4,6 +4,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 from torchvision import transforms
+from tqdm import tqdm
 
 
 # @dataclass
@@ -56,14 +57,15 @@ class DetectionQAMetrics:
         self.compute_metrics()
 
     def compute_metrics(self):
-        for images in self.dataset:
+        for images in tqdm(self.dataset, desc="Processing Images", unit="image"):
             # Get the predictions
-            preds = self.model.predict(images)
+            preds = self.model.predict(images, conf=0.3, max_det=1000, verbose=False)
             print('got predictions from batch')
             # Format the predictions
             self.format_predictions(preds)
 
-        for img_conf, img_bboxes in zip(self.confidences, self.bbox_bounds):
+        for img_conf, img_bboxes in  tqdm(zip(self.confidences, self.bbox_bounds), desc="Computing Metrics", unit="image"):
+            print("computing metrics for image")
             img_metrics = self.compute_image_metrics(img_conf, img_bboxes)
 
             self.dataset_metrics["confidence_mean"].append(img_metrics["confidence_mean"])
@@ -73,6 +75,7 @@ class DetectionQAMetrics:
             self.dataset_metrics["area_std"].append(img_metrics["area_std"])
             self.dataset_metrics["overlap_ratio"].append(img_metrics["overlap_ratio"])
             
+        print("computing dataset metrics")
         self.dataset_metrics_mean_std = {
             'confidence_mean_mean': np.mean(self.dataset_metrics['confidence_mean']),
             'confidence_mean_std': np.std(self.dataset_metrics['confidence_mean']),
@@ -87,7 +90,7 @@ class DetectionQAMetrics:
             'overlap_ratio_mean': np.mean(self.dataset_metrics['overlap_ratio']),
             'overlap_ratio_std': np.std(self.dataset_metrics['overlap_ratio'])
         }
-        print('done computing metrics')
+        print('done computing image and dataset metrics')
 
     def format_predictions(self, predictions):
         for pred in predictions:

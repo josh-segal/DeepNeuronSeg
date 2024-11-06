@@ -5,6 +5,8 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QTabWidget,
                            QCheckBox, QLineEdit, QGridLayout, QProgressBar)
 from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QRect, QPointF
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QPen 
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 import sys
 from dataclasses import dataclass
 from typing import List, Dict, Any
@@ -582,19 +584,15 @@ class EvaluationTab(QWidget):
         self.dataset_selector.addItems(["datasets-appear-here"])
         
         # Visualization area (placeholder for distribution plots)
-        self.plot_area = QLabel("Distribution Plot Will Appear Here")
-        self.plot_area.setMinimumSize(400, 300)
+        self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
 
         self.calculate_metrics_btn = QPushButton("Calculate Metrics")
         self.calculate_metrics_btn.clicked.connect(self.calculate_metrics)
-        
-        # Statistics display
-        self.stats_display = QLabel()
+
         
         layout.addWidget(self.model_selector)
         layout.addWidget(self.dataset_selector)
-        layout.addWidget(self.plot_area)
-        layout.addWidget(self.stats_display)
+        layout.addWidget(self.canvas)
         layout.addWidget(self.calculate_metrics_btn)
         self.setLayout(layout)
         
@@ -616,10 +614,36 @@ class EvaluationTab(QWidget):
         # model_path = self.model_selector.currentText()
         model_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt'
         # dataset_path = self.dataset_selector.currentText()
-        dataset_path = 'C:/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/data/datasets/dataset_0/images'
+        dataset_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/dataset/COCO_train_X'
 
         metrics = DetectionQAMetrics(model_path, dataset_path)
         print(metrics.dataset_metrics_mean_std)
+        self.plot_metrics(metrics.dataset_metrics, metrics.dataset_metrics_mean_std)
+
+    def plot_metrics(self, metrics, metrics_mean_std):
+        # bins = len(metrics['confidence_mean'])**0.5
+        ax1, ax2 = self.canvas.figure.subplots(1, 2)
+
+        # Sort by num_detections and apply the same order to confidence_mean
+        sorted_indices = sorted(range(len(metrics["num_detections"])), key=lambda i: metrics["num_detections"][i])
+
+        sorted_num_detections = [metrics["num_detections"][i] for i in sorted_indices]
+        sorted_conf_mean = [metrics["confidence_mean"][i] for i in sorted_indices]
+        
+        # Plotting histograms
+        ax1.bar(range(len(sorted_conf_mean)), sorted_conf_mean, color='skyblue', edgecolor='black')
+        ax1.set_title("Mean Confidence of Predictions Per Image")
+        ax1.set_xlabel("Image")
+        ax1.set_ylabel("Mean Confidence")
+
+        ax2.bar(range(len(sorted_num_detections)), sorted_num_detections, color='salmon', edgecolor='black')
+        ax2.set_title("Number of Detections Per Image")
+        ax2.set_xlabel("Image")
+        ax2.set_ylabel("Number of Detections")
+
+        # Adjust layout and render
+        self.canvas.figure.tight_layout()
+        self.canvas.draw()
 
 class AnalysisTab(QWidget):
     def __init__(self):
