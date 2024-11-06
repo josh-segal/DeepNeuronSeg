@@ -245,10 +245,6 @@ class LabelingTab(QWidget):
 
             self.image_display.show_image_with_points()
 
-
-
-
-    
     def add_cell_marker(self, pos):
         """
         INTEGRATION POINT:
@@ -268,7 +264,7 @@ class LabelingTab(QWidget):
             if image["file_path"] == self.uploaded_files[self.current_index]:
                 image["labels"] = [(pos[0], pos[1]) for pos in self.labels[self.current_index]]
                 break
-            
+        #TODO: change to .h5 for saving??
         set_data(metadata=self.data)
 
 
@@ -575,6 +571,7 @@ class EvaluationTab(QWidget):
     def __init__(self):
         super().__init__()
         layout = QVBoxLayout()
+        metrics_layout = QGridLayout()
         
         # Model selection
         self.model_selector = QComboBox()
@@ -589,11 +586,41 @@ class EvaluationTab(QWidget):
         self.calculate_metrics_btn = QPushButton("Calculate Metrics")
         self.calculate_metrics_btn.clicked.connect(self.calculate_metrics)
 
+         # Labels for metrics
+        self.confidence_mean_mean_label = QLabel("Confidence Mean Mean: N/A")
+        self.confidence_mean_std_label = QLabel("Confidence Mean Std: N/A")
+        self.confidence_std_mean_label = QLabel("Confidence Std Mean: N/A")
+        self.confidence_std_std_label = QLabel("Confidence Std Std: N/A")
+        self.num_detections_mean_label = QLabel("Num Detections Mean: N/A")
+        self.num_detections_std_label = QLabel("Num Detections Std: N/A")
+        self.area_mean_mean_label = QLabel("Area Mean Mean: N/A")
+        self.area_mean_std_label = QLabel("Area Mean Std: N/A")
+        self.area_std_mean_label = QLabel("Area Std Mean: N/A")
+        self.area_std_std_label = QLabel("Area Std Std: N/A")
+        self.overlap_ratio_mean_label = QLabel("Overlap Ratio Mean: N/A")
+        self.overlap_ratio_std_label = QLabel("Overlap Ratio Std: N/A")
+
         
         layout.addWidget(self.model_selector)
         layout.addWidget(self.dataset_selector)
         layout.addWidget(self.canvas)
         layout.addWidget(self.calculate_metrics_btn)
+
+        # Adding metric labels to layout
+        metrics_layout.addWidget(self.confidence_mean_mean_label, 0, 0)
+        metrics_layout.addWidget(self.confidence_mean_std_label, 0, 1)
+        metrics_layout.addWidget(self.confidence_std_mean_label, 0, 2)
+        metrics_layout.addWidget(self.confidence_std_std_label, 0, 3)
+        metrics_layout.addWidget(self.num_detections_mean_label, 0, 4)
+        metrics_layout.addWidget(self.num_detections_std_label, 0, 5)
+        metrics_layout.addWidget(self.area_mean_mean_label, 1, 0)
+        metrics_layout.addWidget(self.area_mean_std_label, 1, 1)
+        metrics_layout.addWidget(self.area_std_mean_label, 1, 2)
+        metrics_layout.addWidget(self.area_std_std_label, 1, 3)
+        metrics_layout.addWidget(self.overlap_ratio_mean_label, 1, 4)
+        metrics_layout.addWidget(self.overlap_ratio_std_label, 1, 5)
+
+        layout.addLayout(metrics_layout)
         self.setLayout(layout)
         
         """
@@ -611,9 +638,11 @@ class EvaluationTab(QWidget):
         # in analyze data return quality score of inferenced image
 
     def calculate_metrics(self):
+        # TODO: abstract
         # model_path = self.model_selector.currentText()
         model_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt'
         # dataset_path = self.dataset_selector.currentText()
+        # dataset_path = 'C:/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/data/datasets/dataset_0/images'
         dataset_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/dataset/COCO_train_X'
 
         metrics = DetectionQAMetrics(model_path, dataset_path)
@@ -645,10 +674,27 @@ class EvaluationTab(QWidget):
         self.canvas.figure.tight_layout()
         self.canvas.draw()
 
+        self.update_metrics_labels(metrics_mean_std)
+
+    def update_metrics_labels(self, metrics_mean_std):
+        self.confidence_mean_mean_label.setText(f"Confidence Mean Mean: {metrics_mean_std['confidence_mean_mean']:.2f}")
+        self.confidence_mean_std_label.setText(f"Confidence Mean Std: {metrics_mean_std['confidence_mean_std']:.2f}")
+        self.confidence_std_mean_label.setText(f"Confidence Std Mean: {metrics_mean_std['confidence_std_mean']:.2f}")
+        self.confidence_std_std_label.setText(f"Confidence Std Std: {metrics_mean_std['confidence_std_std']:.2f}")
+        self.num_detections_mean_label.setText(f"Num Detections Mean: {metrics_mean_std['num_detections_mean']:.2f}")
+        self.num_detections_std_label.setText(f"Num Detections Std: {metrics_mean_std['num_detections_std']:.2f}")
+        self.area_mean_mean_label.setText(f"Area Mean Mean: {metrics_mean_std['area_mean_mean']:.2f}")
+        self.area_mean_std_label.setText(f"Area Mean Std: {metrics_mean_std['area_mean_std']:.2f}")
+        self.area_std_mean_label.setText(f"Area Std Mean: {metrics_mean_std['area_std_mean']:.2f}")
+        self.area_std_std_label.setText(f"Area Std Std: {metrics_mean_std['area_std_std']:.2f}")
+        self.overlap_ratio_mean_label.setText(f"Overlap Ratio Mean: {metrics_mean_std['overlap_ratio_mean']:.2f}")
+        self.overlap_ratio_std_label.setText(f"Overlap Ratio Std: {metrics_mean_std['overlap_ratio_std']:.2f}")
+
 class AnalysisTab(QWidget):
-    def __init__(self):
+    def __init__(self, evaulation_tab):
         super().__init__()
         layout = QVBoxLayout()
+        self.evaluation_tab = evaulation_tab
         
         # Model selection
         self.model_selector = QComboBox()
@@ -656,14 +702,20 @@ class AnalysisTab(QWidget):
         
         # Image upload/selection
         self.select_btn = QPushButton("Select Images")
+        self.inference_btn = QPushButton("Inference Images")
+        self.save_btn = QPushButton("Save Inferences")  
         
         # Results display
         self.results_list = QListWidget()
 
         self.select_btn.clicked.connect(self.select_images)
+        self.inference_btn.clicked.connect(self.inference_images)
+        self.save_btn.clicked.connect(self.save_inferences)
         
         layout.addWidget(self.model_selector)
         layout.addWidget(self.select_btn)
+        layout.addWidget(self.inference_btn)
+        layout.addWidget(self.save_btn)
         layout.addWidget(self.results_list)
         self.setLayout(layout)
 
@@ -671,21 +723,32 @@ class AnalysisTab(QWidget):
     def select_images(self):
         from ultralytics import YOLO
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
-        self.model = YOLO('C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt')
-        inference_dir = os.path.join('data/datasets/dataset_0/shuffle_0/results/testModel', 'inference')
-        os.makedirs(inference_dir, exist_ok=True)
-        for file in self.uploaded_files:
-            inference_result = self.model.predict(file, conf=0.3, visualize=False, save=False, show_labels=False, max_det=1000)
 
-            for result in inference_result:
+    def inference_images(self):
+        self.model = YOLO('C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt')
+        self.inference_dir = os.path.join('data/datasets/dataset_0/shuffle_0/results/testModel', 'inference')
+        os.makedirs(self.inference_dir, exist_ok=True)
+        self.inference_result = self.model.predict(self.uploaded_files, conf=0.3, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
+        if True:
+            self.save_inferences()
+        if True:
+            self.plot_inferences_against_dataset()
+
+    def save_inferences(self):
+        for result in self.inference_result:
                 masks = result.masks
                 mask_num = len(masks)
                 print(file, '------------')
-                save_path = os.path.join(inference_dir, f'{os.path.splitext(os.path.basename(file))[0]}_{mask_num}.png')
+                save_path = os.path.join(self.inference_dir, f'{os.path.splitext(os.path.basename(file))[0]}_{mask_num}.png')
                 mask_image = result.plot(labels=False, conf=False, boxes=False)
                 mask_image = Image.fromarray(mask_image)
                 print(save_path)
                 mask_image.save(save_path)
+
+    def plot_inferences_against_dataset(self):
+
+
+    
 
 class OutlierTab(QWidget):
     def __init__(self):
@@ -768,13 +831,15 @@ class MainWindow(QMainWindow):
         tabs.setMovable(True)
         
         # Create and add all tabs
+        evaluation_tab = EvaluationTab()
+
         tabs.addTab(UploadTab(), "Upload Data")
         tabs.addTab(LabelingTab(), "Label Data")
         tabs.addTab(GenerateLabelsTab(), "Generate Labels")
         tabs.addTab(DatasetTab(), "Create Dataset")
         tabs.addTab(TrainingTab(), "Train Network")
-        tabs.addTab(EvaluationTab(), "Evaluate Network")
-        tabs.addTab(AnalysisTab(), "Analyze Data")
+        tabs.addTab(evaluation_tab, "Evaluate Network")
+        tabs.addTab(AnalysisTab(evaluation_tab), "Analyze Data")
         tabs.addTab(OutlierTab(), "Extract Outliers")
         tabs.addTab(ModelZooTab(), "Model Zoo")
         

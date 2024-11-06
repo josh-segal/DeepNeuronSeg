@@ -57,15 +57,15 @@ class DetectionQAMetrics:
         self.compute_metrics()
 
     def compute_metrics(self):
-        for images in tqdm(self.dataset, desc="Processing Images", unit="image"):
+        for images in tqdm(self.dataset, desc="Processing Images", unit=f"{self.batch_size} image(s)"):
             # Get the predictions
             preds = self.model.predict(images, conf=0.3, max_det=1000, verbose=False)
-            print('got predictions from batch')
+            # print('got predictions from batch')
             # Format the predictions
             self.format_predictions(preds)
 
-        for img_conf, img_bboxes in  tqdm(zip(self.confidences, self.bbox_bounds), desc="Computing Metrics", unit="image"):
-            print("computing metrics for image")
+        for img_conf, img_bboxes in  tqdm(zip(self.confidences, self.bbox_bounds), total=len(self.confidences), desc="Computing Metrics", unit="image"):
+            # print("computing metrics for image")
             img_metrics = self.compute_image_metrics(img_conf, img_bboxes)
 
             self.dataset_metrics["confidence_mean"].append(img_metrics["confidence_mean"])
@@ -75,7 +75,7 @@ class DetectionQAMetrics:
             self.dataset_metrics["area_std"].append(img_metrics["area_std"])
             self.dataset_metrics["overlap_ratio"].append(img_metrics["overlap_ratio"])
             
-        print("computing dataset metrics")
+        # print("computing dataset metrics")
         self.dataset_metrics_mean_std = {
             'confidence_mean_mean': np.mean(self.dataset_metrics['confidence_mean']),
             'confidence_mean_std': np.std(self.dataset_metrics['confidence_mean']),
@@ -90,7 +90,7 @@ class DetectionQAMetrics:
             'overlap_ratio_mean': np.mean(self.dataset_metrics['overlap_ratio']),
             'overlap_ratio_std': np.std(self.dataset_metrics['overlap_ratio'])
         }
-        print('done computing image and dataset metrics')
+        # print('done computing image and dataset metrics')
 
     def format_predictions(self, predictions):
         for pred in predictions:
@@ -156,6 +156,7 @@ class DetectionQAMetrics:
 
     def load_dataset(self, dataset_path):
         dataset = ImageDataset(root_dir=dataset_path)
-        dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
+        self.batch_size = 4
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
         return dataloader
         
