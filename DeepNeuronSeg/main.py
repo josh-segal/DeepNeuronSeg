@@ -15,6 +15,7 @@ import os
 import random
 import shutil
 from PIL import Image
+import numpy as np
 
 
 from utils import get_data, set_data, save_label, get_image_mask_label_tuples, create_yaml
@@ -643,12 +644,12 @@ class EvaluationTab(QWidget):
         # model_path = self.model_selector.currentText()
         model_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt'
         # dataset_path = self.dataset_selector.currentText()
-        # dataset_path = 'C:/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/data/datasets/dataset_0/images'
-        dataset_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/dataset/COCO_train_X'
+        dataset_path = 'C:/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/data/datasets/dataset_0/images'
+        # dataset_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/dataset/COCO_train_X'
 
         self.metrics = DetectionQAMetrics(model_path, dataset_path)
-        print(metrics.dataset_metrics_mean_std)
-        self.plot_metrics(metrics.dataset_metrics, metrics.dataset_metrics_mean_std)
+        print(self.metrics.dataset_metrics_mean_std)
+        self.plot_metrics(self.metrics.dataset_metrics, self.metrics.dataset_metrics_mean_std)
 
     def plot_metrics(self, metrics, metrics_mean_std):
         # bins = len(metrics['confidence_mean'])**0.5
@@ -706,8 +707,7 @@ class AnalysisTab(QWidget):
         self.inference_btn = QPushButton("Inference Images")
         self.save_btn = QPushButton("Save Inferences")  
         
-        # Results display
-        self.results_list = QListWidget()
+        self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
 
         self.select_btn.clicked.connect(self.select_images)
         self.inference_btn.clicked.connect(self.inference_images)
@@ -717,7 +717,7 @@ class AnalysisTab(QWidget):
         layout.addWidget(self.select_btn)
         layout.addWidget(self.inference_btn)
         layout.addWidget(self.save_btn)
-        layout.addWidget(self.results_list)
+        layout.addWidget(self.canvas)
         self.setLayout(layout)
 
     # TODO: select multiple models and compare results / ensemble ?
@@ -747,26 +747,63 @@ class AnalysisTab(QWidget):
                 mask_image.save(save_path)
 
     def plot_inferences_against_dataset(self):
-        additional_num_detections, additional_conf_mean = self.format_preds(self.inference_result)
-
+        self.canvas.figure.clf()
         ax1, ax2 = self.canvas.figure.subplots(1, 2)
 
         # Sort by num_detections and apply the same order to confidence_mean
-        sorted_indices = sorted(range(len(evaluation_tab.metrics.dataset_metrics["num_detections"])), key=lambda i: metrics["num_detections"][i])
+        sorted_indices = sorted(range(len(self.evaluation_tab.metrics.dataset_metrics["num_detections"])), key=lambda i: self.evaluation_tab.metrics.dataset_metrics["num_detections"][i])
+        
+        sorted_num_detections = [self.evaluation_tab.metrics.dataset_metrics["num_detections"][i] for i in sorted_indices]
+        sorted_conf_mean = [self.evaluation_tab.metrics.dataset_metrics["confidence_mean"][i] for i in sorted_indices]
 
-        sorted_num_detections = [evaluation_tab.metrics.dataset_metrics["num_detections"][i] for i in sorted_indices]
-        sorted_conf_mean = [evaluation_tab.metrics.dataset_metrics["confidence_mean"][i] for i in sorted_indices]
+        print("sorted_num_detections", sorted_num_detections)
+        print("sorted_conf_mean", sorted_conf_mean)
+
+        additional_num_detections, additional_conf_mean = self.format_preds(self.inference_result)
+        additional_sorted_indices = sorted(range(len(additional_num_detections)), key=lambda i: additional_num_detections[i], reverse=True)
+        
+        sorted_additional_num_detections = [additional_num_detections[i] for i in additional_sorted_indices]
+        sorted_additiona_conf_mean = [additional_conf_mean[i] for i in additional_sorted_indices]
+
+        print("sorted_additional_num_detections", sorted_additional_num_detections)
+        print("sorted_additiona_conf_mean", sorted_additiona_conf_mean)
+
+        merged_additional_indices = []
+        for num in sorted_additional_num_detections:
+            if num > sorted_num_detections[-1]:
+                merged_additional_indices.append(len(sorted_num_detections))
+                continue
+            for i, sorted_num in enumerate(sorted_num_detections):
+                if num <= sorted_num:
+                    merged_additional_indices.append(i)
+                    break
+
+        print("merged_additional_indices", merged_additional_indices)
+
+        for i, num in enumerate(merged_additional_indices):
+            sorted_num_detections.insert(num, sorted_additional_num_detections[i])
+            sorted_conf_mean.insert(num, sorted_additiona_conf_mean[i])
+
+        print("merged_sorted_num_detections", sorted_num_detections)
+        print("merged_sorted_conf_mean", sorted_conf_mean)
+
+    
+        indicies_to_color = [(len(merged_additional_indices) - (index + 1)) + value for index, value in enumerate(merged_additional_indices)]
+
+        print("indicies_to_color", indicies_to_color)
 
         # Plotting histograms
-        ax1.bar(range(len(sorted_conf_mean)), sorted_conf_mean, color='skyblue', edgecolor='black', label='Original')
-        ax1.bar(range(len(sorted_conf_mean)), additional_conf_mean, color='gold', edgecolor='black', label='Additional')
+        colors = ['green' if i in indicies_to_color else 'red' for i in range(len(sorted_conf_mean))]
+
+        print("colors", colors)
+
+        ax1.bar(range(len(sorted_conf_mean)), sorted_conf_mean, color=colors, edgecolor='black', label='Original')
         ax1.set_title("Mean Confidence of Predictions Per Image")
         ax1.set_xlabel("Image")
         ax1.set_ylabel("Mean Confidence")
         ax1.legend()
 
-        ax2.bar(range(len(sorted_num_detections)), sorted_num_detections, color='salmon', edgecolor='black', label='Original')
-        ax2.bar(range(len(sorted_num_detections)), additional_num_detections, color='lime', edgecolor='black', label='Additional')
+        ax2.bar(range(len(sorted_num_detections)), sorted_num_detections, color=colors, edgecolor='black', label='Original')
         ax2.set_title("Number of Detections Per Image")
         ax2.set_xlabel("Image")
         ax2.set_ylabel("Number of Detections")
@@ -775,16 +812,21 @@ class AnalysisTab(QWidget):
         # Adjust layout and render
         self.canvas.figure.tight_layout()
         self.canvas.draw()
+        print("plotted")
 
 
     def format_preds(self, predictions):
+        print("formatting preds")
         num_detections_list = []
         mean_confidence_list = []
         for pred in predictions:
             conf = pred.boxes.conf
             cell_num = len(conf)
             num_detections_list.append(cell_num)
-            mean_confidence_list.append(np.mean(confs.numpy()))
+            mean_confidence_list.append(np.mean(conf.numpy()))
+
+        print("num_detections_list", num_detections_list)
+        print("mean_confidence_list", mean_confidence_list)
 
         return num_detections_list, mean_confidence_list
 
