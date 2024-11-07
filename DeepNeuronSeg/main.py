@@ -16,6 +16,7 @@ import random
 import shutil
 from PIL import Image
 
+
 from utils import get_data, set_data, save_label, get_image_mask_label_tuples, create_yaml
 from inference import segment, composite_mask, mask_to_bboxes, mask_to_polygons
 from qa import DetectionQAMetrics
@@ -645,7 +646,7 @@ class EvaluationTab(QWidget):
         # dataset_path = 'C:/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/data/datasets/dataset_0/images'
         dataset_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/dataset/COCO_train_X'
 
-        metrics = DetectionQAMetrics(model_path, dataset_path)
+        self.metrics = DetectionQAMetrics(model_path, dataset_path)
         print(metrics.dataset_metrics_mean_std)
         self.plot_metrics(metrics.dataset_metrics, metrics.dataset_metrics_mean_std)
 
@@ -721,10 +722,10 @@ class AnalysisTab(QWidget):
 
     # TODO: select multiple models and compare results / ensemble ?
     def select_images(self):
-        from ultralytics import YOLO
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
 
     def inference_images(self):
+        from ultralytics import YOLO
         self.model = YOLO('C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt')
         self.inference_dir = os.path.join('data/datasets/dataset_0/shuffle_0/results/testModel', 'inference')
         os.makedirs(self.inference_dir, exist_ok=True)
@@ -735,7 +736,7 @@ class AnalysisTab(QWidget):
             self.plot_inferences_against_dataset()
 
     def save_inferences(self):
-        for result in self.inference_result:
+        for file, result in zip(self.uploaded_files, self.inference_result):
                 masks = result.masks
                 mask_num = len(masks)
                 print(file, '------------')
@@ -746,6 +747,46 @@ class AnalysisTab(QWidget):
                 mask_image.save(save_path)
 
     def plot_inferences_against_dataset(self):
+        additional_num_detections, additional_conf_mean = self.format_preds(self.inference_result)
+
+        ax1, ax2 = self.canvas.figure.subplots(1, 2)
+
+        # Sort by num_detections and apply the same order to confidence_mean
+        sorted_indices = sorted(range(len(evaluation_tab.metrics.dataset_metrics["num_detections"])), key=lambda i: metrics["num_detections"][i])
+
+        sorted_num_detections = [evaluation_tab.metrics.dataset_metrics["num_detections"][i] for i in sorted_indices]
+        sorted_conf_mean = [evaluation_tab.metrics.dataset_metrics["confidence_mean"][i] for i in sorted_indices]
+
+        # Plotting histograms
+        ax1.bar(range(len(sorted_conf_mean)), sorted_conf_mean, color='skyblue', edgecolor='black', label='Original')
+        ax1.bar(range(len(sorted_conf_mean)), additional_conf_mean, color='gold', edgecolor='black', label='Additional')
+        ax1.set_title("Mean Confidence of Predictions Per Image")
+        ax1.set_xlabel("Image")
+        ax1.set_ylabel("Mean Confidence")
+        ax1.legend()
+
+        ax2.bar(range(len(sorted_num_detections)), sorted_num_detections, color='salmon', edgecolor='black', label='Original')
+        ax2.bar(range(len(sorted_num_detections)), additional_num_detections, color='lime', edgecolor='black', label='Additional')
+        ax2.set_title("Number of Detections Per Image")
+        ax2.set_xlabel("Image")
+        ax2.set_ylabel("Number of Detections")
+        ax2.legend()
+
+        # Adjust layout and render
+        self.canvas.figure.tight_layout()
+        self.canvas.draw()
+
+
+    def format_preds(self, predictions):
+        num_detections_list = []
+        mean_confidence_list = []
+        for pred in predictions:
+            conf = pred.boxes.conf
+            cell_num = len(conf)
+            num_detections_list.append(cell_num)
+            mean_confidence_list.append(np.mean(confs.numpy()))
+
+        return num_detections_list, mean_confidence_list
 
 
     
