@@ -5,6 +5,10 @@ import numpy as np
 import yaml
 
 def get_data(file_path='data/image_metadata.json'):
+    """
+    self.data_path = os.path.join('data', self.data_file)
+        if os.path.exists(self.data_path):
+    """
     with open(file_path, 'r') as f:
                 data = json.load(f)
     return data

@@ -1,8 +1,8 @@
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QTabWidget, 
                            QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, 
                            QPushButton, QFileDialog, QSpinBox, QComboBox,
-                           QProgressBar, QListWidget, QDoubleSpinBox, 
-                           QCheckBox, QLineEdit, QGridLayout, QProgressBar)
+                        QListWidget, QDoubleSpinBox, 
+                           QCheckBox, QLineEdit, QGridLayout)
 from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QRect, QPointF
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QPen 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -17,6 +17,7 @@ import shutil
 from PIL import Image
 import numpy as np
 import tempfile
+from tqdm import tqdm
 
 
 from utils import get_data, set_data, save_label, get_image_mask_label_tuples, create_yaml
@@ -92,8 +93,8 @@ class ImageDisplay(QWidget):
 
     def show_mask(self):
         """Display the next image in the list."""
-        if self.upload_tab.uploaded_labels:
-            self.display_image(self.upload_tab.uploaded_labels[self.upload_tab.current_index], self.upload_tab.current_index + 1, len(self.upload_tab.uploaded_labels))
+        if self.upload_tab.metadata_labels:
+            self.display_image(self.upload_tab.metadata_labels[self.upload_tab.current_index], self.upload_tab.current_index + 1, len(self.upload_tab.metadata_labels))
 
     def show_next_image(self):
         """Display the next image in the list."""
@@ -102,7 +103,7 @@ class ImageDisplay(QWidget):
 
     def show_next_mask(self):
         """Display the next image in the list."""
-        self.upload_tab.current_index = (self.upload_tab.current_index + 1) % len(self.upload_tab.uploaded_labels)  # Wrap around
+        self.upload_tab.current_index = (self.upload_tab.current_index + 1) % len(self.upload_tab.metadata_labels)  # Wrap around
         self.show_mask()
 
     def show_image_with_points(self):
@@ -201,6 +202,41 @@ class UploadTab(QWidget):
         set_data(metadata=metadata)
 
         self.image_display.show_image()
+
+    def upload_labels(self):
+        pass
+        # want to upload labels along with images 
+        # allow png masks, .txt, .csv, .xml
+        # TODO: if png mask convert to txt labels
+        self.uploaded_labels, _ = QFileDialog.getOpenFileNames(self, "Select Labels", "", "Labels (*.png *.txt *.csv *.xml)")
+        labels = parse_labels(self.uploaded_labels)
+        # save labels to metadata
+        # check name of label and match to name of image
+        # save labels to metadata of matched image
+
+    def parse_labels(self, labels):
+        self.data = get_data()
+        for label_file in labels:
+            label_name = os.path.splitext(os.path.basename(label_file))[0]
+            # get data_images, check if label match to any image then proceed
+            for image in self.data:
+                image_name = os.path.splitext(os.path.basename(image))[0]
+                if image_name == label_name:
+                    if label.endswith(".png"):
+                        label_data = parse_png_label(label_file)
+                        # route to function that formats data and call set data for all if cases
+                    elif label.endswith(".txt"):
+                        label_data = parse_txt_label(label_file)
+                    elif label.endswith(".csv"):
+                        label_data = parse_csv_label(label_file)
+                    elif label.endswith(".xml"):
+                        label_data = parse_xml_label(label_file)
+                    
+                else:
+                    continue
+            
+
+            
     
     def update_file_list(self):
         self.file_list.clear()
@@ -240,13 +276,13 @@ class LabelingTab(QWidget):
         self.setLayout(layout)
        
     def load_data(self):
-        self.data_path = os.path.join('data', self.data_file)
-        if os.path.exists(self.data_path):
-            self.data = get_data()
-            result = [(image["file_path"], image["labels"]) for image in self.data if "file_path" in image]
-            self.uploaded_files, self.labels = zip(*result)
+        #TODO: only load if no label present in metadata format
+        #TODO: make a check labels function for metadata labels
+        self.data = get_data()
+        result = [(image["file_path"], image["labels"]) for image in self.data if "file_path" in image]
+        self.uploaded_files, self.labels = zip(*result)
 
-            self.image_display.show_image_with_points()
+        self.image_display.show_image_with_points()
 
     def add_cell_marker(self, pos):
         """
@@ -279,9 +315,6 @@ class GenerateLabelsTab(QWidget):
 
         self.current_index = 0
 
-        self.progress = QProgressBar(self)
-        self.progress.setAlignment(Qt.AlignCenter)
-
         self.left_image = ImageDisplay(self)
         self.right_image = ImageDisplay(self)
 
@@ -299,26 +332,23 @@ class GenerateLabelsTab(QWidget):
         config_layout.addWidget(self.display_btn)
 
         layout.addLayout(config_layout)
-        layout.addWidget(self.progress)
         layout.addWidget(self.left_image)
         layout.addWidget(self.right_image)
 
         self.setLayout(layout)
-
-        self.data = get_data()
-        result = [(image["file_path"], image["labels"]) for image in self.data if "file_path" in image]
-        self.uploaded_files, self.labels = zip(*result)
 
     def generate_labels(self):
         # print(result)
         # print(self.uploaded_files)
         # print(self.labels)
         # print(len(result))
-        self.progress.setValue(0)
-        self.progress.setMaximum(len(result))
-        for i, (uploaded_file, label) in enumerate(zip(self.uploaded_files, self.labels)):
+
+        self.data = get_data()
+        result = [(image["file_path"], image["labels"]) for image in self.data if "file_path" in image]
+        self.uploaded_files, self.labels = zip(*result)
+
+        for i, (uploaded_file, label) in enumerate(tqdm(zip(self.uploaded_files, self.labels), total=len(self.uploaded_files), desc="Generating Labels", unit="image")):
             # print(i)
-            self.progress.setValue(i+1)
             if label is None:
                 print("No labels provided for image", uploaded_file)
                 continue
@@ -356,9 +386,9 @@ class GenerateLabelsTab(QWidget):
         }
 
     def display_labels(self):
-        self.uploaded_labels = [image["mask_data"]["mask_path"] for image in self.data if "file_path" in image]
+        self.metadata_labels = [image["mask_data"]["mask_path"] for image in self.data if "file_path" in image]
         self.left_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
-        self.right_image.display_image(self.uploaded_labels[self.current_index], self.current_index + 1, len(self.uploaded_labels))
+        self.right_image.display_image(self.metadata_labels[self.current_index], self.current_index + 1, len(self.metadata_labels))
 
 
 
@@ -531,9 +561,6 @@ class TrainingTab(QWidget):
         params_layout.addWidget(self.model_name, 3, 1)
         params_layout.addWidget(self.denoise, 4, 1)
         
-        # Progress tracking
-        self.progress = QProgressBar()
-        
         # Control buttons
         self.train_btn = QPushButton("Start Training")
         self.stop_btn = QPushButton("Stop")
@@ -542,7 +569,6 @@ class TrainingTab(QWidget):
         
         layout.addWidget(self.model_selector)
         layout.addLayout(params_layout)
-        layout.addWidget(self.progress)
         layout.addWidget(self.train_btn)
         layout.addWidget(self.stop_btn)
         self.setLayout(layout)

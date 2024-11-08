@@ -9,6 +9,8 @@ def segment(image_path, input_points):
     model = SamModel.from_pretrained("facebook/sam-vit-base")
     processor = SamProcessor.from_pretrained("facebook/sam-vit-base")
 
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
     raw_image = Image.open(image_path)
     input_points_nested = [[[[coord[0], coord[1]]] for coord in input_points]]
     inputs = processor(raw_image, input_points=input_points_nested, return_tensors="pt")
