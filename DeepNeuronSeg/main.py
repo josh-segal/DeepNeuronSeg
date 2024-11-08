@@ -16,6 +16,7 @@ import random
 import shutil
 from PIL import Image
 import numpy as np
+import tempfile
 
 
 from utils import get_data, set_data, save_label, get_image_mask_label_tuples, create_yaml
@@ -642,12 +643,13 @@ class EvaluationTab(QWidget):
     def calculate_metrics(self):
         # TODO: abstract
         # model_path = self.model_selector.currentText()
-        model_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt'
+        self.model_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt'
         # dataset_path = self.dataset_selector.currentText()
         dataset_path = 'C:/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/data/datasets/dataset_0/images'
         # dataset_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/dataset/COCO_train_X'
+        # dataset_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/train/images'
 
-        self.metrics = DetectionQAMetrics(model_path, dataset_path)
+        self.metrics = DetectionQAMetrics(self.model_path, dataset_path)
         print(self.metrics.dataset_metrics_mean_std)
         self.plot_metrics(self.metrics.dataset_metrics, self.metrics.dataset_metrics_mean_std)
 
@@ -693,10 +695,12 @@ class EvaluationTab(QWidget):
         self.overlap_ratio_std_label.setText(f"Overlap Ratio Std: {metrics_mean_std['overlap_ratio_std']:.2f}")
 
 class AnalysisTab(QWidget):
-    def __init__(self, evaulation_tab):
+    def __init__(self, evaluation_tab):
         super().__init__()
         layout = QVBoxLayout()
-        self.evaluation_tab = evaulation_tab
+        metrics_layout = QGridLayout()
+        self.evaluation_tab = evaluation_tab
+        
         
         # Model selection
         self.model_selector = QComboBox()
@@ -706,6 +710,32 @@ class AnalysisTab(QWidget):
         self.select_btn = QPushButton("Select Images")
         self.inference_btn = QPushButton("Inference Images")
         self.save_btn = QPushButton("Save Inferences")  
+
+        self.confidence_mean_mean_label = QLabel("Confidence Mean Mean: N/A")
+        self.confidence_mean_std_label = QLabel("Confidence Mean Std: N/A")
+        self.confidence_std_mean_label = QLabel("Confidence Std Mean: N/A")
+        self.confidence_std_std_label = QLabel("Confidence Std Std: N/A")
+        self.num_detections_mean_label = QLabel("Num Detections Mean: N/A")
+        self.num_detections_std_label = QLabel("Num Detections Std: N/A")
+        self.area_mean_mean_label = QLabel("Area Mean Mean: N/A")
+        self.area_mean_std_label = QLabel("Area Mean Std: N/A")
+        self.area_std_mean_label = QLabel("Area Std Mean: N/A")
+        self.area_std_std_label = QLabel("Area Std Std: N/A")
+        self.overlap_ratio_mean_label = QLabel("Overlap Ratio Mean: N/A")
+        self.overlap_ratio_std_label = QLabel("Overlap Ratio Std: N/A")
+
+        self.analysis_confidence_mean_mean_label = QLabel("Analysis Confidence Mean Mean: N/A")
+        self.analysis_confidence_mean_std_label = QLabel("Analysis Confidence Mean Std: N/A")
+        self.analysis_confidence_std_mean_label = QLabel("Analysis Confidence Std Mean: N/A")
+        self.analysis_confidence_std_std_label = QLabel("Analysis Confidence Std Std: N/A")
+        self.analysis_num_detections_mean_label = QLabel("Analysis Num Detections Mean: N/A")
+        self.analysis_num_detections_std_label = QLabel("Analysis Num Detections Std: N/A")
+        self.varea_mean_mean_label = QLabel("Analysis Area Mean Mean: N/A")
+        self.analysis_area_mean_std_label = QLabel("Analysis Area Mean Std: N/A")
+        self.analysis_area_std_mean_label = QLabel("Analysis Area Std Mean: N/A")
+        self.analysis_area_std_std_label = QLabel("Analysis Area Std Std: N/A")
+        self.analysis_overlap_ratio_mean_label = QLabel("Analysis Overlap Ratio Mean: N/A")
+        self.analysis_overlap_ratio_std_label = QLabel("Analysis Overlap Ratio Std: N/A")
         
         self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
 
@@ -718,6 +748,36 @@ class AnalysisTab(QWidget):
         layout.addWidget(self.inference_btn)
         layout.addWidget(self.save_btn)
         layout.addWidget(self.canvas)
+
+        metrics_layout.addWidget(self.confidence_mean_mean_label, 0, 0)
+        metrics_layout.addWidget(self.confidence_mean_std_label, 0, 1)
+        metrics_layout.addWidget(self.confidence_std_mean_label, 0, 2)
+        metrics_layout.addWidget(self.confidence_std_std_label, 0, 3)
+        metrics_layout.addWidget(self.num_detections_mean_label, 0, 4)
+        metrics_layout.addWidget(self.num_detections_std_label, 0, 5)
+
+        metrics_layout.addWidget(self.analysis_confidence_mean_mean_label, 1, 0)
+        metrics_layout.addWidget(self.analysis_confidence_mean_std_label, 1, 1)
+        metrics_layout.addWidget(self.analysis_confidence_std_mean_label, 1, 2)
+        metrics_layout.addWidget(self.analysis_confidence_std_std_label, 1, 3)
+        metrics_layout.addWidget(self.analysis_num_detections_mean_label, 1, 4)
+        metrics_layout.addWidget(self.analysis_num_detections_std_label, 1, 5)
+
+        metrics_layout.addWidget(self.area_mean_mean_label, 2, 0)
+        metrics_layout.addWidget(self.area_mean_std_label, 2, 1)
+        metrics_layout.addWidget(self.area_std_mean_label, 2, 2)
+        metrics_layout.addWidget(self.area_std_std_label, 2, 3)
+        metrics_layout.addWidget(self.overlap_ratio_mean_label, 2, 4)
+        metrics_layout.addWidget(self.overlap_ratio_std_label, 2, 5)
+
+        metrics_layout.addWidget(self.varea_mean_mean_label, 3, 0)
+        metrics_layout.addWidget(self.analysis_area_mean_std_label, 3, 1)
+        metrics_layout.addWidget(self.analysis_area_std_mean_label, 3, 2)
+        metrics_layout.addWidget(self.analysis_area_std_std_label, 3, 3)
+        metrics_layout.addWidget(self.analysis_overlap_ratio_mean_label, 3, 4)
+        metrics_layout.addWidget(self.analysis_overlap_ratio_std_label, 3, 5)
+
+        layout.addLayout(metrics_layout)
         self.setLayout(layout)
 
     # TODO: select multiple models and compare results / ensemble ?
@@ -814,6 +874,9 @@ class AnalysisTab(QWidget):
         self.canvas.draw()
         print("plotted")
 
+        self.update_metrics_labels()
+
+        self.update_analysis_metrics_labels()
 
     def format_preds(self, predictions):
         print("formatting preds")
@@ -830,8 +893,43 @@ class AnalysisTab(QWidget):
 
         return num_detections_list, mean_confidence_list
 
+    def update_metrics_labels(self):
+        self.metrics_mean_std = self.evaluation_tab.metrics.dataset_metrics_mean_std
 
+        self.confidence_mean_mean_label.setText(f"Confidence Mean Mean: {self.metrics_mean_std['confidence_mean_mean']:.2f}")
+        self.confidence_mean_std_label.setText(f"Confidence Mean Std: {self.metrics_mean_std['confidence_mean_std']:.2f}")
+        self.confidence_std_mean_label.setText(f"Confidence Std Mean: {self.metrics_mean_std['confidence_std_mean']:.2f}")
+        self.confidence_std_std_label.setText(f"Confidence Std Std: {self.metrics_mean_std['confidence_std_std']:.2f}")
+        self.num_detections_mean_label.setText(f"Num Detections Mean: {self.metrics_mean_std['num_detections_mean']:.2f}")
+        self.num_detections_std_label.setText(f"Num Detections Std: {self.metrics_mean_std['num_detections_std']:.2f}")
+        self.area_mean_mean_label.setText(f"Area Mean Mean: {self.metrics_mean_std['area_mean_mean']:.2f}")
+        self.area_mean_std_label.setText(f"Area Mean Std: {self.metrics_mean_std['area_mean_std']:.2f}")
+        self.area_std_mean_label.setText(f"Area Std Mean: {self.metrics_mean_std['area_std_mean']:.2f}")
+        self.area_std_std_label.setText(f"Area Std Std: {self.metrics_mean_std['area_std_std']:.2f}")
+        self.overlap_ratio_mean_label.setText(f"Overlap Ratio Mean: {self.metrics_mean_std['overlap_ratio_mean']:.2f}")
+        self.overlap_ratio_std_label.setText(f"Overlap Ratio Std: {self.metrics_mean_std['overlap_ratio_std']:.2f}")
     
+    def update_analysis_metrics_labels(self):
+        # Create a temporary directory
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Copy the selected files to the temporary directory
+            for file in self.uploaded_files:
+                shutil.copy(file, temp_dir)
+            
+            # Use the temporary directory as the dataset path
+            self.metrics = DetectionQAMetrics(self.evaluation_tab.model_path, temp_dir)
+        self.analysis_confidence_mean_mean_label.setText(f"Analysis Confidence Mean Mean: {self.metrics.dataset_metrics_mean_std['confidence_mean_mean']:.2f}")
+        self.analysis_confidence_mean_std_label.setText(f"Analysis Confidence Mean Std: {self.metrics.dataset_metrics_mean_std['confidence_mean_std']:.2f}")
+        self.analysis_confidence_std_mean_label.setText(f"Analysis Confidence Std Mean: {self.metrics.dataset_metrics_mean_std['confidence_std_mean']:.2f}")
+        self.analysis_confidence_std_std_label.setText(f"Analysis Confidence Std Std: {self.metrics.dataset_metrics_mean_std['confidence_std_std']:.2f}")
+        self.analysis_num_detections_mean_label.setText(f"Analysis Num Detections Mean: {self.metrics.dataset_metrics_mean_std['num_detections_mean']:.2f}")
+        self.analysis_num_detections_std_label.setText(f"Analysis Num Detections Std: {self.metrics.dataset_metrics_mean_std['num_detections_std']:.2f}")
+        self.varea_mean_mean_label.setText(f"Analysis Area Mean Mean: {self.metrics.dataset_metrics_mean_std['area_mean_mean']:.2f}")
+        self.analysis_area_mean_std_label.setText(f"Analysis Area Mean Std: {self.metrics.dataset_metrics_mean_std['area_mean_std']:.2f}")
+        self.analysis_area_std_mean_label.setText(f"Analysis Area Std Mean: {self.metrics.dataset_metrics_mean_std['area_std_mean']:.2f}")
+        self.analysis_area_std_std_label.setText(f"Analysis Area Std Std: {self.metrics.dataset_metrics_mean_std['area_std_std']:.2f}")
+        self.analysis_overlap_ratio_mean_label.setText(f"Analysis Overlap Ratio Mean: {self.metrics.dataset_metrics_mean_std['overlap_ratio_mean']:.2f}")
+        self.analysis_overlap_ratio_std_label.setText(f"Analysis Overlap Ratio Std: {self.metrics.dataset_metrics_mean_std['overlap_ratio_std']:.2f}")
 
 class OutlierTab(QWidget):
     def __init__(self):
