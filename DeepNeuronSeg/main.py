@@ -173,16 +173,36 @@ class UploadTab(QWidget):
         """
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
         new_metadata = []
+
+        data_path = os.path.join('data', self.data_file)
+        if os.path.exists(data_path):
+            existing_metadata = get_data()
+        else:
+            existing_metadata = []
+
         for file in self.uploaded_files:
+            duplicate = False
+            
             data_subdir = 'data_images'
             data_dir = os.path.join('data', data_subdir)
             os.makedirs(data_dir, exist_ok=True)
             image_name = os.path.basename(file)
+            if image_name.endswith("_.png"):
+                image_name = image_name[:-5] + ".png"
+            elif image_name.endswith("_.tif"):
+                image_name = image_name[:-5] + ".tif"
             
             image_path = os.path.join(data_dir, image_name)
-
+            if existing_metadata:
+                for image in existing_metadata:
+                    if image["file_path"] == image_path:
+                        print("Image already exists in metadata")
+                        self.uploaded_files.remove(file)
+                        duplicate = True
+                        break
+            if duplicate:
+                continue
             shutil.copy(file, image_path)
-            # TODO: check if file is already in metadata
             new_metadata.append({
                 "file_path": image_path,
                 "project": self.project.text(),
@@ -191,9 +211,8 @@ class UploadTab(QWidget):
                 "image_id": self.image_id.text(),
                 "labels": []
             })
-        data_path = os.path.join('data', self.data_file)
-        if os.path.exists(data_path):
-            existing_metadata = get_data()
+
+        if existing_metadata:
             existing_metadata.extend(new_metadata)
             metadata = existing_metadata
         else:
