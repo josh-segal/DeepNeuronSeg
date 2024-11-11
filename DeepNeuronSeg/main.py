@@ -20,7 +20,8 @@ import tempfile
 from tqdm import tqdm
 
 
-from utils import get_data, set_data, save_label, get_image_mask_label_tuples, create_yaml, check_data, trim_underscores
+from utils import (get_data, set_data, save_label, get_image_mask_label_tuples, create_yaml, check_data, trim_underscores, 
+parse_png_label, parse_txt_label, parse_csv_label, parse_xml_label)
 from inference import segment, composite_mask, mask_to_bboxes, mask_to_polygons
 from qa import DetectionQAMetrics
 
@@ -71,7 +72,7 @@ class ImageDisplay(QWidget):
         self.layout.addWidget(self.image_label)
         self.layout.addWidget(self.text_label)
 
-        self.image_label.setMinimumSize(400, 400)
+        self.image_label.setMinimumSize(512, 512)
         self.image_label.setAlignment(Qt.AlignCenter)
         self.text_label.setAlignment(Qt.AlignBottom | Qt.AlignCenter)
 
@@ -141,9 +142,11 @@ class UploadTab(QWidget):
         
         # File selection
         self.upload_btn = QPushButton("Upload Images")
+        self.upload_label_btn = QPushButton("Upload Labels")
         self.next_btn = QPushButton("Next Image")
 
         self.upload_btn.clicked.connect(self.upload_images)
+        self.upload_label_btn.clicked.connect(self.upload_labels)
         self.next_btn.clicked.connect(self.image_display.show_next_image)
         
         # Metadata input fields
@@ -164,6 +167,7 @@ class UploadTab(QWidget):
        
         
         layout.addWidget(self.upload_btn)
+        layout.addWidget(self.upload_label_btn)
         layout.addWidget(self.next_btn)
         layout.addLayout(metadata_layout)
         layout.addWidget(self.image_display)
@@ -238,31 +242,43 @@ class UploadTab(QWidget):
         # allow png masks, .txt, .csv, .xml
         # TODO: if png mask convert to txt labels
         self.uploaded_labels, _ = QFileDialog.getOpenFileNames(self, "Select Labels", "", "Labels (*.png *.txt *.csv *.xml)")
-        labels = parse_labels(self.uploaded_labels)
+        labels = self.parse_labels(self.uploaded_labels)
         # save labels to metadata
         # check name of label and match to name of image
         # save labels to metadata of matched image
 
     def parse_labels(self, labels):
-        self.data = get_data()
+        metadata = get_data()
+        if not metadata:
+            print("no images found, upload images first")
+            return
         for label_file in labels:
             label_name = os.path.splitext(os.path.basename(label_file))[0]
             # get data_images, check if label match to any image then proceed
-            for image in self.data:
-                image_name = os.path.splitext(os.path.basename(image))[0]
+            for image in metadata:
+                image_name = os.path.splitext(os.path.basename(image["file_path"]))[0]
                 if image_name == label_name:
-                    if label.endswith(".png"):
+                    if label_file.endswith(".png"):
                         label_data = parse_png_label(label_file)
                         # route to function that formats data and call set data for all if cases
-                    elif label.endswith(".txt"):
+                    elif label_file.endswith(".txt"):
                         label_data = parse_txt_label(label_file)
-                    elif label.endswith(".csv"):
+                    elif label_file.endswith(".csv"):
                         label_data = parse_csv_label(label_file)
-                    elif label.endswith(".xml"):
+                    elif label_file.endswith(".xml"):
                         label_data = parse_xml_label(label_file)
-                    
+                    else:
+                        print("Invalid label format")
+                        label_data = None
+
+                    if label_data:
+                        # label_data = norm_label_data(label_data)
+                        image["labels"] = label_data
+                        break
                 else:
                     continue
+
+        set_data(metadata=metadata)
 
 
 class LabelingTab(QWidget):
@@ -302,6 +318,7 @@ class LabelingTab(QWidget):
         #TODO: make a check labels function for metadata labels
         self.data = get_data()
         result = [(image["file_path"], image["labels"]) for image in self.data if "file_path" in image]
+        print(result)
         self.uploaded_files, self.labels = zip(*result)
 
         self.image_display.show_image_with_points()

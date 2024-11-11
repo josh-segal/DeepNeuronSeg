@@ -3,6 +3,57 @@ import os
 from PIL import Image
 import numpy as np
 import yaml
+import pandas as pd
+import xml.etree.ElementTree as ET
+import cv2
+
+# def norm_label_data(label_data):
+#     for xy in label_data:
+#         xy[0] = xy[0] / 2048
+#         xy[1] = xy[1] / 2048
+
+def parse_png_label(label_file):
+    label_array = np.array(Image.open(label_file))
+    _, _, _, centroids = cv2.connectedComponentsWithStats(label_array)
+
+    coordinates = [tuple(map(int, cent)) for cent in centroids[1:]]
+    print(coordinates)
+    return coordinates
+
+def parse_txt_label(label_file):
+    with open(label_file, 'r') as file:
+        content = file.read()
+        coordinates = []
+        for line in content.strip().splitlines():
+            x, y = map(float, line.strip().split('\t'))
+            coordinates.append((x, y))
+        print(coordinates)  
+    return coordinates
+
+def parse_csv_label(label_file):
+    df = pd.read_csv(label_file)
+    
+    # Extract the 'X' and 'Y' columns
+    x_values = df['X'].tolist()
+    y_values = df['Y'].tolist()
+
+    # Combine the X and Y values into a list of tuples
+    coordinates = list(zip(x_values, y_values))
+    print(coordinates)
+    return coordinates
+
+def parse_xml_label(label_file):
+    tree = ET.parse(label_file)
+    root = tree.getroot()
+
+    # Extract all MarkerX and MarkerY values
+    coordinates = []
+    for marker in root.findall('.//Marker'):
+        x = marker.find('MarkerX').text
+        y = marker.find('MarkerY').text
+        coordinates.append((float(x), float(y)))
+    print(coordinates)  
+    return coordinates
 
 def trim_underscores(image_name):
     if image_name.endswith("_.png"):
@@ -27,9 +78,11 @@ def get_data(file_path='data/image_metadata.json'):
     """
     if os.path.exists(file_path):
         print("exists get_data")
-        with open(file_path, 'r') as f:
-            data = json.load(f)
-            # print("data", data)
+        try:
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+        except json.decoder.JSONDecodeError:
+            data = []
         return data
     else:
         print("does not exist get_data")
@@ -38,7 +91,8 @@ def get_data(file_path='data/image_metadata.json'):
 def set_data(file_path='data/image_metadata.json', metadata=None):
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, 'w') as f:
-        json.dump(metadata, f, indent=1)
+        json.dump(metadata, f, indent=4, separators=(',', ': '))
+        # json.dump(metadata, f, indent=1)
 
 def save_label(data_labels_dir='data_labels', final_image=None, image_path=None):
     data_labels_dir = os.path.join('data', data_labels_dir)
