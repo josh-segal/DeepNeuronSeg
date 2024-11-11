@@ -4,14 +4,36 @@ from PIL import Image
 import numpy as np
 import yaml
 
+def trim_underscores(image_name):
+    if image_name.endswith("_.png"):
+        image_name = image_name[:-5] + ".png"
+    elif image_name.endswith("_.tif"):
+        image_name = image_name[:-5] + ".tif"
+    return image_name
+
+def check_data(data_path='data/image_metadata.json'):
+    if os.path.exists(data_path):
+        print("Data exists")
+        existing_metadata = get_data()
+    else:
+        print("Data does not exist")
+        existing_metadata = []
+    return existing_metadata
+
 def get_data(file_path='data/image_metadata.json'):
     """
     self.data_path = os.path.join('data', self.data_file)
         if os.path.exists(self.data_path):
     """
-    with open(file_path, 'r') as f:
-                data = json.load(f)
-    return data
+    if os.path.exists(file_path):
+        print("exists get_data")
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+            # print("data", data)
+        return data
+    else:
+        print("does not exist get_data")
+        return []
 
 def set_data(file_path='data/image_metadata.json', metadata=None):
     os.makedirs(os.path.dirname(file_path), exist_ok=True)

@@ -20,7 +20,7 @@ import tempfile
 from tqdm import tqdm
 
 
-from utils import get_data, set_data, save_label, get_image_mask_label_tuples, create_yaml
+from utils import get_data, set_data, save_label, get_image_mask_label_tuples, create_yaml, check_data, trim_underscores
 from inference import segment, composite_mask, mask_to_bboxes, mask_to_polygons
 from qa import DetectionQAMetrics
 
@@ -98,8 +98,14 @@ class ImageDisplay(QWidget):
 
     def show_next_image(self):
         """Display the next image in the list."""
-        self.upload_tab.current_index = (self.upload_tab.current_index + 1) % len(self.upload_tab.uploaded_files)  # Wrap around
-        self.show_image()
+        if len(self.upload_tab.uploaded_files) > 0:
+            self.upload_tab.current_index = (self.upload_tab.current_index + 1) % len(self.upload_tab.uploaded_files)  # Wrap around
+            self.show_image()
+        else:
+            print("No images uploaded")
+            self.image_label.clear() 
+            self.text_label.setText("")  
+
 
     def show_next_mask(self):
         """Display the next image in the list."""
@@ -174,25 +180,24 @@ class UploadTab(QWidget):
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
         new_metadata = []
 
-        data_path = os.path.join('data', self.data_file)
-        if os.path.exists(data_path):
-            existing_metadata = get_data()
-        else:
-            existing_metadata = []
+        existing_metadata = check_data()
+        # print("existing metadata", existing_metadata)
 
-        for file in self.uploaded_files:
+        for file in self.uploaded_files[:]:
             duplicate = False
-            
+
             data_subdir = 'data_images'
             data_dir = os.path.join('data', data_subdir)
             os.makedirs(data_dir, exist_ok=True)
+
             image_name = os.path.basename(file)
-            if image_name.endswith("_.png"):
-                image_name = image_name[:-5] + ".png"
-            elif image_name.endswith("_.tif"):
-                image_name = image_name[:-5] + ".tif"
+
+            image_name = trim_underscores(image_name)
             
             image_path = os.path.join(data_dir, image_name)
+
+            print("in image path", image_name)
+
             if existing_metadata:
                 for image in existing_metadata:
                     if image["file_path"] == image_path:
@@ -200,22 +205,27 @@ class UploadTab(QWidget):
                         self.uploaded_files.remove(file)
                         duplicate = True
                         break
+
             if duplicate:
-                continue
-            shutil.copy(file, image_path)
-            new_metadata.append({
-                "file_path": image_path,
-                "project": self.project.text(),
-                "cohort": self.cohort.text(),
-                "brain_region": self.brain_region.text(),
-                "image_id": self.image_id.text(),
-                "labels": []
-            })
+                print("skipping", image_name)
+            else:
+                shutil.copy(file, image_path)
+                new_metadata.append({
+                    "file_path": image_path,
+                    "project": self.project.text(),
+                    "cohort": self.cohort.text(),
+                    "brain_region": self.brain_region.text(),
+                    "image_id": self.image_id.text(),
+                    "labels": []
+                })
 
         if existing_metadata:
+            print("Existing metadata found")
+            print("new metadata", new_metadata)
             existing_metadata.extend(new_metadata)
             metadata = existing_metadata
         else:
+            print("No existing metadata found")
             metadata = new_metadata
 
         set_data(metadata=metadata)
@@ -253,13 +263,6 @@ class UploadTab(QWidget):
                     
                 else:
                     continue
-            
-
-            
-    
-    def update_file_list(self):
-        self.file_list.clear()
-        self.file_list.addItems(self.selected_files)
 
 
 class LabelingTab(QWidget):
