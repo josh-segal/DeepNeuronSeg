@@ -89,13 +89,17 @@ class ImageDisplay(QWidget):
 
     def show_image(self):
         """Display the next image in the list."""
-        if self.upload_tab.uploaded_files:
+        if len(self.upload_tab.uploaded_files) > 0:
             self.display_image(self.upload_tab.uploaded_files[self.upload_tab.current_index], self.upload_tab.current_index + 1, len(self.upload_tab.uploaded_files))
+        else:
+            print("No images uploaded")
 
     def show_mask(self):
         """Display the next image in the list."""
-        if self.upload_tab.metadata_labels:
+        if len(self.upload_tab.metadata_labels) > 0:
             self.display_image(self.upload_tab.metadata_labels[self.upload_tab.current_index], self.upload_tab.current_index + 1, len(self.upload_tab.metadata_labels))
+        else:
+            print("No masks generated")
 
     def show_next_image(self):
         """Display the next image in the list."""
@@ -110,19 +114,34 @@ class ImageDisplay(QWidget):
 
     def show_next_mask(self):
         """Display the next image in the list."""
-        self.upload_tab.current_index = (self.upload_tab.current_index + 1) % len(self.upload_tab.metadata_labels)  # Wrap around
-        self.show_mask()
+        if len(self.upload_tab.metadata_labels) > 0:
+            self.upload_tab.current_index = (self.upload_tab.current_index + 1) % len(self.upload_tab.metadata_labels)  # Wrap around
+            self.show_mask()
+        else:
+            print("No masks generated")
+            self.image_label.clear() 
+            self.text_label.setText("")
 
     def show_image_with_points(self):
         """Display the next image in the list."""
-        self.show_image()
-        self.image_label.draw_points(self.upload_tab.labels[self.upload_tab.current_index])
+        if len(self.upload_tab.uploaded_files) > 0:
+            self.show_image()
+            self.image_label.draw_points(self.upload_tab.labels[self.upload_tab.current_index])
+        else:
+            print("No images uploaded")
+            self.image_label.clear() 
+            self.text_label.setText("")
 
 
     def show_next_image_with_points(self):
         """Display the next image in the list."""
-        self.show_next_image()
-        self.image_label.draw_points(self.upload_tab.labels[self.upload_tab.current_index])
+        if len(self.upload_tab.uploaded_files) > 0:
+            self.show_next_image()
+            self.image_label.draw_points(self.upload_tab.labels[self.upload_tab.current_index])
+        else:
+            print("No images uploaded")
+            self.image_label.clear() 
+            self.text_label.setText("")  
 
     
 
@@ -286,6 +305,7 @@ class LabelingTab(QWidget):
         super().__init__()
         # Image display with cell marking
         self.current_index = 0
+        self.uploaded_files = []
         self.image_display = ImageDisplay(self)
         self.data_file = 'image_metadata.json'
         layout = QVBoxLayout()
@@ -319,9 +339,11 @@ class LabelingTab(QWidget):
         self.data = get_data()
         result = [(image["file_path"], image["labels"]) for image in self.data if "file_path" in image]
         print(result)
-        self.uploaded_files, self.labels = zip(*result)
-
-        self.image_display.show_image_with_points()
+        if result:
+            self.uploaded_files, self.labels = zip(*result)
+            self.image_display.show_image_with_points()
+        else:
+            print("No images found")
 
     def add_cell_marker(self, pos):
         """
@@ -353,6 +375,9 @@ class GenerateLabelsTab(QWidget):
         config_layout = QGridLayout()
 
         self.current_index = 0
+        self.uploaded_files = []
+        self.metadata_labels = []
+        self.data = []
 
         self.left_image = ImageDisplay(self)
         self.right_image = ImageDisplay(self)
@@ -425,9 +450,14 @@ class GenerateLabelsTab(QWidget):
         }
 
     def display_labels(self):
+        if not self.data:
+            self.data = get_data()
         self.metadata_labels = [image["mask_data"]["mask_path"] for image in self.data if "file_path" in image]
-        self.left_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
-        self.right_image.display_image(self.metadata_labels[self.current_index], self.current_index + 1, len(self.metadata_labels))
+        if len(self.metadata_labels) > 0:
+            self.left_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
+            self.right_image.display_image(self.metadata_labels[self.current_index], self.current_index + 1, len(self.metadata_labels))
+        else:
+            print("No masks generated")
 
 
 
@@ -619,6 +649,10 @@ class TrainingTab(QWidget):
         2. Train model with selected parameters
         3. Track and display training progress
         """
+        if self.denoise.isChecked():
+            print("Training denoising network")
+            
+
         if self.model_selector.currentText() == "YOLOv8n-seg":
             from ultralytics import YOLO
             print("Training YOLOv8n-seg")
