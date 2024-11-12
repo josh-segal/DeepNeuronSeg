@@ -5,6 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 import os
 from PIL import Image
+from tqdm import tqdm
 
 class ImageDataset(Dataset):
     def __init__(self, data_dir, transform=None):
@@ -103,32 +104,90 @@ class UNet(nn.Module):
         # return torch.sigmoid(output), layers
         return torch.sigmoid(output)
 
-    def trainer(num_epochs=3):
-        # Train the model
+
+class DenoiseModel:
+    def __init__(self, dataset_path='to_be_defined', model_path='to_be_defined'):
+        self.model = None
+        self.dataset_path = dataset_path   
+        self.model_path = model_path
+
+    def unet_trainer(self, num_epochs=3, batch_size=4):
+        # build the dataset
         model = UNet()
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model = model.to(device)
+
+        # define transforms
+        transform = transforms.Compose([
+            transforms.Resize((512, 512)),
+            transforms.ToTensor()
+        ])
+
+        # create dataset
+        dataset = ImageDataset(self.dataset_path, transform)
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        
+        # define loss and optimizer
         criterion = nn.BCELoss()
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
+        # training loop
         for epoch in range(num_epochs):
             model.train()
-            c = 1
-            for images, masks in dataloader:
-                # Forward pass
-                # outputs, layers = model(images)
-                outputs = model(images)
-                loss = criterion(outputs, masks)
-                print("finished iter ", c)
-                c += 1
 
-                # Backward and optimize
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+            with tqdm(dataloader, desc=f'Epoch {epoch+1}/{num_epochs}') as pbar:
+                for images, masks in pbar:
+                    images = images.to(device)
+                    masks = masks.to(device)
 
-            # plot_images_in_grid(layers)
+                    # Forward pass
+                    # outputs, layers = model(images)
+                    outputs = model(images)
+                    loss = criterion(outputs, masks)
+
+                    # Backward and optimize
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+
+                    pbar.set_postfix({'loss': loss.item()})
+
+            # print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
+
+        # Save the model
+        torch.save(model.state_dict(), self.model_path)
+
+    def load_model(self):
+        if self.model is None:
+            self.model = UNet()
+            device = device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            self.model.load_state_dict(torch.load(self.model_path, map_location=device))
+            self.model.eval()
+
+        return model
+
+    def create_dn_shuffle(self):
+        dn_dir=os.path.join(self.dataset_path, 'denoised')
+        os.makedirs(dn_dir, exist_ok=True)
+        for image in os.listdir(self.dataset_path):
+            image_path = os.path.join(self.dataset_path, image)
+            image = Image.open(image_path).convert('L')
+            image = transform(image).unsqueeze(0)
+            image = self.denoise_image(image)
+            image.save(os.path.join(dn_dir, image_path))
+
+    def denoise_image(self, image):
+        model = self.load_model()
+        transform = transforms.Compose([
+            transforms.Resize((512, 512)),
+            transforms.ToTensor()
+        ])
+        image = transform(image).unsqueeze(0)
+        with torch.no_grad():
+            denoised_image = model(image)
+        denoised_image = ransforms.ToPILImage()(denoised_image.squeeze(0)) 
+
+        return denoised_image
 
 
-            print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
-
-            # Save the model
-            torch.save(model.state_dict(), 'models/denoise_model.pth')
+    

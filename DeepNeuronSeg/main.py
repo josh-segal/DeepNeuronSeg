@@ -24,6 +24,7 @@ from utils import (get_data, set_data, save_label, get_image_mask_label_tuples, 
 parse_png_label, parse_txt_label, parse_csv_label, parse_xml_label)
 from inference import segment, composite_mask, mask_to_bboxes, mask_to_polygons
 from qa import DetectionQAMetrics
+from denoise_model import load_denoise_model, train_unet
 
 class ImageLabel(QLabel):
     """Custom QLabel to handle mouse clicks on the image area only."""
@@ -256,15 +257,8 @@ class UploadTab(QWidget):
         self.image_display.show_image()
 
     def upload_labels(self):
-        pass
-        # want to upload labels along with images 
-        # allow png masks, .txt, .csv, .xml
-        # TODO: if png mask convert to txt labels
         self.uploaded_labels, _ = QFileDialog.getOpenFileNames(self, "Select Labels", "", "Labels (*.png *.txt *.csv *.xml)")
         labels = self.parse_labels(self.uploaded_labels)
-        # save labels to metadata
-        # check name of label and match to name of image
-        # save labels to metadata of matched image
 
     def parse_labels(self, labels):
         metadata = get_data()
@@ -346,12 +340,6 @@ class LabelingTab(QWidget):
             print("No images found")
 
     def add_cell_marker(self, pos):
-        """
-        INTEGRATION POINT:
-        1. Store click coordinates
-        2. Update image overlay with markers
-        3. Save labeled image and coordinates
-        """
         # print("adding cell")
         # TODO: change to store in files labels
         adjusted_pos = self.image_display.image_label.adjust_pos(pos)
@@ -651,13 +639,19 @@ class TrainingTab(QWidget):
         """
         if self.denoise.isChecked():
             print("Training denoising network")
-            
+
+            dn_model = DenoiseModel(dataset_path='data/datasets/dataset_0/shuffle_0', model_path='models/denoise_model.pth')
+            dn_model.unet_trainer(num_epochs=self.epochs.value(), batch_size=self.batch_size.value())
+            dn_model.create_dn_shuffle()
 
         if self.model_selector.currentText() == "YOLOv8n-seg":
+            # offset program load times by loading model here
             from ultralytics import YOLO
             print("Training YOLOv8n-seg")
+
             self.model = YOLO("models/yolov8n-seg.pt")
             self.model.train(
+                #TODO: if denoised use denoised data dir, recreate yaml (?)
                 data = 'C:/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/data/datasets/dataset_0/shuffle_0/data.yaml',
                 project = 'data/datasets/dataset_0/shuffle_0/results',
                 name = self.model_name.text(),
