@@ -237,12 +237,12 @@ class UploadTab(QWidget):
                     with Image.open(file) as img:
                         num_frames = img.n_frames
 
-                        if num_frames > 1 and not_use_selected_frame_for_all:
+                        if num_frames > 1 and not use_selected_frame_for_all:
                             dialog = FrameSelectionDialog(num_frames)
                             if dialog.exec_() == QDialog.Accepted:
                                 #TODO: always use frame for all and pass to show_image so if tif it displays correct frame (?)
                                 selected_frame = dialog.selected_frame
-                                use_selected_frame_for_all = dialog.use_selected_frame_for_all
+                                self.use_selected_frame_for_all = dialog.use_for_all
 
                             img.seek(selected_frame)
                             frame_to_save = img.copy()
