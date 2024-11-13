@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QTabWidget, 
                            QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, 
-                           QPushButton, QFileDialog, QSpinBox, QComboBox,
+                           QPushButton, QDialog, QFileDialog, QSpinBox, QComboBox,
                         QListWidget, QDoubleSpinBox, 
                            QCheckBox, QLineEdit, QGridLayout)
 from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QRect, QPointF
@@ -21,10 +21,10 @@ from tqdm import tqdm
 
 
 from utils import (get_data, set_data, save_label, get_image_mask_label_tuples, create_yaml, check_data, trim_underscores, 
-parse_png_label, parse_txt_label, parse_csv_label, parse_xml_label)
+parse_png_label, parse_txt_label, parse_csv_label, parse_xml_label, FrameSelectionDialog)
 from inference import segment, composite_mask, mask_to_bboxes, mask_to_polygons
 from qa import DetectionQAMetrics
-from denoise_model import load_denoise_model, train_unet
+from denoise_model import DenoiseModel
 
 class ImageLabel(QLabel):
     """Custom QLabel to handle mouse clicks on the image area only."""
@@ -144,8 +144,6 @@ class ImageDisplay(QWidget):
             self.image_label.clear() 
             self.text_label.setText("")  
 
-    
-
 class UploadTab(QWidget):
     def __init__(self):
         super().__init__()
@@ -201,12 +199,14 @@ class UploadTab(QWidget):
         2. Save metadata alongside images
         3. Update UI with selected images
         """
-        self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
+        self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png *.tif)")
         new_metadata = []
-
         existing_metadata = check_data()
-        # print("existing metadata", existing_metadata)
 
+        use_selected_frame_for_all = False
+        selected_frame = 0
+
+        # copy of uploaded files to remove duplicates without affecting loop
         for file in self.uploaded_files[:]:
             duplicate = False
 
@@ -215,12 +215,11 @@ class UploadTab(QWidget):
             os.makedirs(data_dir, exist_ok=True)
 
             image_name = os.path.basename(file)
-
             image_name = trim_underscores(image_name)
-            
-            image_path = os.path.join(data_dir, image_name)
+            image_name = image_name.replace(".tif", ".png")
 
-            print("in image path", image_name)
+            image_path = os.path.join(data_dir, image_name)
+            # print("in image path", image_name)
 
             if existing_metadata:
                 for image in existing_metadata:
@@ -233,7 +232,29 @@ class UploadTab(QWidget):
             if duplicate:
                 print("skipping", image_name)
             else:
-                shutil.copy(file, image_path)
+                if file.lower().endswith('.tif'):
+                    print("Converting tif to png", image_path)
+                    with Image.open(file) as img:
+                        num_frames = img.n_frames
+
+                        if num_frames > 1 and not_use_selected_frame_for_all:
+                            dialog = FrameSelectionDialog(num_frames)
+                            if dialog.exec_() == QDialog.Accepted:
+                                #TODO: always use frame for all and pass to show_image so if tif it displays correct frame (?)
+                                selected_frame = dialog.selected_frame
+                                use_selected_frame_for_all = dialog.use_selected_frame_for_all
+
+                            img.seek(selected_frame)
+                            frame_to_save = img.copy()
+                            frame_to_save.save(image_path, format='PNG')
+                        else:
+                            print("Converting tif to png", image_path)
+                            img.save(image_path, format='PNG')
+                            # change to png and save
+                else:
+                    shutil.copy(file, image_path)
+
+                #TODO: add an apply to all for some metadata get rid of or automate per image ones, don't need metadata not a database.
                 new_metadata.append({
                     "file_path": image_path,
                     "project": self.project.text(),
@@ -254,6 +275,7 @@ class UploadTab(QWidget):
 
         set_data(metadata=metadata)
 
+        #TODO: possibly weird tif display if more than one frame ? 
         self.image_display.show_image()
 
     def upload_labels(self):
