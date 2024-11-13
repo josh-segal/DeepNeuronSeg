@@ -91,12 +91,22 @@ class ImageDisplay(QWidget):
     def show_image(self):
         """Display the next image in the list."""
         if len(self.upload_tab.uploaded_files) > 0:
-            self.display_image(self.upload_tab.uploaded_files[self.upload_tab.current_index], self.upload_tab.current_index + 1, len(self.upload_tab.uploaded_files))
+            if self.upload_tab.uploaded_files[self.upload_tab.current_index].lower().endswith('.tif'):
+                print("displaying tif")
+                with Image.open(self.upload_tab.uploaded_files[self.upload_tab.current_index]) as img:
+                    img.seek(self.upload_tab.selected_frame)
+                    frame_to_display = img.copy() #TODO: image must be converted to gray and converted to rgb first
+                    temp_image_path = os.path.join(tempfile.gettempdir(), "temp_image.png")
+                    frame_to_display.save(temp_image_path, format='PNG')
+                    print("temp image path", temp_image_path)
+                    self.display_image(temp_image_path, self.upload_tab.current_index + 1, len(self.upload_tab.uploaded_files))
+            else:
+                self.display_image(self.upload_tab.uploaded_files[self.upload_tab.current_index], self.upload_tab.current_index + 1, len(self.upload_tab.uploaded_files))
         else:
             print("No images uploaded")
 
     def show_mask(self):
-        """Display the next image in the list."""
+        """Display the next mask in the list."""
         if len(self.upload_tab.metadata_labels) > 0:
             self.display_image(self.upload_tab.metadata_labels[self.upload_tab.current_index], self.upload_tab.current_index + 1, len(self.upload_tab.metadata_labels))
         else:
@@ -114,7 +124,7 @@ class ImageDisplay(QWidget):
 
 
     def show_next_mask(self):
-        """Display the next image in the list."""
+        """Display the next mask in the list."""
         if len(self.upload_tab.metadata_labels) > 0:
             self.upload_tab.current_index = (self.upload_tab.current_index + 1) % len(self.upload_tab.metadata_labels)  # Wrap around
             self.show_mask()
@@ -203,8 +213,8 @@ class UploadTab(QWidget):
         new_metadata = []
         existing_metadata = check_data()
 
-        use_selected_frame_for_all = False
-        selected_frame = 0
+        self.use_selected_frame_for_all = False
+        self.selected_frame = 0
 
         # copy of uploaded files to remove duplicates without affecting loop
         for file in self.uploaded_files[:]:
@@ -237,14 +247,14 @@ class UploadTab(QWidget):
                     with Image.open(file) as img:
                         num_frames = img.n_frames
 
-                        if num_frames > 1 and not use_selected_frame_for_all:
+                        if num_frames > 1 and not self.use_selected_frame_for_all:
                             dialog = FrameSelectionDialog(num_frames)
                             if dialog.exec_() == QDialog.Accepted:
                                 #TODO: always use frame for all and pass to show_image so if tif it displays correct frame (?)
-                                selected_frame = dialog.selected_frame
+                                self.selected_frame = dialog.selected_frame
                                 self.use_selected_frame_for_all = dialog.use_for_all
 
-                            img.seek(selected_frame)
+                            img.seek(self.selected_frame)
                             frame_to_save = img.copy()
                             frame_to_save.save(image_path, format='PNG')
                         else:
