@@ -154,6 +154,11 @@ class ImageDisplay(QWidget):
             self.image_label.clear() 
             self.text_label.setText("")  
 
+    def show_image_indexed(self, index):
+        """Display the image at the given index."""
+        self.upload_tab.current_index = index
+        self.show_image()
+
 class UploadTab(QWidget):
     def __init__(self):
         super().__init__()
@@ -176,6 +181,8 @@ class UploadTab(QWidget):
         self.upload_btn.clicked.connect(self.upload_images)
         self.upload_label_btn.clicked.connect(self.upload_labels)
         self.next_btn.clicked.connect(self.image_display.show_next_image)
+
+        self.file_list.itemClicked.connect(lambda item: self.image_display.show_image_indexed(index=self.file_list.row(item)))
         
         # Metadata input fields
         metadata_layout = QGridLayout()
@@ -286,6 +293,7 @@ class UploadTab(QWidget):
         set_data(metadata=metadata)
 
         #TODO: possibly weird tif display if more than one frame ? 
+        self.file_list.addItems([os.path.basename(file) for file in self.uploaded_files])
         self.image_display.show_image()
 
     def upload_labels(self):
@@ -299,6 +307,7 @@ class UploadTab(QWidget):
             return
         for label_file in labels:
             label_name = os.path.splitext(os.path.basename(label_file))[0]
+            label_name = trim_underscores(label_name)
             # get data_images, check if label match to any image then proceed
             for image in metadata:
                 image_name = os.path.splitext(os.path.basename(image["file_path"]))[0]

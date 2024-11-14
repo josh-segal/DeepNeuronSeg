@@ -101,12 +101,11 @@ def parse_xml_label(label_file):
     print(coordinates)  
     return coordinates
 
-def trim_underscores(image_name):
-    if image_name.endswith("_.png"):
-        image_name = image_name[:-5] + ".png"
-    elif image_name.endswith("_.tif"):
-        image_name = image_name[:-5] + ".tif"
-    return image_name
+def trim_underscores(file_name):
+    base_name, ext = os.path.splitext(file_name)
+    if base_name.endswith("_"):
+        base_name = base_name[:-1]
+    return base_name + ext
 
 def check_data(data_path='data/image_metadata.json'):
     if os.path.exists(data_path):
