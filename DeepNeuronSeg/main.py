@@ -481,7 +481,7 @@ class GenerateLabelsTab(QWidget):
     def display_labels(self):
         if not self.data:
             self.data = get_data()
-        self.metadata_labels = [image["mask_data"]["mask_path"] for image in self.data if "file_path" in image]
+        self.metadata_labels = [image["mask_data"]["mask_path"] for image in self.data if "file_path" in image and "mask_data" in image]
         if len(self.metadata_labels) > 0:
             self.left_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
             self.right_image.display_image(self.metadata_labels[self.current_index], self.current_index + 1, len(self.metadata_labels))
