@@ -11,7 +11,8 @@ def segment(image_path, input_points):
     model = SamModel.from_pretrained("facebook/sam-vit-base")
     processor = SamProcessor.from_pretrained("facebook/sam-vit-base")
 
-    
+    #TODO: make run in background so that it doesn't block the main thread
+    #TODO: figure out why masks not generating exactly the same as reference masks
 
     raw_image = Image.open(image_path)
     input_points_nested = [[[[coord[0], coord[1]]] for coord in input_points]]
