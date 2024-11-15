@@ -2,40 +2,78 @@ import numpy as np
 import cv2
 from PIL import Image
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+from transformers import SamProcessor, SamModel
+import torch
 
-def segment(image_path, input_points):
-    # Load when used not on startup
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-    from transformers import SamModel, SamProcessor
+# Suppress TensorFlow logs
 
-    model = SamModel.from_pretrained("facebook/sam-vit-base")
-    processor = SamProcessor.from_pretrained("facebook/sam-vit-base")
+
+# Load the model and processor once
+model = SamModel.from_pretrained("facebook/sam-vit-base")
+processor = SamProcessor.from_pretrained("facebook/sam-vit-base")
+
+# Move the model to GPU if available
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+model.to(device)
+
+def segment(image_path, input_points, batch_size=64):
 
     #TODO: make run in background so that it doesn't block the main thread
     #TODO: figure out why masks not generating exactly the same as reference masks
 
+    masks = []
+    scores = []
+
     raw_image = Image.open(image_path)
-    input_points_nested = [[[[coord[0], coord[1]]] for coord in input_points]]
-    inputs = processor(raw_image, input_points=input_points_nested, return_tensors="pt")
-    outputs = model(**inputs)
 
-    masks = processor.image_processor.post_process_masks(
-        outputs.pred_masks,
-        inputs["original_sizes"],
-        inputs["reshaped_input_sizes"],
-        return_tensors="pt",
-    )
-    scores = outputs.iou_scores
+    for i in range(0, len(input_points), batch_size):
+        print(f"Processing batch {i} to {i+batch_size} of {len(input_points)}")
+        batch_points = input_points[i:i+batch_size]
+        batch_points_nested = [[[[coord[0], coord[1]]] for coord in batch_points]]
+        batch_inputs = processor(
+            raw_image, 
+            input_points=batch_points_nested, 
+            return_tensors="pt"
+            )
+        batch_inputs = {k: v.to(device) for k, v in batch_inputs.items()}
 
+        with torch.no_grad():
+            batch_outputs = model(**batch_inputs)
+
+        batch_masks = processor.image_processor.post_process_masks(
+            batch_outputs.pred_masks, 
+            batch_inputs["original_sizes"], 
+            batch_inputs["reshaped_input_sizes"], 
+            return_tensors="pt"
+        )
+        batch_scores = batch_outputs.iou_scores.tolist()
+
+        print(len(batch_masks))
+        print('-'*50)
+        print(batch_masks)
+        print('-'*50)
+        print(len(batch_scores))
+        print(batch_scores)
+        masks.extend(batch_masks[0])
+        print("done with batch ", i)
+        print(len(masks))
+        scores.extend(batch_scores[0])
+
+        del batch_inputs, batch_outputs
+        torch.cuda.empty_cache()
+    print(len(masks))
     return masks, scores
 
 def composite_mask(masks):
     num_masks = masks[0].shape[0]
+    print("composite mask num masks: ", num_masks)
     final_image = np.zeros(masks[0][0][0].shape)
     instances_list = []
 
     for i in range(num_masks):
         mask_np = np.array(masks[0][i][2], dtype=np.uint8)
+        print("mask shape", mask_np.shape)
 
         final_image += mask_np
 
@@ -59,6 +97,7 @@ def mask_to_polygons(mask):
         if len(contour) > 2:
             poly = contour.reshape(-1).tolist()
             polygons.append(poly)
+    print(polygons)
     return polygons[0]
 
 def mask_to_bboxes(mask):

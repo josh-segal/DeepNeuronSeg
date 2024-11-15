@@ -355,12 +355,12 @@ class LabelingTab(QWidget):
         
         # Controls
         controls_layout = QHBoxLayout()
-        self.undo_btn = QPushButton("Undo Last")
-        self.clear_btn = QPushButton("Clear All")
-        self.save_btn = QPushButton("Save Labels")
-        controls_layout.addWidget(self.undo_btn)
-        controls_layout.addWidget(self.clear_btn)
-        controls_layout.addWidget(self.save_btn)
+        # self.undo_btn = QPushButton("Undo Last")
+        # self.clear_btn = QPushButton("Clear All")
+        # self.save_btn = QPushButton("Save Labels")
+        # controls_layout.addWidget(self.undo_btn)
+        # controls_layout.addWidget(self.clear_btn)
+        # controls_layout.addWidget(self.save_btn)
         
         layout.addWidget(self.image_display)
         layout.addWidget(self.next_btn)
@@ -461,11 +461,13 @@ class GenerateLabelsTab(QWidget):
 
     def generate_label(self, image_path, labels):
         """Generate labels for the given image."""
+        #TODO: shape error somewhere in this segment, composite mask pipeline, figure out where
         masks, scores = segment(image_path, labels)
         final_image, num_cells, instances_list = composite_mask(masks)
 
         final_image_path = save_label(final_image=final_image, image_path=image_path)
-        scores_numpy = scores.detach().numpy().tolist()
+        print(scores)
+        print(scores[0])
         # save final_image to labeled_data folder
         # print("final_image_path", final_image_path)
         # print("scores", scores_numpy)
@@ -473,7 +475,7 @@ class GenerateLabelsTab(QWidget):
         # print("instances_list", instances_list)
         return {
             "mask_path": final_image_path,
-            "scores": scores_numpy,
+            "scores": scores[0],
             "num_cells": num_cells,
             "instances_list": instances_list
         }
@@ -649,26 +651,59 @@ class TrainingTab(QWidget):
         self.model_name = QLineEdit()
         self.denoise = QCheckBox("Use Denoising Network")
         
-        params_layout.addWidget(QLabel("Dataset:"), 0, 0)
+        self.epochs_label = QLabel("Epochs:")
+        self.dataset_label = QLabel("Dataset:")
+        self.batch_size_label = QLabel("Batch Size:")
+        self.model_name_label = QLabel("Trained Model Name:")
+        self.epochs_label.setToolTip("""
+    Epochs:
+    -------
+    Epochs refer to the number of complete passes through the entire training dataset 
+    during the training process.
+
+    Default Value:
+    --------------
+    The default number of epochs is set to 70.
+
+    Notes:
+    -------
+    Too few epochs can lead to underfitting, while too many may result in 
+    overfitting. 
+    
+    In general largers datasets require more epochs and smaller datasets require fewer epochs. 
+    Watch validation metrics to determine if a model is underfitting or overfitting. 
+    
+    validation loss; if training loss is decreasing but validation loss is increasing or plateuing, the model is likely overfitting
+    validation accurary; if training accuracy is increasing but validation accuracy is decreasing or plateuing, the model is likely overfitting
+
+    if validation loss/accuracy and/or training loss/accuracy are not plateuing of overfitting, the model is likely underfitting.
+    
+    """)
+        self.dataset_label.setToolTip("ID of dataset to train on")
+        self.batch_size_label.setToolTip("Number of images per batch")
+        self.model_name_label.setToolTip("Name of the trained model")
+
+
+        params_layout.addWidget(self.dataset_label, 0, 0)
         params_layout.addWidget(self.dataset, 0, 1)
-        params_layout.addWidget(QLabel("Epochs:"), 1, 0)
+        params_layout.addWidget(self.epochs_label, 1, 0)
         params_layout.addWidget(self.epochs, 1, 1)
-        params_layout.addWidget(QLabel("Batch Size:"), 2, 0)
+        params_layout.addWidget(self.batch_size_label, 2, 0)
         params_layout.addWidget(self.batch_size, 2, 1)
-        params_layout.addWidget(QLabel("Model Name:"), 3, 0)
+        params_layout.addWidget(self.model_name_label, 3, 0)
         params_layout.addWidget(self.model_name, 3, 1)
         params_layout.addWidget(self.denoise, 4, 1)
         
         # Control buttons
         self.train_btn = QPushButton("Start Training")
-        self.stop_btn = QPushButton("Stop")
+        # self.stop_btn = QPushButton("Stop")
 
         self.train_btn.clicked.connect(self.trainer)
         
         layout.addWidget(self.model_selector)
         layout.addLayout(params_layout)
         layout.addWidget(self.train_btn)
-        layout.addWidget(self.stop_btn)
+        # layout.addWidget(self.stop_btn)
         self.setLayout(layout)
 
     def trainer(self):
