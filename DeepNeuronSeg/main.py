@@ -503,6 +503,7 @@ class DatasetTab(QWidget):
         self.train_split.setRange(0.1, 0.9)
         self.train_split.setSingleStep(0.05)
         self.train_split.setValue(0.8)
+        self.dataset_name = QLineEdit()
         
         # Augmentation options
         self.flip_horizontal = QCheckBox("Horizontal Flip")
@@ -516,6 +517,8 @@ class DatasetTab(QWidget):
         config_layout.addWidget(self.flip_vertical, 1, 1)
         config_layout.addWidget(self.enable_rotation, 2, 0)
         config_layout.addWidget(self.enable_crop, 2, 1)
+        config_layout.addWidget(QLabel("Dataset Name:"), 3, 0)
+        config_layout.addWidget(self.dataset_name, 3, 1)
         
         # Image selection
         self.image_list = QListWidget()
@@ -541,7 +544,6 @@ class DatasetTab(QWidget):
         data = get_data()
 
         #TODO: make method that saves pairs of dataset ID to user name ID2Name and Name2ID
-        os.makedirs('dataset_metadata.json', exist_ok=True)
 
         uploaded_images, uploaded_masks, uploaded_labels = zip(*[
             (
@@ -554,12 +556,28 @@ class DatasetTab(QWidget):
         dataset_parent_dir = os.path.join('data', 'datasets')
         os.makedirs(dataset_parent_dir, exist_ok=True)
 
+        if not os.path.exists(os.path.join(dataset_parent_dir, 'dataset_metadata.json')):
+            with open(os.path.join(dataset_parent_dir, 'dataset_metadata.json'), 'w') as f:
+                json.dump({}, f)
+
         dataset_dir = 'dataset'
         counter = 0
         self.dataset_path = os.path.join(dataset_parent_dir, f"{dataset_dir}_{counter}")
         while os.path.exists(self.dataset_path):
             counter += 1
             self.dataset_path = os.path.join(dataset_parent_dir, f"{dataset_dir}_{counter}")
+
+        dataset_metadata = get_data(file_path=os.path.join(dataset_parent_dir, 'dataset_metadata.json'))
+
+        if not self.dataset_name.text().strip():
+            self.dataset_name.setText(f"{self.dataset_path}")
+            print("Dataset name not provided, using default")
+        if self.dataset_name.text().strip() in dataset_metadata.keys():
+            print("Dataset name already exists, please choose a different name")
+            return
+        dataset_metadata[self.dataset_name.text().strip()] = self.dataset_path
+
+        set_data(file_path=os.path.join(dataset_parent_dir, 'dataset_metadata.json'), metadata=dataset_metadata)
 
         os.makedirs(self.dataset_path, exist_ok=False)
         os.makedirs(os.path.join(self.dataset_path, "images"), exist_ok=False)
@@ -647,8 +665,12 @@ class TrainingTab(QWidget):
         
         # Training parameters
         params_layout = QGridLayout()
-        self.dataset = QSpinBox()
-        self.dataset.setRange(1, 100)
+        self.dataset = QComboBox()
+
+        dataset_dict = get_data(file_path='data/datasets/dataset_metadata.json')
+        dataset_list = list(dataset_dict.keys())
+        self.dataset.addItems(dataset_list)
+
         self.epochs = QSpinBox()
         self.epochs.setRange(1, 1000)
         self.batch_size = QSpinBox()
@@ -683,7 +705,7 @@ class TrainingTab(QWidget):
 
         if validation loss/accuracy and/or training loss/accuracy are not plateuing of overfitting, the model is likely underfitting.
         
-    """)
+        """)
         self.dataset_label.setToolTip("""
         Dataset:
         --------
@@ -765,16 +787,35 @@ class TrainingTab(QWidget):
         self.setLayout(layout)
 
     def trainer(self):
-        """
-        INTEGRATION POINT:
-        1. Load selected model
-        2. Train model with selected parameters
-        3. Track and display training progress
-        """
+
+        if not self.model_name.text().strip():
+            print("Model name required")
+            return
+
+        datasets_metadata = get_data(file_path='data/datasets/dataset_metadata.json')
+
+        dataset = next((k for k, v in datasets_metadata.values() if v == self.dataset.currentText()), None)
+
+        os.makedirs("models", exist_ok=True)
+
+        if not os.path.exists(os.path.join('models', 'model_metadata.json')):
+            with open(os.path.join('models', 'model_metadata.json'), 'w') as f:
+                json.dump({}, f)
+
+        model_metadata = get_data(file_path=os.path.join('models', 'model_metadata.json'))
+
+        #TODO: map model name to model path check if model name already exists
+        if self.model_name.text().strip() in model_metadata.keys():
+            print("Model name already exists, please choose a different name")
+            return
+        model_metadata[self.model_name.text().strip()] = f'{dataset}/results/{self.model_name.text().strip()}'
+
+        set_data(file_path=os.path.join('models', 'model_metadata.json'), metadata=model_metadata)
+        
         if self.denoise.isChecked():
             print("Training denoising network")
 
-            dn_model = DenoiseModel(dataset_path='data/datasets/dataset_0/shuffle_0', model_path='models/denoise_model.pth')
+            dn_model = DenoiseModel(dataset_path='data/datasets/dataset_0', model_path='models/denoise_model.pth')
             dn_model.unet_trainer(num_epochs=self.epochs.value(), batch_size=self.batch_size.value())
             dn_model.create_dn_shuffle()
 
@@ -786,9 +827,9 @@ class TrainingTab(QWidget):
             self.model = YOLO("models/yolov8n-seg.pt")
             self.model.train(
                 #TODO: if denoised use denoised data dir, recreate yaml (?)
-                data = 'C:/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/data/datasets/dataset_0/shuffle_0/data.yaml',
-                project = 'data/datasets/dataset_0/shuffle_0/results',
-                name = self.model_name.text(),
+                data = f'C:/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/{dataset}/data.yaml',
+                project = f'{dataset}/results',
+                name = self.model_name.text().strip(),
                 epochs = self.epochs.value(),
                 patience = 0,
                 batch = self.batch_size.value(),
@@ -805,10 +846,14 @@ class EvaluationTab(QWidget):
         
         # Model selection
         self.model_selector = QComboBox()
-        self.model_selector.addItems(["trained-models-appear-here"])
+        model_dict = get_data(file_path='models/model_metadata.json')
+        model_list = list(model_dict.keys())
+        self.model_selector.addItems(model_list)
 
         self.dataset_selector = QComboBox()
-        self.dataset_selector.addItems(["datasets-appear-here"])
+        dataset_dict = get_data(file_path='data/datasets/dataset_metadata.json')
+        dataset_list = list(dataset_dict.keys())
+        self.dataset_selector.addItems(dataset_list)
         
         # Visualization area (placeholder for distribution plots)
         self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
@@ -1014,7 +1059,7 @@ class AnalysisTab(QWidget):
     def inference_images(self):
         from ultralytics import YOLO
         self.model = YOLO('C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt')
-        self.inference_dir = os.path.join('data/datasets/dataset_0/shuffle_0/results/testModel', 'inference')
+        self.inference_dir = os.path.join('data/datasets/dataset_0/results/testModel', 'inference')
         os.makedirs(self.inference_dir, exist_ok=True)
         self.inference_result = self.model.predict(self.uploaded_files, conf=0.3, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
         if True:

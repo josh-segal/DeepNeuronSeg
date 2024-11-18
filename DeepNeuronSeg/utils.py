@@ -122,7 +122,7 @@ def get_data(file_path='data/image_metadata.json'):
         if os.path.exists(self.data_path):
     """
     if os.path.exists(file_path):
-        print("exists get_data")
+        # print("exists get_data")
         try:
             with open(file_path, 'r') as f:
                 data = json.load(f)
@@ -130,7 +130,7 @@ def get_data(file_path='data/image_metadata.json'):
             data = []
         return data
     else:
-        print("does not exist get_data")
+        print(f'{file_path} does not exist')
         return []
 
 def set_data(file_path='data/image_metadata.json', metadata=None):
