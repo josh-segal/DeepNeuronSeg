@@ -28,7 +28,7 @@ def segment(image_path, input_points, batch_size=64):
     raw_image = Image.open(image_path)
 
     for i in range(0, len(input_points), batch_size):
-        print(f"Processing batch {i} to {i+batch_size} of {len(input_points)}")
+        print(f"\nProcessing batch {i} to {i+batch_size} of {len(input_points)}")
         batch_points = input_points[i:i+batch_size]
         batch_points_nested = [[[[coord[0], coord[1]]] for coord in batch_points]]
         batch_inputs = processor(
@@ -63,16 +63,18 @@ def segment(image_path, input_points, batch_size=64):
         del batch_inputs, batch_outputs
         torch.cuda.empty_cache()
     print(len(masks))
+    print(masks)
     return masks, scores
 
 def composite_mask(masks):
-    num_masks = masks[0].shape[0]
+    num_masks = len(masks)
     print("composite mask num masks: ", num_masks)
-    final_image = np.zeros(masks[0][0][0].shape)
+    final_image = np.zeros(masks[0][0].shape)
+    print("final image shape", final_image.shape)
     instances_list = []
 
     for i in range(num_masks):
-        mask_np = np.array(masks[0][i][2], dtype=np.uint8)
+        mask_np = np.array(masks[i][2], dtype=np.uint8)
         print("mask shape", mask_np.shape)
 
         final_image += mask_np

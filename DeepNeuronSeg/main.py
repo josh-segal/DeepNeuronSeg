@@ -539,6 +539,10 @@ class DatasetTab(QWidget):
         4. Save dataset configuration
         """
         data = get_data()
+
+        #TODO: make method that saves pairs of dataset ID to user name ID2Name and Name2ID
+        os.makedirs('dataset_metadata.json', exist_ok=True)
+
         uploaded_images, uploaded_masks, uploaded_labels = zip(*[
             (
                 image["file_path"], 
@@ -585,6 +589,7 @@ class DatasetTab(QWidget):
     def create_shuffle(self):
         image_paths, mask_paths, label_paths = get_image_mask_label_tuples(self.dataset_path)
 
+        #TODO: would train test split be more appropriate here?
         combined = list(zip(image_paths, mask_paths, label_paths))
         random.shuffle(combined)
         shuffled_image_paths, shuffled_mask_paths, shuffled_label_paths = zip(*combined)
@@ -598,36 +603,36 @@ class DatasetTab(QWidget):
         train_labels = shuffled_label_paths[:split_index]
         val_labels = shuffled_label_paths[split_index:]
 
-        counter = 0
-        shuffle_path = os.path.join(self.dataset_path, f"shuffle_{counter}")
-        while os.path.exists(shuffle_path):
-            counter += 1
-            shuffle_path = os.path.join(self.dataset_path, f"shuffle_{counter}")
+        # counter = 0
+        # shuffle_path = os.path.join(self.dataset_path, f"shuffle_{counter}")
+        # while os.path.exists(shuffle_path):
+        #     counter += 1
+        #     shuffle_path = os.path.join(self.dataset_path, f"shuffle_{counter}")
 
-        os.makedirs(shuffle_path, exist_ok=False)
+        # os.makedirs(shuffle_path, exist_ok=False)
 
         train_images_dir = os.path.join( "train", "images")
         val_images_dir = os.path.join( "val", "images")
 
-        create_yaml(os.path.join(shuffle_path, "data.yaml"), train_images_dir, val_images_dir)
+        create_yaml(os.path.join(self.dataset_path, "data.yaml"), train_images_dir, val_images_dir)
 
-        os.makedirs(os.path.join(shuffle_path, train_images_dir), exist_ok=False)
-        os.makedirs(os.path.join(shuffle_path, "train", "masks"), exist_ok=False)
-        os.makedirs(os.path.join(shuffle_path, "train", "labels"), exist_ok=False)
+        os.makedirs(os.path.join(self.dataset_path, train_images_dir), exist_ok=False)
+        os.makedirs(os.path.join(self.dataset_path, "train", "masks"), exist_ok=False)
+        os.makedirs(os.path.join(self.dataset_path, "train", "labels"), exist_ok=False)
 
-        os.makedirs(os.path.join(shuffle_path, val_images_dir), exist_ok=False)
-        os.makedirs(os.path.join(shuffle_path, "val", "masks"), exist_ok=False)
-        os.makedirs(os.path.join(shuffle_path, "val", "labels"), exist_ok=False)
+        os.makedirs(os.path.join(self.dataset_path, val_images_dir), exist_ok=False)
+        os.makedirs(os.path.join(self.dataset_path, "val", "masks"), exist_ok=False)
+        os.makedirs(os.path.join(self.dataset_path, "val", "labels"), exist_ok=False)
 
         for image, mask, label in zip(train_images, train_masks, train_labels):
-            shutil.copy(image, os.path.join(shuffle_path, "train", "images", os.path.basename(image)))
-            shutil.copy(mask, os.path.join(shuffle_path, "train", "masks", os.path.basename(mask)))
-            shutil.copy(label, os.path.join(shuffle_path, "train", "labels", os.path.basename(label)))
+            shutil.copy(image, os.path.join(self.dataset_path, "train", "images", os.path.basename(image)))
+            shutil.copy(mask, os.path.join(self.dataset_path, "train", "masks", os.path.basename(mask)))
+            shutil.copy(label, os.path.join(self.dataset_path, "train", "labels", os.path.basename(label)))
 
         for image, mask, label in zip(val_images, val_masks, val_labels):
-            shutil.copy(image, os.path.join(shuffle_path, "val", "images", os.path.basename(image)))
-            shutil.copy(mask, os.path.join(shuffle_path, "val", "masks", os.path.basename(mask)))
-            shutil.copy(label, os.path.join(shuffle_path, "val", "labels", os.path.basename(label)))
+            shutil.copy(image, os.path.join(self.dataset_path, "val", "images", os.path.basename(image)))
+            shutil.copy(mask, os.path.join(self.dataset_path, "val", "masks", os.path.basename(mask)))
+            shutil.copy(label, os.path.join(self.dataset_path, "val", "labels", os.path.basename(label)))
 
 
 class TrainingTab(QWidget):
@@ -656,33 +661,86 @@ class TrainingTab(QWidget):
         self.batch_size_label = QLabel("Batch Size:")
         self.model_name_label = QLabel("Trained Model Name:")
         self.epochs_label.setToolTip("""
-    Epochs:
-    -------
-    Epochs refer to the number of complete passes through the entire training dataset 
-    during the training process.
+        Epochs:
+        -------
+        Epochs refer to the number of complete passes through the entire training dataset 
+        during the training process.
 
-    Default Value:
-    --------------
-    The default number of epochs is set to 70.
+        Default Value:
+        --------------
+        The default number of epochs is set to 70.
 
-    Notes:
-    -------
-    Too few epochs can lead to underfitting, while too many may result in 
-    overfitting. 
-    
-    In general largers datasets require more epochs and smaller datasets require fewer epochs. 
-    Watch validation metrics to determine if a model is underfitting or overfitting. 
-    
-    validation loss; if training loss is decreasing but validation loss is increasing or plateuing, the model is likely overfitting
-    validation accurary; if training accuracy is increasing but validation accuracy is decreasing or plateuing, the model is likely overfitting
+        Notes:
+        -------
+        Too few epochs can lead to underfitting, while too many may result in 
+        overfitting. 
 
-    if validation loss/accuracy and/or training loss/accuracy are not plateuing of overfitting, the model is likely underfitting.
-    
+        In general largers datasets require more epochs and smaller datasets require fewer epochs. 
+        Watch validation metrics to determine if a model is underfitting or overfitting. 
+        
+        validation loss; if training loss is decreasing but validation loss is increasing or plateuing, the model is likely overfitting
+        validation accurary; if training accuracy is increasing but validation accuracy is decreasing or plateuing, the model is likely overfitting
+
+        if validation loss/accuracy and/or training loss/accuracy are not plateuing of overfitting, the model is likely underfitting.
+        
     """)
-        self.dataset_label.setToolTip("ID of dataset to train on")
-        self.batch_size_label.setToolTip("Number of images per batch")
-        self.model_name_label.setToolTip("Name of the trained model")
+        self.dataset_label.setToolTip("""
+        Dataset:
+        --------
+        Dataset refers to the ID of the dataset you wish to train your model on.
 
+        Default Value:
+        --------------
+        The default dataset ID is set to 1.
+
+        Notes:
+        -------
+        Training on different datasets or shuffles of the same dataset can produce different model results.
+        
+        """)
+        self.batch_size_label.setToolTip("""
+        Batch Size:
+        -----------
+        Batch size refers to the number of images the model sees before updating the weights.
+
+        Default Value:
+        --------------
+        The default batch size is set to 4.
+
+        Notes:
+        -------
+        Larger batch sizes may speed up and stabilize training but require more memory. Smaller batch sizes update weights more frequently and may lead to better generalization.
+        
+        """)
+        self.model_name_label.setToolTip("""
+        Trained Model Name:
+        --------------------
+        The name of the trained model that will be saved after training.
+        
+        Default Value:
+        --------------
+        The default model name is set to 'model'.
+        
+        Notes:
+        -------
+        The model name is used to save the trained model after training. The model will be saved in the 'models' directory.
+        
+        """)
+        self.denoise.setToolTip("""
+
+        Denoising Network:
+        -------------------
+        Denoising network refers to the use of a UNet model to denoise the dataset before training the main model.
+
+        Default Value:
+        --------------
+        The default value is set to False.
+
+        Notes:
+        -------
+        Denoising the dataset can improve the quality of the training data and the performance of the model, but may increase training time and introduces additional preprocessing steps during training and inference.
+
+        """)
 
         params_layout.addWidget(self.dataset_label, 0, 0)
         params_layout.addWidget(self.dataset, 0, 1)
