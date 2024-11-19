@@ -382,7 +382,6 @@ class LabelingTab(QWidget):
 
     def add_cell_marker(self, pos):
         # print("adding cell")
-        # TODO: change to store in files labels
         adjusted_pos = self.image_display.image_label.adjust_pos(pos)
         if adjusted_pos.x() < 0 or adjusted_pos.y() < 0 or adjusted_pos.x() > 512 or adjusted_pos.y() > 512:
             return
@@ -461,7 +460,6 @@ class GenerateLabelsTab(QWidget):
 
     def generate_label(self, image_path, labels):
         """Generate labels for the given image."""
-        #TODO: shape error somewhere in this segment, composite mask pipeline, figure out where
         masks, scores = segment(image_path, labels)
         final_image, num_cells, instances_list = composite_mask(masks)
 
@@ -542,8 +540,6 @@ class DatasetTab(QWidget):
         4. Save dataset configuration
         """
         data = get_data()
-
-        #TODO: make method that saves pairs of dataset ID to user name ID2Name and Name2ID
 
         uploaded_images, uploaded_masks, uploaded_labels = zip(*[
             (
@@ -804,7 +800,6 @@ class TrainingTab(QWidget):
 
         model_metadata = get_data(file_path=os.path.join('models', 'model_metadata.json'))
 
-        #TODO: map model name to model path check if model name already exists
         if self.model_name.text().strip() in model_metadata.keys():
             print("Model name already exists, please choose a different name")
             return
@@ -1002,7 +997,7 @@ class AnalysisTab(QWidget):
         self.analysis_confidence_std_std_label = QLabel("Analysis Confidence Std Std: N/A")
         self.analysis_num_detections_mean_label = QLabel("Analysis Num Detections Mean: N/A")
         self.analysis_num_detections_std_label = QLabel("Analysis Num Detections Std: N/A")
-        self.varea_mean_mean_label = QLabel("Analysis Area Mean Mean: N/A")
+        self.analysis_area_mean_mean_label = QLabel("Analysis Area Mean Mean: N/A")
         self.analysis_area_mean_std_label = QLabel("Analysis Area Mean Std: N/A")
         self.analysis_area_std_mean_label = QLabel("Analysis Area Std Mean: N/A")
         self.analysis_area_std_std_label = QLabel("Analysis Area Std Std: N/A")
@@ -1042,7 +1037,7 @@ class AnalysisTab(QWidget):
         metrics_layout.addWidget(self.overlap_ratio_mean_label, 2, 4)
         metrics_layout.addWidget(self.overlap_ratio_std_label, 2, 5)
 
-        metrics_layout.addWidget(self.varea_mean_mean_label, 3, 0)
+        metrics_layout.addWidget(self.analysis_area_mean_mean_label, 3, 0)
         metrics_layout.addWidget(self.analysis_area_mean_std_label, 3, 1)
         metrics_layout.addWidget(self.analysis_area_std_mean_label, 3, 2)
         metrics_layout.addWidget(self.analysis_area_std_std_label, 3, 3)
@@ -1196,7 +1191,7 @@ class AnalysisTab(QWidget):
         self.analysis_confidence_std_std_label.setText(f"Analysis Confidence Std Std: {self.metrics.dataset_metrics_mean_std['confidence_std_std']:.2f}")
         self.analysis_num_detections_mean_label.setText(f"Analysis Num Detections Mean: {self.metrics.dataset_metrics_mean_std['num_detections_mean']:.2f}")
         self.analysis_num_detections_std_label.setText(f"Analysis Num Detections Std: {self.metrics.dataset_metrics_mean_std['num_detections_std']:.2f}")
-        self.varea_mean_mean_label.setText(f"Analysis Area Mean Mean: {self.metrics.dataset_metrics_mean_std['area_mean_mean']:.2f}")
+        self.analysis_area_mean_mean_label.setText(f"Analysis Area Mean Mean: {self.metrics.dataset_metrics_mean_std['area_mean_mean']:.2f}")
         self.analysis_area_mean_std_label.setText(f"Analysis Area Mean Std: {self.metrics.dataset_metrics_mean_std['area_mean_std']:.2f}")
         self.analysis_area_std_mean_label.setText(f"Analysis Area Std Mean: {self.metrics.dataset_metrics_mean_std['area_std_mean']:.2f}")
         self.analysis_area_std_std_label.setText(f"Analysis Area Std Std: {self.metrics.dataset_metrics_mean_std['area_std_std']:.2f}")
