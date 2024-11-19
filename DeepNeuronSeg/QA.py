@@ -100,6 +100,11 @@ class DetectionQAMetrics:
             self.confidences.append(conf)
             self.bbox_bounds.append(boxes)
 
+    def change_last_to_std(var_name):
+        parts = var_name.split('_')
+        parts[-1] = 'std'
+        return '_'.join(parts)
+
     def compute_image_metrics(self, confs, boxes):
         confidence_mean = np.mean(confs.numpy())
         confidence_std = np.std(confs.numpy())
@@ -147,6 +152,22 @@ class DetectionQAMetrics:
             return 0
         else:
             return sum(intersection_areas) / total_area
+
+    def compute_variance(self, analysis_metrics):
+        """ Compute the variance of the computed metrics """
+        metric_variance = {}
+        for metric, value in self.dataset_metrics_mean_std.items():
+            analysis_metric = "analysis_" + metric
+            if analysis_metric in analysis_metrics:
+                variance_metric = "variance_" + metric
+                std_metric = change_last_to_std(metric)
+
+                metric_variance[variance_metric] = (analysis_metrics[analysis_metric] - value) / self.dataset_metrics_mean_std[std_metric]
+        
+        return metric_variance
+
+    def compute_quality_score(self, variancs):
+        return np.mean(variances.values())
 
     def load_model(self, model_path):
         # Load the model from the specified path

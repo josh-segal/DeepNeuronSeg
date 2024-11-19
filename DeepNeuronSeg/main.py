@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QTabWidget,
                            QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, 
                            QPushButton, QDialog, QFileDialog, QSpinBox, QComboBox,
                         QListWidget, QDoubleSpinBox, 
-                           QCheckBox, QLineEdit, QGridLayout)
+                           QCheckBox, QLineEdit, QGridLayout, QSizePolicy)
 from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QRect, QPointF
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QPen 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -28,7 +28,8 @@ from denoise_model import DenoiseModel
 
 class ImageLabel(QLabel):
     """Custom QLabel to handle mouse clicks on the image area only."""
-    click_registered = pyqtSignal(QPointF)
+    left_click_registered = pyqtSignal(QPointF)
+    right_click_registered = pyqtSignal(QPointF)
     
     def __init__(self):
         super().__init__()
@@ -43,7 +44,10 @@ class ImageLabel(QLabel):
         if self.pixmap:
             # print("pixmap present")
             click_pos = event.pos()
-            self.click_registered.emit(click_pos)
+            if event.button() == Qt.LeftButton:
+                self.left_click_registered.emit(click_pos)
+            elif event.button() == Qt.RightButton:
+                self.right_click_registered.emit(click_pos)
 
     def adjust_pos(self, pos):
         """Adjust the position to the image coordinates."""
@@ -51,8 +55,9 @@ class ImageLabel(QLabel):
         adjusted_pos = QPointF(adjusted_x, pos.y())
         return adjusted_pos
 
-    def draw_points(self, labels):
+    def _draw_points(self, labels):
         """Draw a point on the image at the given position."""
+        print(f"drawing {len(labels)} points")
         painter = QPainter(self.pixmap)
         painter.setPen(QPen(Qt.red, 5))
         for pos in labels:
@@ -83,7 +88,6 @@ class ImageDisplay(QWidget):
         self.pixmap = QPixmap(image_path)
         if not self.pixmap.isNull():
             self.image_label.set_pixmap(self.pixmap)
-            # self.image_label.setPixmap(self.pixmap.scaled(self.size(), aspectRatioMode=Qt.KeepAspectRatio, transformMode=Qt.SmoothTransformation))
             self.text_label.setText(f"{image_num} / {total_images}")
         else:
             print("Failed to load image")
@@ -137,7 +141,7 @@ class ImageDisplay(QWidget):
         """Display the next image in the list."""
         if len(self.upload_tab.uploaded_files) > 0:
             self.show_image()
-            self.image_label.draw_points(self.upload_tab.labels[self.upload_tab.current_index])
+            self.image_label._draw_points(self.upload_tab.labels[self.upload_tab.current_index])
         else:
             print("No images uploaded")
             self.image_label.clear() 
@@ -148,7 +152,7 @@ class ImageDisplay(QWidget):
         """Display the next image in the list."""
         if len(self.upload_tab.uploaded_files) > 0:
             self.show_next_image()
-            self.image_label.draw_points(self.upload_tab.labels[self.upload_tab.current_index])
+            self.image_label._draw_points(self.upload_tab.labels[self.upload_tab.current_index])
         else:
             print("No images uploaded")
             self.image_label.clear() 
@@ -351,7 +355,8 @@ class LabelingTab(QWidget):
     
         
 
-        self.image_display.image_label.click_registered.connect(self.add_cell_marker)
+        self.image_display.image_label.left_click_registered.connect(self.add_cell_marker)
+        self.image_display.image_label.right_click_registered.connect(self.remove_cell_marker)
         
         # Controls
         controls_layout = QHBoxLayout()
@@ -386,13 +391,29 @@ class LabelingTab(QWidget):
         if adjusted_pos.x() < 0 or adjusted_pos.y() < 0 or adjusted_pos.x() > 512 or adjusted_pos.y() > 512:
             return
         self.labels[self.current_index].append((adjusted_pos.x(), adjusted_pos.y()))
-        self.image_display.image_label.draw_points(self.labels[self.current_index])
+        self.image_display.show_image_with_points()
 
         for image in self.data:
             if image["file_path"] == self.uploaded_files[self.current_index]:
                 image["labels"] = [(pos[0], pos[1]) for pos in self.labels[self.current_index]]
                 break
         #TODO: change to .h5 for saving??
+        set_data(metadata=self.data)
+
+    def remove_cell_marker(self, pos):
+        adjusted_pos = self.image_display.image_label.adjust_pos(pos)
+        if adjusted_pos.x() < 0 or adjusted_pos.y() < 0 or adjusted_pos.x() > 512 or adjusted_pos.y() > 512:
+            return
+        for i, label in enumerate(self.labels[self.current_index]):
+            if abs(label[0] - adjusted_pos.x()) < 5 and abs(label[1] - adjusted_pos.y()) < 5:
+                self.labels[self.current_index].pop(i)
+                self.image_display.show_image_with_points()
+                for image in self.data:
+                    if image["file_path"] == self.uploaded_files[self.current_index]:
+                        print("updating self.data")
+                        image["labels"] = [(pos[0], pos[1]) for pos in self.labels[self.current_index]]
+                        break
+                break
         set_data(metadata=self.data)
 
 
@@ -664,8 +685,9 @@ class TrainingTab(QWidget):
         self.dataset = QComboBox()
 
         dataset_dict = get_data(file_path='data/datasets/dataset_metadata.json')
-        dataset_list = list(dataset_dict.keys())
-        self.dataset.addItems(dataset_list)
+        if dataset_dict:
+            dataset_list = list(dataset_dict.keys())
+            self.dataset.addItems(dataset_list)
 
         self.epochs = QSpinBox()
         self.epochs.setRange(1, 1000)
@@ -776,6 +798,10 @@ class TrainingTab(QWidget):
 
         self.train_btn.clicked.connect(self.trainer)
         
+        label = QLabel("Base Model:")
+        label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        label.setFixedHeight(10)
+        layout.addWidget(label)
         layout.addWidget(self.model_selector)
         layout.addLayout(params_layout)
         layout.addWidget(self.train_btn)
@@ -832,7 +858,6 @@ class TrainingTab(QWidget):
             )
 
 
-
 class EvaluationTab(QWidget):
     def __init__(self):
         super().__init__()
@@ -842,13 +867,15 @@ class EvaluationTab(QWidget):
         # Model selection
         self.model_selector = QComboBox()
         model_dict = get_data(file_path='models/model_metadata.json')
-        model_list = list(model_dict.keys())
-        self.model_selector.addItems(model_list)
+        if model_dict:
+            model_list = list(model_dict.keys())
+            self.model_selector.addItems(model_list)
 
         self.dataset_selector = QComboBox()
         dataset_dict = get_data(file_path='data/datasets/dataset_metadata.json')
-        dataset_list = list(dataset_dict.keys())
-        self.dataset_selector.addItems(dataset_list)
+        if dataset_dict:
+            dataset_list = list(dataset_dict.keys())
+            self.dataset_selector.addItems(dataset_list)
         
         # Visualization area (placeholder for distribution plots)
         self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
@@ -870,8 +897,9 @@ class EvaluationTab(QWidget):
         self.overlap_ratio_mean_label = QLabel("Overlap Ratio Mean: N/A")
         self.overlap_ratio_std_label = QLabel("Overlap Ratio Std: N/A")
 
-        
+        layout.addWidget(QLabel("Trained Model:"))
         layout.addWidget(self.model_selector)
+        layout.addWidget(QLabel("Dataset:"))
         layout.addWidget(self.dataset_selector)
         layout.addWidget(self.canvas)
         layout.addWidget(self.calculate_metrics_btn)
@@ -1010,6 +1038,7 @@ class AnalysisTab(QWidget):
         self.inference_btn.clicked.connect(self.inference_images)
         self.save_btn.clicked.connect(self.save_inferences)
         
+        layout.addWidget(QLabel("Trained Model:"))
         layout.addWidget(self.model_selector)
         layout.addWidget(self.select_btn)
         layout.addWidget(self.inference_btn)
@@ -1145,6 +1174,12 @@ class AnalysisTab(QWidget):
 
         self.update_analysis_metrics_labels()
 
+        variance_list = self.evaluation_tab.compute_variance(self.analysis_metrics)
+
+        quality_score = self.evaluation_tab.compute_quality_score(variance_list)
+
+        print("Quality Score: ", quality_score)
+
     def format_preds(self, predictions):
         print("formatting preds")
         num_detections_list = []
@@ -1163,6 +1198,7 @@ class AnalysisTab(QWidget):
     def update_metrics_labels(self):
         self.metrics_mean_std = self.evaluation_tab.metrics.dataset_metrics_mean_std
 
+        #TODO: how to know what variance is acceptable, n-fold cross variation as baseline, how to calculate?
         self.confidence_mean_mean_label.setText(f"Confidence Mean Mean: {self.metrics_mean_std['confidence_mean_mean']:.2f}")
         self.confidence_mean_std_label.setText(f"Confidence Mean Std: {self.metrics_mean_std['confidence_mean_std']:.2f}")
         self.confidence_std_mean_label.setText(f"Confidence Std Mean: {self.metrics_mean_std['confidence_std_mean']:.2f}")
@@ -1184,19 +1220,21 @@ class AnalysisTab(QWidget):
                 shutil.copy(file, temp_dir)
             
             # Use the temporary directory as the dataset path
-            self.metrics = DetectionQAMetrics(self.evaluation_tab.model_path, temp_dir)
-        self.analysis_confidence_mean_mean_label.setText(f"Analysis Confidence Mean Mean: {self.metrics.dataset_metrics_mean_std['confidence_mean_mean']:.2f}")
-        self.analysis_confidence_mean_std_label.setText(f"Analysis Confidence Mean Std: {self.metrics.dataset_metrics_mean_std['confidence_mean_std']:.2f}")
-        self.analysis_confidence_std_mean_label.setText(f"Analysis Confidence Std Mean: {self.metrics.dataset_metrics_mean_std['confidence_std_mean']:.2f}")
-        self.analysis_confidence_std_std_label.setText(f"Analysis Confidence Std Std: {self.metrics.dataset_metrics_mean_std['confidence_std_std']:.2f}")
-        self.analysis_num_detections_mean_label.setText(f"Analysis Num Detections Mean: {self.metrics.dataset_metrics_mean_std['num_detections_mean']:.2f}")
-        self.analysis_num_detections_std_label.setText(f"Analysis Num Detections Std: {self.metrics.dataset_metrics_mean_std['num_detections_std']:.2f}")
-        self.analysis_area_mean_mean_label.setText(f"Analysis Area Mean Mean: {self.metrics.dataset_metrics_mean_std['area_mean_mean']:.2f}")
-        self.analysis_area_mean_std_label.setText(f"Analysis Area Mean Std: {self.metrics.dataset_metrics_mean_std['area_mean_std']:.2f}")
-        self.analysis_area_std_mean_label.setText(f"Analysis Area Std Mean: {self.metrics.dataset_metrics_mean_std['area_std_mean']:.2f}")
-        self.analysis_area_std_std_label.setText(f"Analysis Area Std Std: {self.metrics.dataset_metrics_mean_std['area_std_std']:.2f}")
-        self.analysis_overlap_ratio_mean_label.setText(f"Analysis Overlap Ratio Mean: {self.metrics.dataset_metrics_mean_std['overlap_ratio_mean']:.2f}")
-        self.analysis_overlap_ratio_std_label.setText(f"Analysis Overlap Ratio Std: {self.metrics.dataset_metrics_mean_std['overlap_ratio_std']:.2f}")
+            self.analysis_metrics = DetectionQAMetrics(self.evaluation_tab.model_path, temp_dir)
+        self.analysis_confidence_mean_mean_label.setText(f"Analysis Confidence Mean Mean: {self.analysis_metrics.dataset_metrics_mean_std['confidence_mean_mean']:.2f}")
+        self.analysis_confidence_mean_std_label.setText(f"Analysis Confidence Mean Std: {self.analysis_metrics.dataset_metrics_mean_std['confidence_mean_std']:.2f}")
+        self.analysis_confidence_std_mean_label.setText(f"Analysis Confidence Std Mean: {self.analysis_metrics.dataset_metrics_mean_std['confidence_std_mean']:.2f}")
+        self.analysis_confidence_std_std_label.setText(f"Analysis Confidence Std Std: {self.analysis_metrics.dataset_metrics_mean_std['confidence_std_std']:.2f}")
+        self.analysis_num_detections_mean_label.setText(f"Analysis Num Detections Mean: {self.analysis_metrics.dataset_metrics_mean_std['num_detections_mean']:.2f}")
+        self.analysis_num_detections_std_label.setText(f"Analysis Num Detections Std: {self.analysis_metrics.dataset_metrics_mean_std['num_detections_std']:.2f}")
+        self.analysis_area_mean_mean_label.setText(f"Analysis Area Mean Mean: {self.analysis_metrics.dataset_metrics_mean_std['area_mean_mean']:.2f}")
+        self.analysis_area_mean_std_label.setText(f"Analysis Area Mean Std: {self.analysis_metrics.dataset_metrics_mean_std['area_mean_std']:.2f}")
+        self.analysis_area_std_mean_label.setText(f"Analysis Area Std Mean: {self.analysis_metrics.dataset_metrics_mean_std['area_std_mean']:.2f}")
+        self.analysis_area_std_std_label.setText(f"Analysis Area Std Std: {self.analysis_metrics.dataset_metrics_mean_std['area_std_std']:.2f}")
+        self.analysis_overlap_ratio_mean_label.setText(f"Analysis Overlap Ratio Mean: {self.analysis_metrics.dataset_metrics_mean_std['overlap_ratio_mean']:.2f}")
+        self.analysis_overlap_ratio_std_label.setText(f"Analysis Overlap Ratio Std: {self.analysis_metrics.dataset_metrics_mean_std['overlap_ratio_std']:.2f}")
+
+
 
 class OutlierTab(QWidget):
     def __init__(self):
