@@ -122,6 +122,16 @@ class DetectionQAMetrics:
             'area_std': area_std,
             'overlap_ratio': overlap_ratio
         }
+
+    def get_analysis_metrics(self):
+        return {
+            'analysis_confidence_mean_mean': self.dataset_metrics['confidence_mean'],
+            'analysis_confidence_std_std': self.dataset_metrics['confidence_std'],
+            'analysis_num_detections_mean': self.dataset_metrics['num_detections'],
+            'analysis_area_mean_mean': self.dataset_metrics['area_mean'],
+            'analysis_area_std_std': self.dataset_metrics['area_std'],
+            'analysis_overlap_ratio_mean': self.dataset_metrics['overlap_ratio']
+        }
     
     def compute_overlap(self, boxes):
         """ Calculate the overlap ratio between bounding boxes: 1 means 100% overlap, 0 means no overlap """

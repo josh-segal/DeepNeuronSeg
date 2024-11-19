@@ -1174,11 +1174,20 @@ class AnalysisTab(QWidget):
 
         self.update_analysis_metrics_labels()
 
-        variance_list = self.evaluation_tab.compute_variance(self.analysis_metrics)
+        analysis_list_of_list = self.analysis_metrics.get_analysis_metrics()
 
-        quality_score = self.evaluation_tab.compute_quality_score(variance_list)
-
-        print("Quality Score: ", quality_score)
+        variance_list_of_list = []
+        quality_scores = []
+        for analysis_list in analysis_list_of_list:
+            variance_list = self.evaluation_tab.metrics.compute_variance(analysis_list_of_list)
+            quality_scores.append(self.evaluation_tab.metrics.compute_quality_score(variance_list))
+            variance_list_of_list.append(variance_list)
+        
+        for i, variance_list in enumerate(variance_list_of_list):
+            print(f"Image {i} variance list: {variance_list}")
+            print('-'*50)
+            print(f"Image {i} quality score: {quality_scores[i]}")
+            print('-'*50)
 
     def format_preds(self, predictions):
         print("formatting preds")
@@ -1314,7 +1323,7 @@ class MainWindow(QMainWindow):
         # Create tab widget
         tabs = QTabWidget()
         tabs.setTabPosition(QTabWidget.North)
-        tabs.setMovable(True)
+        tabs.setMovable(False)
         
         # Create and add all tabs
         evaluation_tab = EvaluationTab()
@@ -1331,6 +1340,7 @@ class MainWindow(QMainWindow):
         
         layout.addWidget(tabs)
 
+        #TODO: make update_current_tab method to update tabs dependent on previous tab actions past initialization
 
 def main():
     app = QApplication(sys.argv)
