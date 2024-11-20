@@ -7,6 +7,7 @@ from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QRect, QPointF
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QPen 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+import matplotlib.lines as mlines
 import sys
 from dataclasses import dataclass
 from typing import List, Dict, Any
@@ -1024,7 +1025,7 @@ class AnalysisTab(QWidget):
         layout = QVBoxLayout()
         metrics_layout = QGridLayout()
         self.evaluation_tab = evaluation_tab
-        
+        self.uploaded_files = []
         
         # Model selection
         self.model_selector = QComboBox()
@@ -1114,6 +1115,9 @@ class AnalysisTab(QWidget):
         self.model = YOLO('C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt')
         self.inference_dir = os.path.join('data/datasets/dataset_0/results/testModel', 'inference')
         os.makedirs(self.inference_dir, exist_ok=True)
+        if not self.uploaded_files:
+            print("No images selected")
+            return  
         self.inference_result = self.model.predict(self.uploaded_files, conf=0.3, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
         if True:
             self.save_inferences()
@@ -1178,17 +1182,19 @@ class AnalysisTab(QWidget):
         print("indicies_to_color", indicies_to_color)
 
         # Plotting histograms
-        colors = ['green' if i in indicies_to_color else 'red' for i in range(len(sorted_conf_mean))]
+        colors = ['skyblue' if i in indicies_to_color else 'salmon' for i in range(len(sorted_conf_mean))]
 
         print("colors", colors)
 
-        ax1.bar(range(len(sorted_conf_mean)), sorted_conf_mean, color=colors, edgecolor='black', label='Original')
+        ax1.bar(range(len(sorted_conf_mean)), sorted_conf_mean, color=colors, edgecolor='black', label='Original Data')
+        ax2.bar(0, 0, width=0, color='skyblue', edgecolor='black', label='New Data')
         ax1.set_title("Mean Confidence of Predictions Per Image")
         ax1.set_xlabel("Image")
         ax1.set_ylabel("Mean Confidence")
         ax1.legend()
 
-        ax2.bar(range(len(sorted_num_detections)), sorted_num_detections, color=colors, edgecolor='black', label='Original')
+        ax2.bar(range(len(sorted_num_detections)), sorted_num_detections, color=colors, edgecolor='black', label='Original Data')
+        ax2.bar(0, 0, width=0, color='skyblue', edgecolor='black', label='New Data')
         ax2.set_title("Number of Detections Per Image")
         ax2.set_xlabel("Image")
         ax2.set_ylabel("Number of Detections")
@@ -1205,6 +1211,7 @@ class AnalysisTab(QWidget):
 
         analysis_list_of_list = self.analysis_metrics.get_analysis_metrics()
 
+        #TODO: this is wrong and computing incorrect values
         variance_list_of_list = []
         quality_scores = []
         for analysis_list in analysis_list_of_list:
