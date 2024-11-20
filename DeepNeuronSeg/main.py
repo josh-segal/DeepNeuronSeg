@@ -338,6 +338,9 @@ class UploadTab(QWidget):
 
         set_data(metadata=metadata)
 
+    def update(self):
+        pass
+
 
 class LabelingTab(QWidget):
     def __init__(self):
@@ -503,12 +506,15 @@ class GenerateLabelsTab(QWidget):
         if not self.data:
             self.data = get_data()
         self.metadata_labels = [image["mask_data"]["mask_path"] for image in self.data if "file_path" in image and "mask_data" in image]
+        self.uploaded_files = [image["file_path"] for image in self.data if "file_path" in image]
         if len(self.metadata_labels) > 0:
             self.left_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
             self.right_image.display_image(self.metadata_labels[self.current_index], self.current_index + 1, len(self.metadata_labels))
         else:
             print("No masks generated")
 
+    def update(self):
+        pass
 
 
 class DatasetTab(QWidget):
@@ -519,7 +525,7 @@ class DatasetTab(QWidget):
         # Dataset configuration
         config_layout = QGridLayout()
         self.train_split = QDoubleSpinBox()
-        self.train_split.setRange(0.1, 0.9)
+        self.train_split.setRange(0.0, 1.0)
         self.train_split.setSingleStep(0.05)
         self.train_split.setValue(0.8)
         self.dataset_name = QLineEdit()
@@ -668,6 +674,9 @@ class DatasetTab(QWidget):
             shutil.copy(image, os.path.join(self.dataset_path, "val", "images", os.path.basename(image)))
             shutil.copy(mask, os.path.join(self.dataset_path, "val", "masks", os.path.basename(mask)))
             shutil.copy(label, os.path.join(self.dataset_path, "val", "labels", os.path.basename(label)))
+
+    def update(self):
+        pass
 
 
 class TrainingTab(QWidget):
@@ -856,7 +865,12 @@ class TrainingTab(QWidget):
                 batch = self.batch_size.value(),
                 imgsz = 1024
             )
-
+    def update(self):
+        dataset_dict = get_data(file_path='data/datasets/dataset_metadata.json')
+        if dataset_dict is not None:
+            dataset_list = list(dataset_dict.keys())
+            self.dataset.clear()
+            self.dataset.addItems(dataset_list)
 
 class EvaluationTab(QWidget):
     def __init__(self):
@@ -988,6 +1002,21 @@ class EvaluationTab(QWidget):
         self.area_std_std_label.setText(f"Area Std Std: {metrics_mean_std['area_std_std']:.2f}")
         self.overlap_ratio_mean_label.setText(f"Overlap Ratio Mean: {metrics_mean_std['overlap_ratio_mean']:.2f}")
         self.overlap_ratio_std_label.setText(f"Overlap Ratio Std: {metrics_mean_std['overlap_ratio_std']:.2f}")
+
+    def update(self):
+        model_dict = get_data(file_path='models/model_metadata.json')
+        if model_dict is not None:
+            model_list = list(model_dict.keys())
+            self.model_selector.clear()
+            self.model_selector.addItems(model_list)
+
+        dataset_dict = get_data(file_path='data/datasets/dataset_metadata.json')
+        if dataset_dict is not None:
+            print('in here')
+            dataset_list = list(dataset_dict.keys())
+            self.dataset_selector.clear()
+            self.dataset_selector.addItems(dataset_list)
+
 
 class AnalysisTab(QWidget):
     def __init__(self, evaluation_tab):
@@ -1243,6 +1272,8 @@ class AnalysisTab(QWidget):
         self.analysis_overlap_ratio_mean_label.setText(f"Analysis Overlap Ratio Mean: {self.analysis_metrics.dataset_metrics_mean_std['overlap_ratio_mean']:.2f}")
         self.analysis_overlap_ratio_std_label.setText(f"Analysis Overlap Ratio Std: {self.analysis_metrics.dataset_metrics_mean_std['overlap_ratio_std']:.2f}")
 
+    def update(self):
+        pass
 
 
 class OutlierTab(QWidget):
@@ -1277,6 +1308,9 @@ class OutlierTab(QWidget):
         3. Update dataset with confirmed/relabeled data
         """
 
+    def update(self):
+        pass
+
 
 class ModelZooTab(QWidget):
     def __init__(self):
@@ -1308,6 +1342,9 @@ class ModelZooTab(QWidget):
         3. Display and save results
         """
 
+    def update(self):
+        pass
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -1321,26 +1358,32 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(main_widget)
         
         # Create tab widget
-        tabs = QTabWidget()
-        tabs.setTabPosition(QTabWidget.North)
-        tabs.setMovable(False)
+        self.tabs = QTabWidget()
+        self.tabs.setTabPosition(QTabWidget.North)
+        self.tabs.setMovable(False)
         
-        # Create and add all tabs
+        # Create and add all self.tabs
         evaluation_tab = EvaluationTab()
 
-        tabs.addTab(UploadTab(), "Upload Data")
-        tabs.addTab(LabelingTab(), "Label Data")
-        tabs.addTab(GenerateLabelsTab(), "Generate Labels")
-        tabs.addTab(DatasetTab(), "Create Dataset")
-        tabs.addTab(TrainingTab(), "Train Network")
-        tabs.addTab(evaluation_tab, "Evaluate Network")
-        tabs.addTab(AnalysisTab(evaluation_tab), "Analyze Data")
-        tabs.addTab(OutlierTab(), "Extract Outliers")
-        tabs.addTab(ModelZooTab(), "Model Zoo")
+        self.tabs.addTab(UploadTab(), "Upload Data")
+        self.tabs.addTab(LabelingTab(), "Label Data")
+        self.tabs.addTab(GenerateLabelsTab(), "Generate Labels")
+        self.tabs.addTab(DatasetTab(), "Create Dataset")
+        self.tabs.addTab(TrainingTab(), "Train Network")
+        self.tabs.addTab(evaluation_tab, "Evaluate Network")
+        self.tabs.addTab(AnalysisTab(evaluation_tab), "Analyze Data")
+        self.tabs.addTab(OutlierTab(), "Extract Outliers")
+        self.tabs.addTab(ModelZooTab(), "Model Zoo")
         
-        layout.addWidget(tabs)
+        layout.addWidget(self.tabs)
+        self.tabs.currentChanged.connect(self.update_current_tab)
 
         #TODO: make update_current_tab method to update tabs dependent on previous tab actions past initialization
+    def update_current_tab(self, index):
+        current_tab = self.tabs.widget(index)
+        if hasattr(current_tab, 'update') and callable(getattr(current_tab, 'update')):
+            current_tab.update()
+
 
 def main():
     app = QApplication(sys.argv)

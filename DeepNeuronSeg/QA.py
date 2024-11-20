@@ -100,6 +100,7 @@ class DetectionQAMetrics:
             self.confidences.append(conf)
             self.bbox_bounds.append(boxes)
 
+    @staticmethod
     def change_last_to_std(var_name):
         parts = var_name.split('_')
         parts[-1] = 'std'
@@ -170,14 +171,14 @@ class DetectionQAMetrics:
             analysis_metric = "analysis_" + metric
             if analysis_metric in analysis_metrics:
                 variance_metric = "variance_" + metric
-                std_metric = change_last_to_std(metric)
+                std_metric = DetectionQAMetrics.change_last_to_std(metric)
 
                 metric_variance[variance_metric] = (analysis_metrics[analysis_metric] - value) / self.dataset_metrics_mean_std[std_metric]
         
         return metric_variance
 
-    def compute_quality_score(self, variancs):
-        return np.mean(variances.values())
+    def compute_quality_score(self, variances):
+        return np.mean(np.array(list(variances.values())))
 
     def load_model(self, model_path):
         # Load the model from the specified path

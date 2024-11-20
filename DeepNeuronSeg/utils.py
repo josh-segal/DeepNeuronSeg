@@ -131,7 +131,7 @@ def get_data(file_path='data/image_metadata.json'):
         return data
     else:
         print(f'{file_path} does not exist')
-        return []
+        return None
 
 def set_data(file_path='data/image_metadata.json', metadata=None):
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
