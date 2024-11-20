@@ -1,0 +1,13 @@
+torch
+torchvision
+opencv_python
+transformers
+ultralytics
+matplotlib
+numpy
+pandas
+Pillow
+PyQt5
+PyQt5_sip
+PyYAML
+tqdm

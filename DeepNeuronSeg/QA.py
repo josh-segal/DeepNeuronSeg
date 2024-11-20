@@ -125,6 +125,7 @@ class DetectionQAMetrics:
         }
 
     def get_analysis_metrics(self):
+        #TODO: this among other "dataset" metrics should be refactored into some sort of dataclass for easier access and manipulation
         return {
             'analysis_confidence_mean_mean': self.dataset_metrics['confidence_mean'],
             'analysis_confidence_std_std': self.dataset_metrics['confidence_std'],

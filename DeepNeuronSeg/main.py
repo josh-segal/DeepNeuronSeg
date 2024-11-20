@@ -1187,7 +1187,7 @@ class AnalysisTab(QWidget):
         print("colors", colors)
 
         ax1.bar(range(len(sorted_conf_mean)), sorted_conf_mean, color=colors, edgecolor='black', label='Original Data')
-        ax2.bar(0, 0, width=0, color='skyblue', edgecolor='black', label='New Data')
+        ax1.bar(0, 0, width=0, color='skyblue', edgecolor='black', label='New Data')
         ax1.set_title("Mean Confidence of Predictions Per Image")
         ax1.set_xlabel("Image")
         ax1.set_ylabel("Mean Confidence")
@@ -1209,21 +1209,25 @@ class AnalysisTab(QWidget):
 
         self.update_analysis_metrics_labels()
 
+        # each list is a metric where values in list are individual image values
+        # restructure to be a list of list of image metrics each list contains all metrics for a single image
         analysis_list_of_list = self.analysis_metrics.get_analysis_metrics()
+        reshaped_analysis_list_of_list = [dict(zip(analysis_list_of_list.keys(), values)) for values in zip(*analysis_list_of_list.values())]
 
-        #TODO: this is wrong and computing incorrect values
         variance_list_of_list = []
-        quality_scores = []
-        for analysis_list in analysis_list_of_list:
-            variance_list = self.evaluation_tab.metrics.compute_variance(analysis_list_of_list)
-            quality_scores.append(self.evaluation_tab.metrics.compute_quality_score(variance_list))
+        quality_score_list = []
+        for i, image in enumerate(reshaped_analysis_list_of_list):
+            print(f"Image {i+1} metrics: {image}")
+            print('-'*50)
+            variance_list = self.evaluation_tab.metrics.compute_variance(image)
             variance_list_of_list.append(variance_list)
+            print(f"Image {i+1} variance: {variance_list}")
+            print('-'*50)
+            quality_score = self.evaluation_tab.metrics.compute_quality_score(variance_list)
+            quality_score_list.append({self.uploaded_files[i]: quality_score})
+            print(f"Image {i+1} quality score: {quality_score} from {self.uploaded_files[i]}")
+            print('-'*50)
         
-        for i, variance_list in enumerate(variance_list_of_list):
-            print(f"Image {i} variance list: {variance_list}")
-            print('-'*50)
-            print(f"Image {i} quality score: {quality_scores[i]}")
-            print('-'*50)
 
     def format_preds(self, predictions):
         print("formatting preds")
@@ -1266,6 +1270,7 @@ class AnalysisTab(QWidget):
             
             # Use the temporary directory as the dataset path
             self.analysis_metrics = DetectionQAMetrics(self.evaluation_tab.model_path, temp_dir)
+
         self.analysis_confidence_mean_mean_label.setText(f"Analysis Confidence Mean Mean: {self.analysis_metrics.dataset_metrics_mean_std['confidence_mean_mean']:.2f}")
         self.analysis_confidence_mean_std_label.setText(f"Analysis Confidence Mean Std: {self.analysis_metrics.dataset_metrics_mean_std['confidence_mean_std']:.2f}")
         self.analysis_confidence_std_mean_label.setText(f"Analysis Confidence Std Mean: {self.analysis_metrics.dataset_metrics_mean_std['confidence_std_mean']:.2f}")
@@ -1314,6 +1319,7 @@ class OutlierTab(QWidget):
         2. Handle relabeling process
         3. Update dataset with confirmed/relabeled data
         """
+        
 
     def update(self):
         pass
@@ -1354,6 +1360,7 @@ class ModelZooTab(QWidget):
 
 
 class MainWindow(QMainWindow):
+    #TODO: make shared data structure across main window instead of nesting tabs
     def __init__(self):
         super().__init__()
         self.setWindowTitle("DeepNeuronSeg")
@@ -1368,6 +1375,8 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget()
         self.tabs.setTabPosition(QTabWidget.North)
         self.tabs.setMovable(False)
+        
+        self.shared_data = {}
         
         # Create and add all self.tabs
         evaluation_tab = EvaluationTab()
@@ -1385,7 +1394,6 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.tabs)
         self.tabs.currentChanged.connect(self.update_current_tab)
 
-        #TODO: make update_current_tab method to update tabs dependent on previous tab actions past initialization
     def update_current_tab(self, index):
         current_tab = self.tabs.widget(index)
         if hasattr(current_tab, 'update') and callable(getattr(current_tab, 'update')):
