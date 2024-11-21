@@ -5,3 +5,4 @@ labeled_data/
 models/
 data/
 venv/
+.DS_Store

@@ -188,7 +188,8 @@ class DetectionQAMetrics:
         return model
 
     def load_dataset(self, dataset_path):
-        dataset = ImageDataset(root_dir=dataset_path)
+        image_path = os.path.join(dataset_path, 'images') if os.path.exists(os.path.join(dataset_path, 'images')) else dataset_path
+        dataset = ImageDataset(root_dir=image_path)
         self.batch_size = 4
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
         return dataloader

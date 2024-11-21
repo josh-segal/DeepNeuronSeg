@@ -586,10 +586,10 @@ class DatasetTab(QWidget):
 
         dataset_dir = 'dataset'
         counter = 0
-        self.dataset_path = os.path.join(dataset_parent_dir, f"{dataset_dir}_{counter}")
+        self.dataset_path = os.path.abspath(os.path.join(dataset_parent_dir, f"{dataset_dir}_{counter}"))
         while os.path.exists(self.dataset_path):
             counter += 1
-            self.dataset_path = os.path.join(dataset_parent_dir, f"{dataset_dir}_{counter}")
+            self.dataset_path = os.path.abspath(os.path.join(dataset_parent_dir, f"{dataset_dir}_{counter}"))
 
         dataset_metadata = get_data(file_path=os.path.join(dataset_parent_dir, 'dataset_metadata.json'))
 
@@ -826,13 +826,13 @@ class TrainingTab(QWidget):
 
         datasets_metadata = get_data(file_path='data/datasets/dataset_metadata.json')
 
-        dataset = next((k for k, v in datasets_metadata.values() if v == self.dataset.currentText()), None)
+        dataset = next((v for k, v in datasets_metadata.items() if k == self.dataset.currentText()), None)
 
         os.makedirs("models", exist_ok=True)
 
         if not os.path.exists(os.path.join('models', 'model_metadata.json')):
             with open(os.path.join('models', 'model_metadata.json'), 'w') as f:
-                json.dump({}, f)
+                json.dump({"DeepNeuronSegBaseModel": "yolov8n-largedata-70-best.pt"}, f)
 
         model_metadata = get_data(file_path=os.path.join('models', 'model_metadata.json'))
 
@@ -858,7 +858,7 @@ class TrainingTab(QWidget):
             self.model = YOLO("models/yolov8n-seg.pt")
             self.model.train(
                 #TODO: if denoised use denoised data dir, recreate yaml (?)
-                data = f'C:/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/{dataset}/data.yaml',
+                data = os.path.abspath(f'{dataset}/data.yaml'),
                 project = f'{dataset}/results',
                 name = self.model_name.text().strip(),
                 epochs = self.epochs.value(),
@@ -885,7 +885,6 @@ class EvaluationTab(QWidget):
         if model_dict:
             model_list = list(model_dict.keys())
             self.model_selector.addItems(model_list)
-
         self.dataset_selector = QComboBox()
         dataset_dict = get_data(file_path='data/datasets/dataset_metadata.json')
         if dataset_dict:
@@ -952,14 +951,20 @@ class EvaluationTab(QWidget):
 
     def calculate_metrics(self):
         # TODO: abstract
-        # model_path = self.model_selector.currentText()
-        self.model_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt'
-        # dataset_path = self.dataset_selector.currentText()
-        dataset_path = 'C:/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/data/datasets/dataset_0/images'
+        self.model_name = self.model_selector.currentText()
+        model_file = get_data('models/model_metadata.json')
+        self.model_path = model_file[self.model_name]
+        print(self.model_path)
+        # self.model_path = '/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt'
+        self.dataset_name = self.dataset_selector.currentText()
+        dataset_file = get_data('data/datasets/dataset_metadata.json')
+        self.dataset_path = dataset_file[self.dataset_name]
+        print(self.dataset_path)
+        # dataset_path = '/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/data/datasets/dataset_0/images'
         # dataset_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/dataset/COCO_train_X'
         # dataset_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/train/images'
 
-        self.metrics = DetectionQAMetrics(self.model_path, dataset_path)
+        self.metrics = DetectionQAMetrics(self.model_path, self.dataset_path)
         print(self.metrics.dataset_metrics_mean_std)
         self.plot_metrics(self.metrics.dataset_metrics, self.metrics.dataset_metrics_mean_std)
 
@@ -1005,6 +1010,12 @@ class EvaluationTab(QWidget):
         self.overlap_ratio_std_label.setText(f"Overlap Ratio Std: {metrics_mean_std['overlap_ratio_std']:.2f}")
 
     def update(self):
+        os.makedirs("models", exist_ok=True)
+
+        if not os.path.exists(os.path.join('models', 'model_metadata.json')):
+            with open(os.path.join('models', 'model_metadata.json'), 'w') as f:
+                json.dump({"DeepNeuronSegBaseModel": os.path.abspath("models/yolov8n-largedata-70-best.pt")}, f)
+
         model_dict = get_data(file_path='models/model_metadata.json')
         if model_dict is not None:
             model_list = list(model_dict.keys())
@@ -1029,7 +1040,10 @@ class AnalysisTab(QWidget):
         
         # Model selection
         self.model_selector = QComboBox()
-        self.model_selector.addItems(["YOLOv8n-seg"])
+        model_dict = get_data(file_path='models/model_metadata.json')
+        if model_dict:
+            model_list = list(model_dict.keys())
+            self.model_selector.addItems(model_list)
         
         # Image upload/selection
         self.select_btn = QPushButton("Select Images")
@@ -1112,7 +1126,10 @@ class AnalysisTab(QWidget):
 
     def inference_images(self):
         from ultralytics import YOLO
-        self.model = YOLO('C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt')
+        self.model_name = self.model_selector.currentText()
+        model_file = get_data('models/model_metadata.json')
+        self.model_path = model_file[self.model_name]
+        self.model = YOLO(self.model_path)
         self.inference_dir = os.path.join('data/datasets/dataset_0/results/testModel', 'inference')
         os.makedirs(self.inference_dir, exist_ok=True)
         if not self.uploaded_files:
@@ -1186,14 +1203,16 @@ class AnalysisTab(QWidget):
 
         print("colors", colors)
 
-        ax1.bar(range(len(sorted_conf_mean)), sorted_conf_mean, color=colors, edgecolor='black', label='Original Data')
+        ax1.bar(range(len(sorted_conf_mean)), sorted_conf_mean, color=colors, edgecolor='black', label='_nolegend_')
+        ax1.bar(0, 0, width=0, color='salmon', edgecolor='black', label='Original Data')
         ax1.bar(0, 0, width=0, color='skyblue', edgecolor='black', label='New Data')
         ax1.set_title("Mean Confidence of Predictions Per Image")
         ax1.set_xlabel("Image")
         ax1.set_ylabel("Mean Confidence")
         ax1.legend()
 
-        ax2.bar(range(len(sorted_num_detections)), sorted_num_detections, color=colors, edgecolor='black', label='Original Data')
+        ax2.bar(range(len(sorted_num_detections)), sorted_num_detections, color=colors, edgecolor='black', label='_nolegend_')
+        ax2.bar(0, 0, width=0, color='salmon', edgecolor='black', label='Original Data')
         ax2.bar(0, 0, width=0, color='skyblue', edgecolor='black', label='New Data')
         ax2.set_title("Number of Detections Per Image")
         ax2.set_xlabel("Image")
@@ -1285,7 +1304,11 @@ class AnalysisTab(QWidget):
         self.analysis_overlap_ratio_std_label.setText(f"Analysis Overlap Ratio Std: {self.analysis_metrics.dataset_metrics_mean_std['overlap_ratio_std']:.2f}")
 
     def update(self):
-        pass
+        os.makedirs("models", exist_ok=True)
+
+        if not os.path.exists(os.path.join('models', 'model_metadata.json')):
+            with open(os.path.join('models', 'model_metadata.json'), 'w') as f:
+                json.dump({"DeepNeuronSegBaseModel": os.path.abspath("models/yolov8n-largedata-70-best.pt")}, f)
 
 
 class OutlierTab(QWidget):
@@ -1356,7 +1379,11 @@ class ModelZooTab(QWidget):
         """
 
     def update(self):
-        pass
+        os.makedirs("models", exist_ok=True)
+
+        if not os.path.exists(os.path.join('models', 'model_metadata.json')):
+            with open(os.path.join('models', 'model_metadata.json'), 'w') as f:
+                json.dump({"DeepNeuronSegBaseModel": os.path.abspath("models/yolov8n-largedata-70-best.pt")}, f)
 
 
 class MainWindow(QMainWindow):
