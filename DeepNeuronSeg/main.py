@@ -1352,31 +1352,103 @@ class ModelZooTab(QWidget):
     def __init__(self):
         super().__init__()
         layout = QVBoxLayout()
+        image_layout = QHBoxLayout()
         
+        self.current_index = 0
         # Model selection
-        self.model_list = QListWidget()
-        
-        # Model info display
-        self.model_info = QLabel()
+        self.model_selector = QComboBox()
+        model_dict = get_data(file_path='models/model_metadata.json')
+        if model_dict:
+            model_list = list(model_dict.keys())
+            self.model_selector.addItems(model_list)
+
+        # image display
+        self.left_image = ImageDisplay(self)
+        # pred display
+        self.right_image = ImageDisplay(self)
         
         # Image selection for inference
-        self.select_images_btn = QPushButton("Select Images")
+        self.select_btn = QPushButton("Select Images")
         
         # Run inference button
-        self.run_btn = QPushButton("Run Inference")
+        self.inference_btn = QPushButton("Inference Images")
         
-        layout.addWidget(self.model_list)
-        layout.addWidget(self.model_info)
-        layout.addWidget(self.select_images_btn)
-        layout.addWidget(self.run_btn)
+        # Save inferences button
+        self.save_btn = QPushButton("Save Inferences")
+
+        self.next_btn = QPushButton("Next Image")
+        
+        layout.addWidget(QLabel("Trained Model:"))
+        layout.addWidget(self.model_selector)
+        layout.addWidget(self.select_btn)
+        layout.addWidget(self.inference_btn)
+        layout.addWidget(self.save_btn)
+
+        image_layout.addWidget(self.left_image)
+        image_layout.addWidget(self.right_image)
+
+        layout.addWidget(self.next_btn)
+        layout.addLayout(image_layout)
         self.setLayout(layout)
         
-        """
-        INTEGRATION POINT:
-        1. Load available models
-        2. Implement inference pipeline
-        3. Display and save results
-        """
+        self.select_btn.clicked.connect(self.select_images)
+        self.inference_btn.clicked.connect(self.inference_images)
+        self.save_btn.clicked.connect(self.save_inferences)
+        self.next_btn.clicked.connect(self.left_image.show_next_image)
+        self.next_btn.clicked.connect(self.show_pred)
+        
+    def select_images(self):
+        self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
+
+    def inference_images(self):
+        from ultralytics import YOLO
+        self.model_name = self.model_selector.currentText()
+        model_file = get_data('models/model_metadata.json')
+        self.model_path = model_file[self.model_name]
+        self.model = YOLO(self.model_path)
+        self.inference_dir = os.path.join('data/datasets/dataset_0/results/testModel', 'inference')
+        os.makedirs(self.inference_dir, exist_ok=True)
+        if not self.uploaded_files:
+            print("No images selected")
+            return  
+        self.inference_result = self.model.predict(self.uploaded_files, conf=0.3, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
+
+        #TODO: display original and inference image
+
+        if True:
+            self.display_images()
+
+        if False:
+            self.save_inferences()
+
+    def display_images(self):
+        if len(self.inference_result) > 0 and len(self.uploaded_files) > 0:
+            
+            self.left_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
+            self.show_pred()
+            
+
+    def save_inferences(self):
+        for file, result in zip(self.uploaded_files, self.inference_result):
+                masks = result.masks
+                mask_num = len(masks)
+                print(file, '------------')
+                default_file_name = f"{os.path.splitext(os.path.basename(file))[0]}_{mask_num}.png"
+                save_path, _ = QFileDialog.getSaveFileName(self, "Save Inference", default_file_name, "Images (*.png)")
+                if not save_path:
+                    continue
+                mask_image = result.plot(labels=False, conf=False, boxes=False)
+                mask_image = Image.fromarray(mask_image)
+                print(save_path)
+                mask_image.save(save_path)
+
+    def show_pred(self):
+        result = self.inference_result[self.current_index]
+        mask_image = result.plot(labels=False, conf=False, boxes=False)
+        mask_image = Image.fromarray(mask_image)
+        temp_image_path = os.path.join(tempfile.gettempdir(), "temp_mask_image.png")
+        mask_image.save(temp_image_path, format='PNG')
+        self.right_image.display_image(temp_image_path, self.current_index + 1, len(self.inference_result))
 
     def update(self):
         os.makedirs("models", exist_ok=True)
