@@ -107,15 +107,6 @@ def trim_underscores(file_name):
         base_name = base_name[:-1]
     return base_name + ext
 
-def check_data(data_path='data/image_metadata.json'):
-    if os.path.exists(data_path):
-        print("Data exists")
-        existing_metadata = get_data()
-    else:
-        print("Data does not exist")
-        existing_metadata = []
-    return existing_metadata
-
 def get_data(file_path='data/image_metadata.json'):
     """
     self.data_path = os.path.join('data', self.data_file)
