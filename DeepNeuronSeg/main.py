@@ -93,6 +93,8 @@ class ImageDisplay(QWidget):
             self.text_label.setText(f"{image_num} / {total_images}")
         else:
             print("Failed to load image")
+    #TODO: ABSTRACT THESE METHODS
+    #TODO: GET RID OF STORING PASSING AND ACCESSING EVERYTHING IN MEMORY
 
     def show_image(self):
         """Display the next image in the list."""
@@ -168,7 +170,7 @@ class ImageDisplay(QWidget):
 class UploadTab(QWidget):
     def __init__(self, db):
         super().__init__()
-        self.data_file = 'image_metadata.json'
+        self.db = db
         self.current_index = 0
         self.uploaded_files = []
         layout = QVBoxLayout()
@@ -223,47 +225,33 @@ class UploadTab(QWidget):
         3. Update UI with selected images
         """
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png *.tif)")
-        new_metadata = []
-        existing_metadata = get_data()
 
         self.use_selected_frame_for_all = False
         self.selected_frame = 0
 
-        # copy of uploaded files to remove duplicates without affecting loop
+        image_data = Query()
         for file in self.uploaded_files[:]:
-            duplicate = False
-
-            data_subdir = 'data_images'
-            data_dir = os.path.join('data', data_subdir)
-            os.makedirs(data_dir, exist_ok=True)
 
             image_name = os.path.basename(file)
             image_name = trim_underscores(image_name)
             image_name = image_name.replace(".tif", ".png")
 
-            image_path = os.path.join(data_dir, image_name)
-            # print("in image path", image_name)
+            #TODO: store this path somewhere so not hardcoded ?
+            image_path = os.path.join('data', 'data_images', image_name)
 
-            if existing_metadata is not None:
-                for image in existing_metadata:
-                    if image["file_path"] == image_path:
-                        print("Image already exists in metadata")
-                        self.uploaded_files.remove(file)
-                        duplicate = True
-                        break
-
-            if duplicate:
-                print("skipping", image_name)
-            else:
-                if file.lower().endswith('.tif'):
-                    print("Converting tif to png", image_path)
-                    with Image.open(file) as img:
+            if self.db.image_table.get(image_data.file_path == image_name):
+                print(f"Image already exists in database {image_name}")
+                self.uploaded_files.remove(file)
+                continue
+        
+            # tif operations
+            if file.lower().endswith('.tif'):
+                with Image.open(file) as img:
                         num_frames = img.n_frames
 
                         if num_frames > 1 and not self.use_selected_frame_for_all:
                             dialog = FrameSelectionDialog(num_frames)
                             if dialog.exec_() == QDialog.Accepted:
-                                #TODO: always use frame for all and pass to show_image so if tif it displays correct frame (?)
                                 self.selected_frame = dialog.selected_frame
                                 self.use_selected_frame_for_all = dialog.use_for_all
 
@@ -273,32 +261,24 @@ class UploadTab(QWidget):
                         else:
                             print("Converting tif to png", image_path)
                             img.save(image_path, format='PNG')
-                            # change to png and save
-                else:
-                    shutil.copy(file, image_path)
 
-                #TODO: add an apply to all for some metadata get rid of or automate per image ones, don't need metadata not a database.
-                new_metadata.append({
-                    "file_path": image_path,
-                    "project": self.project.text(),
-                    "cohort": self.cohort.text(),
-                    "brain_region": self.brain_region.text(),
-                    "image_id": self.image_id.text(),
-                    "labels": []
+            # png operations
+            else:
+                shutil.copy(file, image_path)
+            
+            file = image_path
+
+            # add to db
+            #TODO: add an apply to all for some metadata get rid of or automate per image ones, don't need metadata not a database.
+            self.db.image_table.insert({
+                "file_path": image_path, 
+                "project": self.project.text(), 
+                "cohort": self.cohort.text(), 
+                "brain_region": self.brain_region.text(), 
+                "image_id": self.image_id.text() if self.image_id.text() else len(self.db.image_table),
+                "labels": []
                 })
 
-        if existing_metadata:
-            print("Existing metadata found")
-            print("new metadata", new_metadata)
-            existing_metadata.extend(new_metadata)
-            metadata = existing_metadata
-        else:
-            print("No existing metadata found")
-            metadata = new_metadata
-
-        set_data(metadata=metadata)
-
-        #TODO: possibly weird tif display if more than one frame ? 
         self.file_list.addItems([os.path.basename(file) for file in self.uploaded_files])
         self.image_display.show_image()
 
@@ -307,47 +287,43 @@ class UploadTab(QWidget):
         labels = self.parse_labels(self.uploaded_labels)
 
     def parse_labels(self, labels):
-        metadata = get_data()
-        if not metadata:
-            print("no images found, upload images first")
-            return
+
         for label_file in labels:
             label_name = os.path.splitext(os.path.basename(label_file))[0]
             label_name = trim_underscores(label_name)
-            # get data_images, check if label match to any image then proceed
-            for image in metadata:
-                image_name = os.path.splitext(os.path.basename(image["file_path"]))[0]
-                if image_name == label_name:
-                    if label_file.endswith(".png"):
-                        label_data = parse_png_label(label_file)
-                        # route to function that formats data and call set data for all if cases
-                    elif label_file.endswith(".txt"):
-                        label_data = parse_txt_label(label_file)
-                    elif label_file.endswith(".csv"):
-                        label_data = parse_csv_label(label_file)
-                    elif label_file.endswith(".xml"):
-                        label_data = parse_xml_label(label_file)
-                    else:
-                        print("Invalid label format")
-                        label_data = None
+            label_name = label_name + ".png"
 
-                    if label_data:
-                        # label_data = norm_label_data(label_data)
-                        image["labels"] = label_data
-                        break
+            image_data = Query()
+            matched_image = self.db.image_table.get(image_data.file_path == label_name)
+            if matched_image:
+                if label_file.endswith(".png"):
+                    label_data = parse_png_label(label_file)
+                elif label_file.endswith(".txt"):
+                    label_data = parse_txt_label(label_file)
+                elif label_file.endswith(".csv"):
+                    label_data = parse_csv_label(label_file)
+                elif label_file.endswith(".xml"):
+                    label_data = parse_xml_label(label_file)
                 else:
-                    continue
+                    print("Invalid label format")
+                    label_data = None
 
-        set_data(metadata=metadata)
+                if label_data:
+                    self.db.image_table.update({"labels": label_data}, image_data.file_path == label_name)
+            
+            else:
+                print(f"Image not found in database {label_name}")
+                continue
 
     def update(self):
         pass
 
 
 class LabelingTab(QWidget):
-    def __init__(self):
+    def __init__(self, db):
         super().__init__()
         # Image display with cell marking
+        self.db = db
         self.current_index = 0
         self.uploaded_files = []
         self.image_display = ImageDisplay(self)
@@ -381,11 +357,12 @@ class LabelingTab(QWidget):
     def load_data(self):
         #TODO: only load if no label present in metadata format
         #TODO: make a check labels function for metadata labels
-        self.data = get_data()
-        result = [(image["file_path"], image["labels"]) for image in self.data if "file_path" in image]
-        print(result)
-        if result:
-            self.uploaded_files, self.labels = zip(*result)
+
+        images = self.db.image_table.all()
+
+        self.uploaded_files = [image['file_path'] for image in images]
+        self.labels = [image['labels'] for image in images]
+        if self.uploaded_files:
             self.image_display.show_image_with_points()
         else:
             print("No images found")
@@ -393,37 +370,41 @@ class LabelingTab(QWidget):
     def add_cell_marker(self, pos):
         # print("adding cell")
         adjusted_pos = self.image_display.image_label.adjust_pos(pos)
-        if adjusted_pos.x() < 0 or adjusted_pos.y() < 0 or adjusted_pos.x() > 512 or adjusted_pos.y() > 512:
+        if not (0 <= adjusted_pos.x() <= 512 and 0 <= adjusted_pos.y() <= 512):
             return
-        self.labels[self.current_index].append((adjusted_pos.x(), adjusted_pos.y()))
-        self.image_display.show_image_with_points()
 
-        for image in self.data:
-            if image["file_path"] == self.uploaded_files[self.current_index]:
-                image["labels"] = [(pos[0], pos[1]) for pos in self.labels[self.current_index]]
-                break
-        #TODO: change to .h5 for saving??
-        set_data(metadata=self.data)
+        # Get all records from the image_table
+        images = self.db.image_table.all()
 
-    def remove_cell_marker(self, pos):
+        # Define file_path based on self.current_index
+        file_path = images[self.current_index]['file_path'] if 0 <= self.current_index < len(images) else None
+
+        image_query = Query()
+        image_data = self.db.image_table.get(image_query.file_path == file_path)
+        if image_data:
+            self.db.image_table.update({"labels": image_data.get("labels", []) + [(adjusted_pos.x(), adjusted_pos.y())]}, image_query.file_path == file_path)
+            self.image_display.show_image_with_points()
+
+    def remove_cell_marker(self, pos, tolerance=5):
         adjusted_pos = self.image_display.image_label.adjust_pos(pos)
-        if adjusted_pos.x() < 0 or adjusted_pos.y() < 0 or adjusted_pos.x() > 512 or adjusted_pos.y() > 512:
+        if not (0 <= adjusted_pos.x() <= 512 and 0 <= adjusted_pos.y() <= 512):
             return
-        for i, label in enumerate(self.labels[self.current_index]):
-            if abs(label[0] - adjusted_pos.x()) < 5 and abs(label[1] - adjusted_pos.y()) < 5:
-                self.labels[self.current_index].pop(i)
-                self.image_display.show_image_with_points()
-                for image in self.data:
-                    if image["file_path"] == self.uploaded_files[self.current_index]:
-                        print("updating self.data")
-                        image["labels"] = [(pos[0], pos[1]) for pos in self.labels[self.current_index]]
-                        break
-                break
-        set_data(metadata=self.data)
 
+        # Get all records from the image_table
+        images = self.db.image_table.all()
+
+        # Define file_path based on self.current_index
+        file_path = images[self.current_index]['file_path'] if 0 <= self.current_index < len(images) else None
+
+        image_query = Query()
+        image_data = self.db.image_table.get(image_query.file_path == file_path)
+        if image_data:
+            # Update labels: append the new position
+            self.db.image_table.update({"labels": [label for label in image_data.get("labels", []) if not (abs(label[0] - position[0]) < tolerance and abs(label[1] - position[1]) < tolerance)]}, image_query.file_path == file_path)
+            self.image_display.show_image_with_points()
 
 class GenerateLabelsTab(QWidget):
-    def __init__(self):
+    def __init__(self, db):
         super().__init__()
         layout = QVBoxLayout()
         image_layout = QHBoxLayout()
@@ -524,7 +505,7 @@ class GenerateLabelsTab(QWidget):
 
 
 class DatasetTab(QWidget):
-    def __init__(self):
+    def __init__(self, db):
         super().__init__()
         layout = QVBoxLayout()
         
@@ -686,7 +667,7 @@ class DatasetTab(QWidget):
 
 
 class TrainingTab(QWidget):
-    def __init__(self):
+    def __init__(self, db):
         super().__init__()
         layout = QVBoxLayout()
         
@@ -879,7 +860,7 @@ class TrainingTab(QWidget):
             self.dataset.addItems(dataset_list)
 
 class EvaluationTab(QWidget):
-    def __init__(self):
+    def __init__(self, db):
         super().__init__()
         layout = QVBoxLayout()
         metrics_layout = QGridLayout()
@@ -1079,11 +1060,10 @@ class EvaluationTab(QWidget):
 
 
 class AnalysisTab(QWidget):
-    def __init__(self, evaluation_tab):
+    def __init__(self, db):
         super().__init__()
         layout = QVBoxLayout()
         metrics_layout = QGridLayout()
-        self.evaluation_tab = evaluation_tab
         self.uploaded_files = []
         
         # Model selection
@@ -1432,7 +1412,7 @@ class AnalysisTab(QWidget):
 
 
 class OutlierTab(QWidget):
-    def __init__(self):
+    def __init__(self, db):
         super().__init__()
         layout = QVBoxLayout()
         
@@ -1469,7 +1449,7 @@ class OutlierTab(QWidget):
 
 
 class ModelZooTab(QWidget):
-    def __init__(self):
+    def __init__(self, db):
         super().__init__()
         layout = QVBoxLayout()
         image_layout = QHBoxLayout()
@@ -1579,7 +1559,7 @@ class ModelZooTab(QWidget):
 
 
 class DataManager:
-    def __init__(self, db_path='db.json'):
+    def __init__(self, db_path='data/db.json'):
         self.db = TinyDB(db_path)
         self.image_table = self.db.table('images')
         self.dataset_table = self.db.table('datasets')
@@ -1592,6 +1572,8 @@ class MainWindow(QMainWindow):
     #TODO: make shared data structure across main window instead of nesting tabs
     def __init__(self):
         super().__init__()
+
+        self.setup_data_dir()
 
         self.data_manager = DataManager()
 
@@ -1628,6 +1610,10 @@ class MainWindow(QMainWindow):
         current_tab = self.tabs.widget(index)
         if hasattr(current_tab, 'update') and callable(getattr(current_tab, 'update')):
             current_tab.update()
+
+    def setup_data_dir(self):
+        os.makedirs(os.path.join("data", "data_images"), exist_ok=True)
+
 
 
 def main():
