@@ -84,7 +84,7 @@ class ImageDisplay(QWidget):
         self.image_label.setAlignment(Qt.AlignCenter)
         self.text_label.setAlignment(Qt.AlignBottom | Qt.AlignCenter)
 
-    def display_image(self, image_path, image_num, total_images):
+    def _display_image(self, image_path, image_num, total_images):
         """Load and display an image from the given file path and show image number."""
         print(image_path, '<----------------------')
         self.pixmap = QPixmap(image_path)
@@ -93,79 +93,122 @@ class ImageDisplay(QWidget):
             self.text_label.setText(f"{image_num} / {total_images}")
         else:
             print("Failed to load image")
-    #TODO: ABSTRACT THESE METHODS
-    #TODO: GET RID OF STORING PASSING AND ACCESSING EVERYTHING IN MEMORY
 
-    def show_image(self):
-        """Display the next image in the list."""
-        if len(self.upload_tab.uploaded_files) > 0:
-            if self.upload_tab.uploaded_files[self.upload_tab.current_index].lower().endswith('.tif'):
-                print("displaying tif")
-                with Image.open(self.upload_tab.uploaded_files[self.upload_tab.current_index]) as img:
-                    img.seek(self.upload_tab.selected_frame)
-                    frame_to_display = img.copy() #TODO: image must be converted to gray and converted to rgb first
-                    temp_image_path = os.path.join(tempfile.gettempdir(), "temp_image.png")
-                    frame_to_display.save(temp_image_path, format='PNG')
-                    print("temp image path", temp_image_path)
-                    self.display_image(temp_image_path, self.upload_tab.current_index + 1, len(self.upload_tab.uploaded_files))
+    def tif_check(self, item):
+        if item.lower().endswith('.tif'):
+            with Image.open(item) as img:
+                img.seek(self.upload_tab.selected_frame)
+                frame_to_display = img.copy()
+                base_name, _ = os.path.splitext(item)
+                temp_image_path = os.path.join(tempfile.gettempdir(), base_name + ".png")
+                frame_to_display.save(temp_image_path, format='PNG')
+                item = temp_image_path
+        return item
+
+    def show_item(self, mask=False, points=False, next_item=False, index=False):
+        if mask:
+            items = self.upload_tab.db.load_masks()
+        else:
+            items = self.upload_tab.db.load_images()
+
+        if next_item:
+            self.upload_tab.current_index = (self.upload_tab.current_index + 1) % len(items)
+
+        if index:
+            self.upload_tab.current_index = index
+
+        if items:
+            if self.upload_tab.current_index < len(items) and len(items) > 0:
+                item = self.tif_check(items[self.upload_tab.current_index])
+                self._display_image(item, self.upload_tab.current_index + 1, len(items))
+                if points:
+                    labels = self.upload_tab.db.load_labels()
+                    self.image_label._draw_points(labels[self.upload_tab.current_index])
             else:
-                self.display_image(self.upload_tab.uploaded_files[self.upload_tab.current_index], self.upload_tab.current_index + 1, len(self.upload_tab.uploaded_files))
+                print("No images uploaded")
+                self.image_label.clear()
+                self.text_label.setText("No mask generated" if mask else "No images uploaded")
         else:
             print("No images uploaded")
+            self.image_label.clear()
+            self.text_label.setText("No mask generated" if mask else "No images uploaded")
+            
 
-    def show_mask(self):
-        """Display the next mask in the list."""
-        if len(self.upload_tab.metadata_labels) > 0:
-            self.display_image(self.upload_tab.metadata_labels[self.upload_tab.current_index], self.upload_tab.current_index + 1, len(self.upload_tab.metadata_labels))
-        else:
-            print("No masks generated")
+        
 
-    def show_next_image(self):
-        """Display the next image in the list."""
-        if len(self.upload_tab.uploaded_files) > 0:
-            self.upload_tab.current_index = (self.upload_tab.current_index + 1) % len(self.upload_tab.uploaded_files)  # Wrap around
-            self.show_image()
-        else:
-            print("No images uploaded")
-            self.image_label.clear() 
-            self.text_label.setText("")  
+        
 
 
-    def show_next_mask(self):
-        """Display the next mask in the list."""
-        if len(self.upload_tab.metadata_labels) > 0:
-            self.upload_tab.current_index = (self.upload_tab.current_index + 1) % len(self.upload_tab.metadata_labels)  # Wrap around
-            self.show_mask()
-        else:
-            print("No masks generated")
-            self.image_label.clear() 
-            self.text_label.setText("")
+    # def show_image(self):
+    #     """Display the next image in the list."""
+    #     if len(self.upload_tab.uploaded_files) > 0:
+    #         if self.upload_tab.uploaded_files[self.upload_tab.current_index].lower().endswith('.tif'):
+    #             print("displaying tif")
+    #             with Image.open(self.upload_tab.uploaded_files[self.upload_tab.current_index]) as img:
+    #                 img.seek(self.upload_tab.selected_frame)
+    #                 frame_to_display = img.copy() #TODO: image must be converted to gray and converted to rgb first
+    #                 temp_image_path = os.path.join(tempfile.gettempdir(), "temp_image.png")
+    #                 frame_to_display.save(temp_image_path, format='PNG')
+    #                 print("temp image path", temp_image_path)
+    #                 self.display_image(temp_image_path, self.upload_tab.current_index + 1, len(self.upload_tab.uploaded_files))
+    #         else:
+    #             self.display_image(self.upload_tab.uploaded_files[self.upload_tab.current_index], self.upload_tab.current_index + 1, len(self.upload_tab.uploaded_files))
+    #     else:
+    #         print("No images uploaded")
 
-    def show_image_with_points(self):
-        """Display the next image in the list."""
-        if len(self.upload_tab.uploaded_files) > 0:
-            self.show_image()
-            self.image_label._draw_points(self.upload_tab.labels[self.upload_tab.current_index])
-        else:
-            print("No images uploaded")
-            self.image_label.clear() 
-            self.text_label.setText("")
+    # def show_mask(self):
+    #     """Display the next mask in the list."""
+    #     if len(self.upload_tab.metadata_labels) > 0:
+    #         self.display_image(self.upload_tab.metadata_labels[self.upload_tab.current_index], self.upload_tab.current_index + 1, len(self.upload_tab.metadata_labels))
+    #     else:
+    #         print("No masks generated")
+
+    # def show_next_image(self):
+    #     """Display the next image in the list."""
+    #     if len(self.upload_tab.uploaded_files) > 0:
+    #         self.upload_tab.current_index = (self.upload_tab.current_index + 1) % len(self.upload_tab.uploaded_files)  # Wrap around
+    #         self.show_image()
+    #     else:
+    #         print("No images uploaded")
+    #         self.image_label.clear() 
+    #         self.text_label.setText("")  
 
 
-    def show_next_image_with_points(self):
-        """Display the next image in the list."""
-        if len(self.upload_tab.uploaded_files) > 0:
-            self.show_next_image()
-            self.image_label._draw_points(self.upload_tab.labels[self.upload_tab.current_index])
-        else:
-            print("No images uploaded")
-            self.image_label.clear() 
-            self.text_label.setText("")  
+    # def show_next_mask(self):
+    #     """Display the next mask in the list."""
+    #     if len(self.upload_tab.metadata_labels) > 0:
+    #         self.upload_tab.current_index = (self.upload_tab.current_index + 1) % len(self.upload_tab.metadata_labels)  # Wrap around
+    #         self.show_mask()
+    #     else:
+    #         print("No masks generated")
+    #         self.image_label.clear() 
+    #         self.text_label.setText("")
 
-    def show_image_indexed(self, index):
-        """Display the image at the given index."""
-        self.upload_tab.current_index = index
-        self.show_image()
+    # def show_image_with_points(self):
+    #     """Display the next image in the list."""
+    #     if len(self.upload_tab.uploaded_files) > 0:
+    #         self.show_image()
+    #         self.image_label._draw_points(self.upload_tab.labels[self.upload_tab.current_index])
+    #     else:
+    #         print("No images uploaded")
+    #         self.image_label.clear() 
+    #         self.text_label.setText("")
+
+
+    # def show_next_image_with_points(self):
+    #     """Display the next image in the list."""
+    #     if len(self.upload_tab.uploaded_files) > 0:
+    #         self.show_next_image()
+    #         self.image_label._draw_points(self.upload_tab.labels[self.upload_tab.current_index])
+    #     else:
+    #         print("No images uploaded")
+    #         self.image_label.clear() 
+    #         self.text_label.setText("")  
+
+    # def show_image_indexed(self, index):
+    #     """Display the image at the given index."""
+    #     self.upload_tab.current_index = index
+    #     self.show_image()
 
 class UploadTab(QWidget):
     def __init__(self, db):
@@ -180,17 +223,20 @@ class UploadTab(QWidget):
         
         # File list
         self.file_list = QListWidget()
+        self.file_list.addItems([os.path.basename(file) for file in self.db.load_images()])
         
         # File selection
         self.upload_btn = QPushButton("Upload Images")
         self.upload_label_btn = QPushButton("Upload Labels")
         self.next_btn = QPushButton("Next Image")
+        self.load_btn = QPushButton("Display Data")
 
         self.upload_btn.clicked.connect(self.upload_images)
         self.upload_label_btn.clicked.connect(self.upload_labels)
-        self.next_btn.clicked.connect(self.image_display.show_next_image)
+        self.load_btn.clicked.connect(self.image_display.show_item)
+        self.next_btn.clicked.connect(lambda: self.image_display.show_item(next_item=True))
 
-        self.file_list.itemClicked.connect(lambda item: self.image_display.show_image_indexed(index=self.file_list.row(item)))
+        self.file_list.itemClicked.connect(lambda item: self.image_display.show_item(index=self.file_list.row(item)))
         
         # Metadata input fields
         metadata_layout = QGridLayout()
@@ -200,18 +246,22 @@ class UploadTab(QWidget):
         self.image_id = QLineEdit()
         metadata_layout.addWidget(QLabel("Project:"), 0, 0)
         metadata_layout.addWidget(self.project, 0, 1)
-        metadata_layout.addWidget(QLabel("Cohort:"), 1, 0)
-        metadata_layout.addWidget(self.cohort, 1, 1)
-        metadata_layout.addWidget(QLabel("Brain Region:"), 2, 0)
-        metadata_layout.addWidget(self.brain_region, 2, 1)
-        metadata_layout.addWidget(QLabel("Image ID:"), 3, 0)
-        metadata_layout.addWidget(self.image_id, 3, 1)
+        metadata_layout.addWidget(QLabel("Cohort:"), 0, 2)
+        metadata_layout.addWidget(self.cohort, 0, 3)
+        metadata_layout.addWidget(QLabel("Brain Region:"), 1, 0)
+        metadata_layout.addWidget(self.brain_region, 1, 1)
+        metadata_layout.addWidget(QLabel("Image ID:"), 1, 2)
+        metadata_layout.addWidget(self.image_id, 1, 3)
+
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.upload_btn)
+        button_layout.addWidget(self.upload_label_btn)
+        button_layout.addWidget(self.next_btn)
+        button_layout.addWidget(self.load_btn)
         
        
         
-        layout.addWidget(self.upload_btn)
-        layout.addWidget(self.upload_label_btn)
-        layout.addWidget(self.next_btn)
+        layout.addLayout(button_layout)
         layout.addLayout(metadata_layout)
         layout.addWidget(self.image_display)
         layout.addWidget(self.file_list)
@@ -279,8 +329,8 @@ class UploadTab(QWidget):
                 "labels": []
                 })
 
-        self.file_list.addItems([os.path.basename(file) for file in self.uploaded_files])
-        self.image_display.show_image()
+        self.file_list.addItems([os.path.basename(file["file_path"]) for file in self.db.load_images()])
+        self.image_display.show_item()
 
     def upload_labels(self):
         self.uploaded_labels, _ = QFileDialog.getOpenFileNames(self, "Select Labels", "", "Labels (*.png *.txt *.csv *.xml)")
@@ -291,7 +341,7 @@ class UploadTab(QWidget):
         for label_file in labels:
             label_name = os.path.splitext(os.path.basename(label_file))[0]
             label_name = trim_underscores(label_name)
-            label_name = label_name + ".png"
+            label_name = "data" + "\\" + "data_images" + "\\" + label_name + ".png"
 
             image_data = Query()
             matched_image = self.db.image_table.get(image_data.file_path == label_name)
@@ -306,32 +356,30 @@ class UploadTab(QWidget):
                     label_data = parse_xml_label(label_file)
                 else:
                     print("Invalid label format")
-                    label_data = None
+                    label_data = []
 
                 if label_data:
                     self.db.image_table.update({"labels": label_data}, image_data.file_path == label_name)
-            
             else:
                 print(f"Image not found in database {label_name}")
                 continue
 
     def update(self):
-        pass
+        self.file_list.clear()
+        self.file_list.addItems([os.path.basename(file) for file in self.db.load_images()])
 
 
 class LabelingTab(QWidget):
     def __init__(self, db):
         super().__init__()
-        # Image display with cell marking
         self.db = db
         self.current_index = 0
         self.uploaded_files = []
         self.image_display = ImageDisplay(self)
-        self.data_file = 'image_metadata.json'
         layout = QVBoxLayout()
-        self.load_btn = QPushButton("Load Data")
+        self.load_btn = QPushButton("Display Data")
         self.next_btn = QPushButton("Next Image")
-        self.next_btn.clicked.connect(self.image_display.show_next_image_with_points)
+        self.next_btn.clicked.connect(lambda: self.image_display.show_item(next_item=True, points=True))
         self.load_btn.clicked.connect(self.load_data)
     
         
@@ -355,17 +403,10 @@ class LabelingTab(QWidget):
         self.setLayout(layout)
        
     def load_data(self):
-        #TODO: only load if no label present in metadata format
-        #TODO: make a check labels function for metadata labels
-
-        images = self.db.image_table.all()
-
-        self.uploaded_files = [image['file_path'] for image in images]
-        self.labels = [image['labels'] for image in images]
-        if self.uploaded_files:
-            self.image_display.show_image_with_points()
-        else:
-            print("No images found")
+        # self.uploaded_files, self.labels = self.db.load_images_and_labels()
+        self.image_display.show_item(points=True)
+        
+        
 
     def add_cell_marker(self, pos):
         # print("adding cell")
@@ -383,7 +424,8 @@ class LabelingTab(QWidget):
         image_data = self.db.image_table.get(image_query.file_path == file_path)
         if image_data:
             self.db.image_table.update({"labels": image_data.get("labels", []) + [(adjusted_pos.x(), adjusted_pos.y())]}, image_query.file_path == file_path)
-            self.image_display.show_image_with_points()
+            self.image_display.show_item(points=True)
+            # self.image_display.show_image_with_points()
 
     def remove_cell_marker(self, pos, tolerance=5):
         adjusted_pos = self.image_display.image_label.adjust_pos(pos)
@@ -401,11 +443,13 @@ class LabelingTab(QWidget):
         if image_data:
             # Update labels: append the new position
             self.db.image_table.update({"labels": [label for label in image_data.get("labels", []) if not (abs(label[0] - position[0]) < tolerance and abs(label[1] - position[1]) < tolerance)]}, image_query.file_path == file_path)
-            self.image_display.show_image_with_points()
+            self.image_display.show_item(points=True)
+            # self.image_display.show_image_with_points()
 
 class GenerateLabelsTab(QWidget):
     def __init__(self, db):
         super().__init__()
+        self.db = db
         layout = QVBoxLayout()
         image_layout = QHBoxLayout()
         config_layout = QHBoxLayout()
@@ -422,8 +466,8 @@ class GenerateLabelsTab(QWidget):
         self.next_btn = QPushButton("Next Image")
         self.display_btn = QPushButton("Display Labels")
         self.generate_btn.clicked.connect(self.generate_labels)
-        self.next_btn.clicked.connect(self.left_image.show_next_image)
-        self.next_btn.clicked.connect(self.right_image.show_mask)
+        self.next_btn.clicked.connect(lambda: self.left_image.show_item(next_item=True))
+        self.next_btn.clicked.connect(lambda: self.right_image.show_item(mask=True))
         self.display_btn.clicked.connect(self.display_labels)
 
         
@@ -446,27 +490,43 @@ class GenerateLabelsTab(QWidget):
         # print(self.labels)
         # print(len(result))
 
-        self.data = get_data()
-        result = [(image["file_path"], image["labels"]) for image in self.data if "file_path" in image]
-        self.uploaded_files, self.labels = zip(*result)
+        query = Query()
 
-        for i, (uploaded_file, label) in enumerate(tqdm(zip(self.uploaded_files, self.labels), total=len(self.uploaded_files), desc="Generating Labels", unit="image")):
-            # print(i)
-            if label is None:
-                print("No labels provided for image", uploaded_file)
+        data_to_mask = self.db.image_table.search(~query["mask_data"].exists())
+
+        # self.uploaded_files = self.db.load_images()
+        # self.labels = self.db.load_labels()
+
+        for item in tqdm(data_to_mask, desc="Generating Labels", unit="image"):
+            label = item.get("labels", [])
+            file_path = item.get("file_path", "")
+
+            if not label:
+                print("No labels provided for image", file_path)
                 continue
 
-            # add TQDM progress bar before images are shown
-            label_data = self.generate_label(uploaded_file, label)
-            for image in self.data:
-                if image["file_path"] == uploaded_file:
-                    image["mask_data"] = label_data
-                    break
+            mask_data = self.generate_label(file_path, label)
+            self.db.image_table.update({"mask_data": mask_data}, query.file_path == file_path)
 
-            # save somewhere somehow in relation to uploaded_file
-            set_data(metadata=self.data)
-        # display image label pairs with button to see next pair
+
         self.display_labels()
+        # for i, (uploaded_file, label) in enumerate(tqdm(zip(self.uploaded_files, self.labels), total=len(self.uploaded_files), desc="Generating Labels", unit="image")):
+        #     # print(i)
+        #     if label is None:
+        #         print("No labels provided for image", uploaded_file)
+        #         continue
+
+        #     # add TQDM progress bar before images are shown
+        #     label_data = self.generate_label(uploaded_file, label)
+        #     for image in self.data:
+        #         if image["file_path"] == uploaded_file:
+        #             image["mask_data"] = label_data
+        #             break
+
+        #     # save somewhere somehow in relation to uploaded_file
+        #     set_data(metadata=self.data)
+        # display image label pairs with button to see next pair
+        
         # allow user editing of generated labels
 
     def generate_label(self, image_path, labels):
@@ -475,8 +535,8 @@ class GenerateLabelsTab(QWidget):
         final_image, num_cells, instances_list = composite_mask(masks)
 
         final_image_path = save_label(final_image=final_image, image_path=image_path)
-        print(scores)
-        print(scores[0])
+        # print(scores)
+        # print(scores[0])
         # save final_image to labeled_data folder
         # print("final_image_path", final_image_path)
         # print("scores", scores_numpy)
@@ -490,15 +550,8 @@ class GenerateLabelsTab(QWidget):
         }
 
     def display_labels(self):
-        if not self.data:
-            self.data = get_data()
-        self.metadata_labels = [image["mask_data"]["mask_path"] for image in self.data if "file_path" in image and "mask_data" in image]
-        self.uploaded_files = [image["file_path"] for image in self.data if "file_path" in image]
-        if len(self.metadata_labels) > 0:
-            self.left_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
-            self.right_image.display_image(self.metadata_labels[self.current_index], self.current_index + 1, len(self.metadata_labels))
-        else:
-            print("No masks generated")
+        self.left_image.show_item()
+        self.right_image.show_item(mask=True)
 
     def update(self):
         pass
@@ -507,6 +560,7 @@ class GenerateLabelsTab(QWidget):
 class DatasetTab(QWidget):
     def __init__(self, db):
         super().__init__()
+        self.db = db
         layout = QVBoxLayout()
         
         # Dataset configuration
@@ -553,22 +607,16 @@ class DatasetTab(QWidget):
         3. Create train/test split
         4. Save dataset configuration
         """
-        data = get_data()
+        uploaded_images = self.db.load_images()
+        uploaded_masks = self.db.load_masks()
+        uploaded_labels = self.db.load_labels()
 
-        uploaded_images, uploaded_masks, uploaded_labels = zip(*[
-            (
-                image["file_path"], 
-                image["mask_data"]["mask_path"], 
-                [instance["segmentation"] for instance in image["mask_data"]["instances_list"]]
-                ) 
-                for image in data if "file_path" in image and "mask_data" in image
-                ])
         dataset_parent_dir = os.path.join('data', 'datasets')
         os.makedirs(dataset_parent_dir, exist_ok=True)
 
-        if not os.path.exists(os.path.join(dataset_parent_dir, 'dataset_metadata.json')):
-            with open(os.path.join(dataset_parent_dir, 'dataset_metadata.json'), 'w') as f:
-                json.dump({}, f)
+        # if not os.path.exists(os.path.join(dataset_parent_dir, 'dataset_metadata.json')):
+        #     with open(os.path.join(dataset_parent_dir, 'dataset_metadata.json'), 'w') as f:
+        #         json.dump({}, f)
 
         dataset_dir = 'dataset'
         counter = 0
@@ -577,7 +625,7 @@ class DatasetTab(QWidget):
             counter += 1
             self.dataset_path = os.path.abspath(os.path.join(dataset_parent_dir, f"{dataset_dir}_{counter}"))
 
-        dataset_metadata = get_data(file_path=os.path.join(dataset_parent_dir, 'dataset_metadata.json'))
+        # dataset_metadata = get_data(file_path=os.path.join(dataset_parent_dir, 'dataset_metadata.json'))
 
         if not self.dataset_name.text().strip():
             self.dataset_name.setText(f"{self.dataset_path}")
@@ -585,9 +633,13 @@ class DatasetTab(QWidget):
         if self.dataset_name.text().strip() in dataset_metadata.keys():
             print("Dataset name already exists, please choose a different name")
             return
-        dataset_metadata[self.dataset_name.text().strip()] = self.dataset_path
 
-        set_data(file_path=os.path.join(dataset_parent_dir, 'dataset_metadata.json'), metadata=dataset_metadata)
+        self.db.dataset_table.insert({
+            "dataset_name": self.dataset_name.text().strip(),
+            "dataset_path": self.dataset_path
+        })
+
+        # set_data(file_path=os.path.join(dataset_parent_dir, 'dataset_metadata.json'), metadata=dataset_metadata)
 
         os.makedirs(self.dataset_path, exist_ok=False)
         os.makedirs(os.path.join(self.dataset_path, "images"), exist_ok=False)
@@ -669,6 +721,7 @@ class DatasetTab(QWidget):
 class TrainingTab(QWidget):
     def __init__(self, db):
         super().__init__()
+        self.db = db
         layout = QVBoxLayout()
         
         # Model selection
@@ -810,29 +863,24 @@ class TrainingTab(QWidget):
             print("Model name required")
             return
 
-        datasets_metadata = get_data(file_path='data/datasets/dataset_metadata.json')
-
-        dataset = next((v for k, v in datasets_metadata.items() if k == self.dataset.currentText()), None)
-
-        os.makedirs("models", exist_ok=True)
-
-        if not os.path.exists(os.path.join('models', 'model_metadata.json')):
-            with open(os.path.join('models', 'model_metadata.json'), 'w') as f:
-                json.dump({"DeepNeuronSegBaseModel": "yolov8n-largedata-70-best.pt"}, f)
-
-        model_metadata = get_data(file_path=os.path.join('models', 'model_metadata.json'))
-
-        if self.model_name.text().strip() in model_metadata.keys():
+        model_name_exists = self.db.model_table.contains(Query()[field_name] == value_to_check)
+        if model_name_exists:
             print("Model name already exists, please choose a different name")
             return
-        model_metadata[self.model_name.text().strip()] = f'{dataset}/results/{self.model_name.text().strip()}'
+        else:
+            self.db.model_table.insert({
+                "model_name": self.model_name.text().strip(),
+                "model_path": f'{dataset}/results/{self.model_name.text().strip()}'
+            })
 
-        set_data(file_path=os.path.join('models', 'model_metadata.json'), metadata=model_metadata)
-        
+        dataset = self.db.dataset_table.get(Query().dataset_name == self.dataset.currentText())
+        dataset_path = dataset.get("dataset_path", "")
+
+
         if self.denoise.isChecked():
             print("Training denoising network")
 
-            dn_model = DenoiseModel(dataset_path='data/datasets/dataset_0', model_path='models/denoise_model.pth')
+            dn_model = DenoiseModel(dataset_path=dataset_path, model_path='models/denoise_model.pth')
             dn_model.unet_trainer(num_epochs=self.epochs.value(), batch_size=self.batch_size.value())
             dn_model.create_dn_shuffle()
 
@@ -844,8 +892,8 @@ class TrainingTab(QWidget):
             self.model = YOLO("models/yolov8n-seg.pt")
             self.model.train(
                 #TODO: if denoised use denoised data dir, recreate yaml (?)
-                data = os.path.abspath(f'{dataset}/data.yaml'),
-                project = f'{dataset}/results',
+                data = os.path.abspath(f'{dataset_path}/data.yaml'),
+                project = f'{dataset_path}/results',
                 name = self.model_name.text().strip(),
                 epochs = self.epochs.value(),
                 patience = 0,
@@ -853,29 +901,32 @@ class TrainingTab(QWidget):
                 imgsz = 1024
             )
     def update(self):
-        dataset_dict = get_data(file_path='data/datasets/dataset_metadata.json')
-        if dataset_dict is not None:
-            dataset_list = list(dataset_dict.keys())
-            self.dataset.clear()
-            self.dataset.addItems(dataset_list)
+        self.dataset.clear()
+        self.dataset.addItems(map(lambda dataset: dataset['dataset_name'], self.db.load_datasets()))
 
 class EvaluationTab(QWidget):
     def __init__(self, db):
         super().__init__()
+        self.db = db
         layout = QVBoxLayout()
         metrics_layout = QGridLayout()
         
         # Model selection
         self.model_selector = QComboBox()
-        model_dict = get_data(file_path='models/model_metadata.json')
-        if model_dict:
-            model_list = list(model_dict.keys())
-            self.model_selector.addItems(model_list)
+        # model_dict = get_data(file_path='models/model_metadata.json')
+        # if model_dict:
+        #     model_list = list(model_dict.keys())
+        #     self.model_selector.addItems(model_list)
+
+        self.model_selector.addItems(map(lambda model: model['model_name'], self.db.load_models()))
+
         self.dataset_selector = QComboBox()
-        dataset_dict = get_data(file_path='data/datasets/dataset_metadata.json')
-        if dataset_dict:
-            dataset_list = list(dataset_dict.keys())
-            self.dataset_selector.addItems(dataset_list)
+        # dataset_dict = get_data(file_path='data/datasets/dataset_metadata.json')
+        # if dataset_dict:
+        #     dataset_list = list(dataset_dict.keys())
+        #     self.dataset_selector.addItems(dataset_list)
+
+        self.dataset_selector.addItems(map(lambda dataset: dataset['dataset_name'], self.db.load_datasets()))
         
         # Visualization area (placeholder for distribution plots)
         self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
@@ -981,13 +1032,11 @@ class EvaluationTab(QWidget):
     def calculate_metrics(self):
         # TODO: abstract
         self.model_name = self.model_selector.currentText()
-        model_file = get_data('models/model_metadata.json')
-        self.model_path = model_file[self.model_name]
+        self.model_path = self.db.model_table.get(Query().model_name == model_name).get('model_path')
         print(self.model_path)
         # self.model_path = '/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt'
         self.dataset_name = self.dataset_selector.currentText()
-        dataset_file = get_data('data/datasets/dataset_metadata.json')
-        self.dataset_path = dataset_file[self.dataset_name]
+        self.dataset_path = self.db.dataset_table.get(Query().dataset_name == dataset_name).get('dataset_path')
         print(self.dataset_path)
         # dataset_path = '/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/data/datasets/dataset_0/images'
         # dataset_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/dataset/COCO_train_X'
@@ -1039,39 +1088,26 @@ class EvaluationTab(QWidget):
         self.overlap_ratio_std_label.setText(f"Overlap Ratio Variability: {metrics_mean_std['overlap_ratio_std']:.2f}")
 
     def update(self):
-        os.makedirs("models", exist_ok=True)
+        self.model_selector.clear()
+        self.model_selector.addItems(map(lambda model: model['model_name'], self.db.load_models()))
 
-        if not os.path.exists(os.path.join('models', 'model_metadata.json')):
-            with open(os.path.join('models', 'model_metadata.json'), 'w') as f:
-                json.dump({"DeepNeuronSegBaseModel": os.path.abspath("models/yolov8n-largedata-70-best.pt")}, f)
+        self.dataset_selector.clear()
+        self.dataset_selector.addItems(map(lambda dataset: dataset['dataset_name'], self.db.load_datasets()))
 
-        model_dict = get_data(file_path='models/model_metadata.json')
-        if model_dict is not None:
-            model_list = list(model_dict.keys())
-            self.model_selector.clear()
-            self.model_selector.addItems(model_list)
-
-        dataset_dict = get_data(file_path='data/datasets/dataset_metadata.json')
-        if dataset_dict is not None:
-            print('in here')
-            dataset_list = list(dataset_dict.keys())
-            self.dataset_selector.clear()
-            self.dataset_selector.addItems(dataset_list)
+       
 
 
 class AnalysisTab(QWidget):
     def __init__(self, db):
         super().__init__()
+        self.db = db
         layout = QVBoxLayout()
         metrics_layout = QGridLayout()
         self.uploaded_files = []
         
         # Model selection
         self.model_selector = QComboBox()
-        model_dict = get_data(file_path='models/model_metadata.json')
-        if model_dict:
-            model_list = list(model_dict.keys())
-            self.model_selector.addItems(model_list)
+        self.model_selector.addItems(map(lambda model: model['model_name'], self.db.load_models()))
         
         # Image upload/selection
         self.select_btn = QPushButton("Select Images")
@@ -1227,8 +1263,7 @@ class AnalysisTab(QWidget):
     def inference_images(self):
         from ultralytics import YOLO
         self.model_name = self.model_selector.currentText()
-        model_file = get_data('models/model_metadata.json')
-        self.model_path = model_file[self.model_name]
+        self.model_path = self.db.model_table.get(Query().model_name == model_name).get('model_path')
         self.model = YOLO(self.model_path)
         self.inference_dir = os.path.join('data/datasets/dataset_0/results/testModel', 'inference')
         os.makedirs(self.inference_dir, exist_ok=True)
@@ -1322,7 +1357,7 @@ class AnalysisTab(QWidget):
         # Adjust layout and render
         self.canvas.figure.tight_layout()
         self.canvas.draw()
-        print("plotted")
+        # print("plotted")
 
         self.update_metrics_labels()
 
@@ -1404,17 +1439,15 @@ class AnalysisTab(QWidget):
         self.analysis_overlap_ratio_std_label.setText(f"Analysis Overlap Ratio Variability: {self.analysis_metrics.dataset_metrics_mean_std['overlap_ratio_std']:.2f}")
 
     def update(self):
-        os.makedirs("models", exist_ok=True)
-
-        if not os.path.exists(os.path.join('models', 'model_metadata.json')):
-            with open(os.path.join('models', 'model_metadata.json'), 'w') as f:
-                json.dump({"DeepNeuronSegBaseModel": os.path.abspath("models/yolov8n-largedata-70-best.pt")}, f)
+        pass
 
 
 class OutlierTab(QWidget):
     def __init__(self, db):
         super().__init__()
+        self.db = db
         layout = QVBoxLayout()
+        
         
         # Image display
         self.image_display = ImageDisplay(self)
@@ -1451,16 +1484,14 @@ class OutlierTab(QWidget):
 class ModelZooTab(QWidget):
     def __init__(self, db):
         super().__init__()
+        self.db = db
         layout = QVBoxLayout()
         image_layout = QHBoxLayout()
         
         self.current_index = 0
         # Model selection
         self.model_selector = QComboBox()
-        model_dict = get_data(file_path='models/model_metadata.json')
-        if model_dict:
-            model_list = list(model_dict.keys())
-            self.model_selector.addItems(model_list)
+        self.model_selector.addItems(map(lambda model: model['model_name'], self.db.load_models()))
 
         # image display
         self.left_image = ImageDisplay(self)
@@ -1494,8 +1525,7 @@ class ModelZooTab(QWidget):
         self.select_btn.clicked.connect(self.select_images)
         self.inference_btn.clicked.connect(self.inference_images)
         self.save_btn.clicked.connect(self.save_inferences)
-        self.next_btn.clicked.connect(self.left_image.show_next_image)
-        self.next_btn.clicked.connect(self.show_pred)
+        self.next_btn.clicked.connect(self.display_images)
         
     def select_images(self):
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
@@ -1503,29 +1533,24 @@ class ModelZooTab(QWidget):
     def inference_images(self):
         from ultralytics import YOLO
         self.model_name = self.model_selector.currentText()
-        model_file = get_data('models/model_metadata.json')
-        self.model_path = model_file[self.model_name]
+        self.model_path = self.db.model_table.get(Query().model_name == model_name).get('model_path')
         self.model = YOLO(self.model_path)
-        self.inference_dir = os.path.join('data/datasets/dataset_0/results/testModel', 'inference')
+        self.inference_dir = os.path.join('data', 'data_inference')
         os.makedirs(self.inference_dir, exist_ok=True)
         if not self.uploaded_files:
             print("No images selected")
             return  
         self.inference_result = self.model.predict(self.uploaded_files, conf=0.3, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
 
-        #TODO: display original and inference image
-
-        if True:
-            self.display_images()
-
-        if False:
-            self.save_inferences()
+        self.display_images()
 
     def display_images(self):
         if len(self.inference_result) > 0 and len(self.uploaded_files) > 0:
             
-            self.left_image.display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
-            self.show_pred()
+            self.left_image._display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
+            self._show_pred()
+
+            self.current_index = (self.current_index + 1) % len(self.uploaded_files)
             
 
     def save_inferences(self):
@@ -1542,20 +1567,16 @@ class ModelZooTab(QWidget):
                 print(save_path)
                 mask_image.save(save_path)
 
-    def show_pred(self):
+    def _show_pred(self):
         result = self.inference_result[self.current_index]
         mask_image = result.plot(labels=False, conf=False, boxes=False)
         mask_image = Image.fromarray(mask_image)
         temp_image_path = os.path.join(tempfile.gettempdir(), "temp_mask_image.png")
         mask_image.save(temp_image_path, format='PNG')
-        self.right_image.display_image(temp_image_path, self.current_index + 1, len(self.inference_result))
+        self.right_image._display_image(temp_image_path, self.current_index + 1, len(self.inference_result))
 
     def update(self):
-        os.makedirs("models", exist_ok=True)
-
-        if not os.path.exists(os.path.join('models', 'model_metadata.json')):
-            with open(os.path.join('models', 'model_metadata.json'), 'w') as f:
-                json.dump({"DeepNeuronSegBaseModel": os.path.abspath("models/yolov8n-largedata-70-best.pt")}, f)
+        pass
 
 
 class DataManager:
@@ -1564,6 +1585,44 @@ class DataManager:
         self.image_table = self.db.table('images')
         self.dataset_table = self.db.table('datasets')
         self.model_table = self.db.table('models')
+
+        self.model_table.insert({
+            "model_name": "DeepNeuronSegBaseModel",
+            "model_path": os.path.abspath("models/yolov8n-largedata-70-best.pt")
+        })
+
+    def load_images(self):
+        images = self.image_table.all()
+
+        uploaded_files = [image['file_path'] for image in images if 'labels' in image and 'file_path' in image]
+        if not uploaded_files:
+            print("No images found")
+        else:
+            return uploaded_files
+
+    def load_labels(self):
+        images = self.image_table.all()
+
+        labels = [image['labels'] for image in images if 'labels' in image]
+        if not labels:
+            print("No labels found")
+        else:
+            return labels
+
+    def load_masks(self):
+        items = self.image_table.all()
+
+        masks = [item['mask_data']['mask_path'] for item in items if 'mask_data' in item]
+        if not masks:
+            print("No masks found")
+        else:
+            return masks
+
+    def load_datasets(self):
+        return self.dataset_table.all()
+
+    def load_models(self):
+        return self.model_table.all()
 
 
 
