@@ -1309,6 +1309,7 @@ class AnalysisTab(QWidget):
         self.canvas.figure.clf()
         ax1, ax2 = self.canvas.figure.subplots(1, 2)
 
+        #TODO: add evaluation tab data to shared data to reference here without passing instance of evaluation tab here
         # Sort by num_detections and apply the same order to confidence_mean
         sorted_indices = sorted(range(len(self.evaluation_tab.metrics.dataset_metrics["num_detections"])), key=lambda i: self.evaluation_tab.metrics.dataset_metrics["num_detections"][i])
         
