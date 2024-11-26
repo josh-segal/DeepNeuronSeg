@@ -223,8 +223,8 @@ class UploadTab(QWidget):
         
         # File list
         self.file_list = QListWidget()
-        self.file_list.addItems([os.path.basename(file) for file in self.db.load_images()])
-        
+        items = self.db.load_images()
+        self.file_list.addItems([os.path.basename(file) for file in items])
         # File selection
         self.upload_btn = QPushButton("Upload Images")
         self.upload_label_btn = QPushButton("Upload Labels")
@@ -328,8 +328,9 @@ class UploadTab(QWidget):
                 "image_id": self.image_id.text() if self.image_id.text() else len(self.db.image_table),
                 "labels": []
                 })
-
-        self.file_list.addItems([os.path.basename(file["file_path"]) for file in self.db.load_images()])
+        items = self.db.load_images()
+        self.file_list.clear()
+        self.file_list.addItems([os.path.basename(file) for file in items])
         self.image_display.show_item()
 
     def upload_labels(self):
@@ -366,7 +367,8 @@ class UploadTab(QWidget):
 
     def update(self):
         self.file_list.clear()
-        self.file_list.addItems([os.path.basename(file) for file in self.db.load_images()])
+        items = self.db.load_images()
+        self.file_list.addItems([os.path.basename(file) for file in items])
 
 
 class LabelingTab(QWidget):
@@ -589,6 +591,8 @@ class DatasetTab(QWidget):
         # Image selection
         self.image_list = QListWidget()
         self.image_list.setSelectionMode(QListWidget.MultiSelection)
+        items = self.db.load_images()
+        self.image_list.addItems([os.path.basename(file) for file in items])
         
         # Creation button
         self.create_btn = QPushButton("Create Dataset")
@@ -607,9 +611,19 @@ class DatasetTab(QWidget):
         3. Create train/test split
         4. Save dataset configuration
         """
-        uploaded_images = self.db.load_images()
-        uploaded_masks = self.db.load_masks()
-        uploaded_labels = self.db.load_labels()
+        selected_images = [os.path.join("data", "data_images", item.text()) for item in  self.image_list.selectedItems()]
+        print(selected_images)
+        selected_masks = [
+            record["mask_data"]["mask_path"]
+            for record in self.db.image_table.search(Query().file_path.one_of(selected_images))
+            if "mask_data" in record
+        ]
+
+        selected_labels = [
+            record["labels"]
+            for record in self.db.image_table.search(Query().file_path.one_of(selected_images))
+            if "labels" in record
+        ]   
 
         dataset_parent_dir = os.path.join('data', 'datasets')
         os.makedirs(dataset_parent_dir, exist_ok=True)
@@ -630,7 +644,7 @@ class DatasetTab(QWidget):
         if not self.dataset_name.text().strip():
             self.dataset_name.setText(f"{self.dataset_path}")
             print("Dataset name not provided, using default")
-        if self.dataset_name.text().strip() in dataset_metadata.keys():
+        if self.db.dataset_table.get(Query().dataset_name == self.dataset_name.text().strip()):
             print("Dataset name already exists, please choose a different name")
             return
 
@@ -646,7 +660,7 @@ class DatasetTab(QWidget):
         os.makedirs(os.path.join(self.dataset_path, "masks"), exist_ok=False)
         os.makedirs(os.path.join(self.dataset_path, "labels"), exist_ok=False)
 
-        for image, mask, labels in zip(uploaded_images, uploaded_masks, uploaded_labels):
+        for image, mask, labels in zip(selected_images, selected_masks, selected_labels):
             # print(labels,"\n", "\n")
             image_name = os.path.basename(image)
             mask_name = os.path.basename(mask)
@@ -715,8 +729,9 @@ class DatasetTab(QWidget):
             shutil.copy(label, os.path.join(self.dataset_path, "val", "labels", os.path.basename(label)))
 
     def update(self):
-        pass
-
+        self.image_list.clear()
+        items = self.db.load_images()
+        self.image_list.addItems([os.path.basename(file) for file in items])
 
 class TrainingTab(QWidget):
     def __init__(self, db):
@@ -732,11 +747,7 @@ class TrainingTab(QWidget):
         # Training parameters
         params_layout = QGridLayout()
         self.dataset = QComboBox()
-
-        dataset_dict = get_data(file_path='data/datasets/dataset_metadata.json')
-        if dataset_dict:
-            dataset_list = list(dataset_dict.keys())
-            self.dataset.addItems(dataset_list)
+        self.dataset.addItems(map(lambda dataset: dataset['dataset_name'], self.db.load_datasets()))
 
         self.epochs = QSpinBox()
         self.epochs.setRange(1, 1000)
@@ -1586,17 +1597,19 @@ class DataManager:
         self.dataset_table = self.db.table('datasets')
         self.model_table = self.db.table('models')
 
-        self.model_table.insert({
-            "model_name": "DeepNeuronSegBaseModel",
-            "model_path": os.path.abspath("models/yolov8n-largedata-70-best.pt")
-        })
+        if not self.model_table.search(Query()["model_name"] == "DeepNeuronSegBaseModel"):
+            self.model_table.insert({
+                "model_name": "DeepNeuronSegBaseModel",
+                "model_path": os.path.abspath("models/yolov8n-largedata-70-best.pt")
+            })
 
     def load_images(self):
         images = self.image_table.all()
 
-        uploaded_files = [image['file_path'] for image in images if 'labels' in image and 'file_path' in image]
+        uploaded_files = [image['file_path'] for image in images if 'file_path' in image]
         if not uploaded_files:
             print("No images found")
+            return []
         else:
             return uploaded_files
 
@@ -1606,6 +1619,7 @@ class DataManager:
         labels = [image['labels'] for image in images if 'labels' in image]
         if not labels:
             print("No labels found")
+            return []
         else:
             return labels
 
@@ -1615,6 +1629,7 @@ class DataManager:
         masks = [item['mask_data']['mask_path'] for item in items if 'mask_data' in item]
         if not masks:
             print("No masks found")
+            return []
         else:
             return masks
 
