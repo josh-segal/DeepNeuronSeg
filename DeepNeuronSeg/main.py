@@ -105,7 +105,7 @@ class ImageDisplay(QWidget):
                 item = temp_image_path
         return item
 
-    def show_item(self, mask=False, points=False, next_item=False, index=False):
+    def show_item(self, mask=False, points=False, next_item=False, index=None):
         if mask:
             items = self.upload_tab.db.load_masks()
         else:
@@ -114,8 +114,9 @@ class ImageDisplay(QWidget):
         if next_item:
             self.upload_tab.current_index = (self.upload_tab.current_index + 1) % len(items)
 
-        if index:
+        if index is not None:
             self.upload_tab.current_index = index
+            print(self.upload_tab.current_index)
 
         if items:
             if self.upload_tab.current_index < len(items) and len(items) > 0:
