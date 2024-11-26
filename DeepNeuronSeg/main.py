@@ -922,6 +922,7 @@ class EvaluationTab(QWidget):
         self.db = db
         layout = QVBoxLayout()
         metrics_layout = QGridLayout()
+        self.metrics = None
         
         # Model selection
         self.model_selector = QComboBox()
@@ -1023,16 +1024,12 @@ class EvaluationTab(QWidget):
 
         layout.addLayout(metrics_layout)
         self.setLayout(layout)
-        
-        """
-        INTEGRATION POINT:
-        1. Implement distribution plotting
-        2. Calculate and display statistics
-        3. Load and compare model predictions
-        """
 
     def download_data(self):
-        pass
+        if self.metrics is not None:
+            self.metrics.export_image_metrics_to_csv(filename=f'{self.dataset_name}_image_metrics.csv')
+        else:
+            print("No metrics to download, please calculate metrics first.")
     
         # check if metrics already calculated for model
         # load the dataset images
@@ -1044,11 +1041,11 @@ class EvaluationTab(QWidget):
     def calculate_metrics(self):
         # TODO: abstract
         self.model_name = self.model_selector.currentText()
-        self.model_path = self.db.model_table.get(Query().model_name == model_name).get('model_path')
+        self.model_path = self.db.model_table.get(Query().model_name == self.model_name).get('model_path')
         print(self.model_path)
         # self.model_path = '/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt'
         self.dataset_name = self.dataset_selector.currentText()
-        self.dataset_path = self.db.dataset_table.get(Query().dataset_name == dataset_name).get('dataset_path')
+        self.dataset_path = self.db.dataset_table.get(Query().dataset_name == self.dataset_name).get('dataset_path')
         print(self.dataset_path)
         # dataset_path = '/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/data/datasets/dataset_0/images'
         # dataset_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/dataset/COCO_train_X'
@@ -1124,7 +1121,8 @@ class AnalysisTab(QWidget):
         # Image upload/selection
         self.select_btn = QPushButton("Select Images")
         self.inference_btn = QPushButton("Inference Images")
-        self.save_btn = QPushButton("Save Inferences")  
+        self.save_btn = QPushButton("Save Inferences")
+        self.download_btn = QPushButton("Download Data")  
 
         self.confidence_mean_mean_label = QLabel("Average Confidence Score: N/A")
         self.confidence_mean_mean_label.setToolTip("""
@@ -1229,6 +1227,7 @@ class AnalysisTab(QWidget):
         self.select_btn.clicked.connect(self.select_images)
         self.inference_btn.clicked.connect(self.inference_images)
         self.save_btn.clicked.connect(self.save_inferences)
+        self.download_btn.clicked.connect(self.download_data)
         
         layout.addWidget(QLabel("Trained Model:"))
         layout.addWidget(self.model_selector)
@@ -1275,7 +1274,7 @@ class AnalysisTab(QWidget):
     def inference_images(self):
         from ultralytics import YOLO
         self.model_name = self.model_selector.currentText()
-        self.model_path = self.db.model_table.get(Query().model_name == model_name).get('model_path')
+        self.model_path = self.db.model_table.get(Query().model_name == self.model_name).get('model_path')
         self.model = YOLO(self.model_path)
         self.inference_dir = os.path.join('data/datasets/dataset_0/results/testModel', 'inference')
         os.makedirs(self.inference_dir, exist_ok=True)
@@ -1298,6 +1297,13 @@ class AnalysisTab(QWidget):
                 mask_image = Image.fromarray(mask_image)
                 print(save_path)
                 mask_image.save(save_path)
+
+    def download_data(self):
+        if self.analysis_metrics is not None:
+            self.analysis_metrics.export_image_metrics_to_csv()
+        else:
+            print("No metrics to download, please calculate metrics first.")
+
 
     def plot_inferences_against_dataset(self):
         self.canvas.figure.clf()

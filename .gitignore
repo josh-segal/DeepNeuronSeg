@@ -6,3 +6,4 @@ models/
 data/
 venv/
 .DS_Store
+*.csv

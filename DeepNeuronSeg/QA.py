@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 from PIL import Image
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -34,7 +35,7 @@ class ImageDataset(Dataset):
         if self.transform:
             image = self.transform(image)
         
-        return image
+        return image, self.image_files[idx]
 
 
 class DetectionQAMetrics:
@@ -57,23 +58,25 @@ class DetectionQAMetrics:
         self.compute_metrics()
 
     def compute_metrics(self):
-        for images in tqdm(self.dataset, desc="Processing Images", unit=f"{self.batch_size} image(s)"):
+        for images, image_names in tqdm(self.dataset, desc="Processing Images", unit=f"{self.batch_size} image(s)"):
+            self.image_names = image_names
             # Get the predictions
             preds = self.model.predict(images, conf=0.3, max_det=1000, verbose=False)
             # print('got predictions from batch')
             # Format the predictions
             self.format_predictions(preds)
 
-        for img_conf, img_bboxes in  tqdm(zip(self.confidences, self.bbox_bounds), total=len(self.confidences), desc="Computing Metrics", unit="image"):
+        self.img_level_metrics = []
+        for img_conf, img_bboxes, img_name in tqdm(zip(self.confidences, self.bbox_bounds, image_names), total=len(self.confidences), desc="Computing Metrics", unit="image"):
             # print("computing metrics for image")
             img_metrics = self.compute_image_metrics(img_conf, img_bboxes)
 
-            self.dataset_metrics["confidence_mean"].append(img_metrics["confidence_mean"])
-            self.dataset_metrics["confidence_std"].append(img_metrics["confidence_std"])
-            self.dataset_metrics["num_detections"].append(img_metrics["num_detections"])
-            self.dataset_metrics["area_mean"].append(img_metrics["area_mean"])
-            self.dataset_metrics["area_std"].append(img_metrics["area_std"])
-            self.dataset_metrics["overlap_ratio"].append(img_metrics["overlap_ratio"])
+
+
+            self.img_level_metrics.append(img_metrics)
+
+            for key, value in img_metrics.items():
+                self.dataset_metrics[key].append(value)
             
         # print("computing dataset metrics")
         self.dataset_metrics_mean_std = {
@@ -91,6 +94,17 @@ class DetectionQAMetrics:
             'overlap_ratio_std': np.std(self.dataset_metrics['overlap_ratio'])
         }
         # print('done computing image and dataset metrics')
+
+    def export_image_metrics_to_csv(self, filename='inference_image_metrics.csv'):
+        if not self.img_level_metrics:
+            print("No metrics to export.")
+            return
+        
+        df = pd.DataFrame(self.img_level_metrics, index=self.image_names)
+        df = df.rename_axis("image_names", axis="index")
+        df.to_csv(filename)
+        
+        print(f"Metrics exported to {filename}")
 
     def format_predictions(self, predictions):
         for pred in predictions:
@@ -163,7 +177,7 @@ class DetectionQAMetrics:
         if total_area == 0:
             return 0
         else:
-            return sum(intersection_areas) / total_area
+            return float(sum(intersection_areas) / total_area)
 
     def compute_variance(self, analysis_metrics):
         """ Compute the variance of the computed metrics """
