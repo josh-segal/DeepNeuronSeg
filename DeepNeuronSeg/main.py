@@ -11,7 +11,6 @@ import matplotlib.lines as mlines
 import sys
 from dataclasses import dataclass
 from typing import List, Dict, Any
-import json
 import os
 import random
 import shutil
@@ -133,83 +132,6 @@ class ImageDisplay(QWidget):
             print("No images uploaded")
             self.image_label.clear()
             self.text_label.setText("No mask generated" if mask else "No images uploaded")
-            
-
-        
-
-        
-
-
-    # def show_image(self):
-    #     """Display the next image in the list."""
-    #     if len(self.upload_tab.uploaded_files) > 0:
-    #         if self.upload_tab.uploaded_files[self.upload_tab.current_index].lower().endswith('.tif'):
-    #             print("displaying tif")
-    #             with Image.open(self.upload_tab.uploaded_files[self.upload_tab.current_index]) as img:
-    #                 img.seek(self.upload_tab.selected_frame)
-    #                 frame_to_display = img.copy() #TODO: image must be converted to gray and converted to rgb first
-    #                 temp_image_path = os.path.join(tempfile.gettempdir(), "temp_image.png")
-    #                 frame_to_display.save(temp_image_path, format='PNG')
-    #                 print("temp image path", temp_image_path)
-    #                 self.display_image(temp_image_path, self.upload_tab.current_index + 1, len(self.upload_tab.uploaded_files))
-    #         else:
-    #             self.display_image(self.upload_tab.uploaded_files[self.upload_tab.current_index], self.upload_tab.current_index + 1, len(self.upload_tab.uploaded_files))
-    #     else:
-    #         print("No images uploaded")
-
-    # def show_mask(self):
-    #     """Display the next mask in the list."""
-    #     if len(self.upload_tab.metadata_labels) > 0:
-    #         self.display_image(self.upload_tab.metadata_labels[self.upload_tab.current_index], self.upload_tab.current_index + 1, len(self.upload_tab.metadata_labels))
-    #     else:
-    #         print("No masks generated")
-
-    # def show_next_image(self):
-    #     """Display the next image in the list."""
-    #     if len(self.upload_tab.uploaded_files) > 0:
-    #         self.upload_tab.current_index = (self.upload_tab.current_index + 1) % len(self.upload_tab.uploaded_files)  # Wrap around
-    #         self.show_image()
-    #     else:
-    #         print("No images uploaded")
-    #         self.image_label.clear() 
-    #         self.text_label.setText("")  
-
-
-    # def show_next_mask(self):
-    #     """Display the next mask in the list."""
-    #     if len(self.upload_tab.metadata_labels) > 0:
-    #         self.upload_tab.current_index = (self.upload_tab.current_index + 1) % len(self.upload_tab.metadata_labels)  # Wrap around
-    #         self.show_mask()
-    #     else:
-    #         print("No masks generated")
-    #         self.image_label.clear() 
-    #         self.text_label.setText("")
-
-    # def show_image_with_points(self):
-    #     """Display the next image in the list."""
-    #     if len(self.upload_tab.uploaded_files) > 0:
-    #         self.show_image()
-    #         self.image_label._draw_points(self.upload_tab.labels[self.upload_tab.current_index])
-    #     else:
-    #         print("No images uploaded")
-    #         self.image_label.clear() 
-    #         self.text_label.setText("")
-
-
-    # def show_next_image_with_points(self):
-    #     """Display the next image in the list."""
-    #     if len(self.upload_tab.uploaded_files) > 0:
-    #         self.show_next_image()
-    #         self.image_label._draw_points(self.upload_tab.labels[self.upload_tab.current_index])
-    #     else:
-    #         print("No images uploaded")
-    #         self.image_label.clear() 
-    #         self.text_label.setText("")  
-
-    # def show_image_indexed(self, index):
-    #     """Display the image at the given index."""
-    #     self.upload_tab.current_index = index
-    #     self.show_image()
 
 class UploadTab(QWidget):
     def __init__(self, db):
@@ -231,11 +153,13 @@ class UploadTab(QWidget):
         self.upload_label_btn = QPushButton("Upload Labels")
         self.next_btn = QPushButton("Next Image")
         self.load_btn = QPushButton("Display Data")
+        self.set_text_btn = QPushButton("Update Image Metadata")
 
         self.upload_btn.clicked.connect(self.upload_images)
         self.upload_label_btn.clicked.connect(self.upload_labels)
         self.load_btn.clicked.connect(self.image_display.show_item)
         self.next_btn.clicked.connect(lambda: self.image_display.show_item(next_item=True))
+        self.set_text_btn.clicked.connect(self.update_image_metadata)
 
         self.file_list.itemClicked.connect(lambda item: self.image_display.show_item(index=self.file_list.row(item)))
         
@@ -336,14 +260,15 @@ class UploadTab(QWidget):
 
     def upload_labels(self):
         self.uploaded_labels, _ = QFileDialog.getOpenFileNames(self, "Select Labels", "", "Labels (*.png *.txt *.csv *.xml)")
-        labels = self.parse_labels(self.uploaded_labels)
+        self.parse_labels(self.uploaded_labels)
 
     def parse_labels(self, labels):
 
         for label_file in labels:
             label_name = os.path.splitext(os.path.basename(label_file))[0]
             label_name = trim_underscores(label_name)
-            label_name = "data" + "\\" + "data_images" + "\\" + label_name + ".png"
+            label_name = label_name + ".png"
+            label_name = os.path.join('data', 'data_images', label_name)
 
             image_data = Query()
             matched_image = self.db.image_table.get(image_data.file_path == label_name)
@@ -365,6 +290,10 @@ class UploadTab(QWidget):
             else:
                 print(f"Image not found in database {label_name}")
                 continue
+
+    def update_image_metadata(self):
+        image_query = Query()
+        image_data = self.db.image_table.get(image_query.file_path == file_path)
 
     def update(self):
         self.file_list.clear()
@@ -409,8 +338,6 @@ class LabelingTab(QWidget):
         # self.uploaded_files, self.labels = self.db.load_images_and_labels()
         self.image_display.show_item(points=True)
         
-        
-
     def add_cell_marker(self, pos):
         # print("adding cell")
         adjusted_pos = self.image_display.image_label.adjust_pos(pos)
@@ -445,7 +372,7 @@ class LabelingTab(QWidget):
         image_data = self.db.image_table.get(image_query.file_path == file_path)
         if image_data:
             # Update labels: append the new position
-            self.db.image_table.update({"labels": [label for label in image_data.get("labels", []) if not (abs(label[0] - position[0]) < tolerance and abs(label[1] - position[1]) < tolerance)]}, image_query.file_path == file_path)
+            self.db.image_table.update({"labels": [label for label in image_data.get("labels", []) if not (abs(label[0] - adjusted_pos.x()) < tolerance and abs(label[1] - adjusted_pos.y()) < tolerance)]}, image_query.file_path == file_path)
             self.image_display.show_item(points=True)
             # self.image_display.show_image_with_points()
 
@@ -621,9 +548,9 @@ class DatasetTab(QWidget):
         ]
 
         selected_labels = [
-            record["labels"]
+            record["mask_data"]["instances_list"]
             for record in self.db.image_table.search(Query().file_path.one_of(selected_images))
-            if "labels" in record
+            if "mask_data" in record
         ]   
 
         dataset_parent_dir = os.path.join('data', 'datasets')
@@ -676,7 +603,10 @@ class DatasetTab(QWidget):
             with open(label_path, "w") as f:
                 for label in labels:
                     # print(label, "\n")
-                    normalized_label = [format(coord / 512 if i % 2 == 0 else coord / 512, ".6f") for i, coord in enumerate(label)]
+                    label_seg = label["segmentation"]
+                    normalized_label = [format(float(coord) / 512 if i % 2 == 0 else float(coord) / 512, ".6f") for i, coord in enumerate(label_seg)]
+                    # print("label", label_seg)
+                    # print("normalized label", normalized_label)
                     f.write(f"0 " + " ".join(normalized_label) + "\n")
 
         self.create_shuffle()
@@ -874,20 +804,19 @@ class TrainingTab(QWidget):
         if not self.model_name.text().strip():
             print("Model name required")
             return
+        
+        dataset = self.db.dataset_table.get(Query().dataset_name == self.dataset.currentText())
+        dataset_path = dataset["dataset_path"]
 
-        model_name_exists = self.db.model_table.contains(Query()[field_name] == value_to_check)
+        model_name_exists = self.db.model_table.contains(Query()["model_name"] == self.model_name.text().strip())
         if model_name_exists:
             print("Model name already exists, please choose a different name")
             return
         else:
             self.db.model_table.insert({
                 "model_name": self.model_name.text().strip(),
-                "model_path": f'{dataset}/results/{self.model_name.text().strip()}'
+                "model_path": f'{dataset_path}/results/{self.model_name.text().strip()}/weights/best.pt'
             })
-
-        dataset = self.db.dataset_table.get(Query().dataset_name == self.dataset.currentText())
-        dataset_path = dataset.get("dataset_path", "")
-
 
         if self.denoise.isChecked():
             print("Training denoising network")
@@ -1041,12 +970,13 @@ class EvaluationTab(QWidget):
     def calculate_metrics(self):
         # TODO: abstract
         self.model_name = self.model_selector.currentText()
-        self.model_path = self.db.model_table.get(Query().model_name == self.model_name).get('model_path')
-        print(self.model_path)
+        self.model_path = self.db.model_table.get(Query().model_name == self.model_name)
+        self.model_path = self.model_path["model_path"]
+        print(self.model_path, '<----------------')
         # self.model_path = '/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt'
         self.dataset_name = self.dataset_selector.currentText()
         self.dataset_path = self.db.dataset_table.get(Query().dataset_name == self.dataset_name).get('dataset_path')
-        print(self.dataset_path)
+        print(self.dataset_path, '<----------------')
         # dataset_path = '/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/data/datasets/dataset_0/images'
         # dataset_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/dataset/COCO_train_X'
         # dataset_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/train/images'
@@ -1056,7 +986,7 @@ class EvaluationTab(QWidget):
         self.plot_metrics(self.metrics.dataset_metrics, self.metrics.dataset_metrics_mean_std)
 
     def plot_metrics(self, metrics, metrics_mean_std):
-        # bins = len(metrics['confidence_mean'])**0.5
+        self.canvas.figure.clf()
         ax1, ax2 = self.canvas.figure.subplots(1, 2)
 
         # Sort by num_detections and apply the same order to confidence_mean
@@ -1552,7 +1482,7 @@ class ModelZooTab(QWidget):
     def inference_images(self):
         from ultralytics import YOLO
         self.model_name = self.model_selector.currentText()
-        self.model_path = self.db.model_table.get(Query().model_name == model_name).get('model_path')
+        self.model_path = self.db.model_table.get(Query().model_name == self.model_name).get('model_path')
         self.model = YOLO(self.model_path)
         self.inference_dir = os.path.join('data', 'data_inference')
         os.makedirs(self.inference_dir, exist_ok=True)
