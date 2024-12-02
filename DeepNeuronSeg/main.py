@@ -841,16 +841,30 @@ class TrainingTab(QWidget):
             dn_model.unet_trainer(num_epochs=self.epochs.value(), batch_size=self.batch_size.value())
             dn_dataset_path = dn_model.create_dn_shuffle()
 
-            dn_dataset_data = Query()
-            print(f'Denoising images in {dataset_path} \n and saving to {dn_dataset_data} \n referencing {dataset_data.dataset_path}')
-            self.db.dataset_table.update({"denoise_dataset_path": os.path.abspath(dn_dataset_data)}, dataset_data.dataset_path == os.path.abspath(dataset_path))
+            dataset_data = Query()
+            self.db.dataset_table.update(
+                {"denoise_dataset_path": os.path.abspath(dn_dataset_path)}, 
+                dataset_data.dataset_path == os.path.abspath(dataset_path)
+            )
 
-            dataset_path = dn_dataset_data.dataset_path
+            print(f"Denoising images in {os.path.abspath(dataset_path)} and saving to {os.path.abspath(dn_dataset_path)}")
+
+            dataset_path = os.path.abspath(dataset_path)
 
         elif self.denoise_base.isChecked():
             print("Using pretrained denoising network")
             dn_model = DenoiseModel(dataset_path=dataset_path, model_path='models/denoise_model.pth')
-            dataset_path = dn_model.create_dn_shuffle()
+            dn_dataset_path = dn_model.create_dn_shuffle()
+
+            dataset_data = Query()
+            self.db.dataset_table.update(
+                {"denoise_dataset_path": os.path.abspath(dn_dataset_path)}, 
+                dataset_data.dataset_path == os.path.abspath(dataset_path)
+            )
+
+            print(f"Denoising images in {os.path.abspath(dataset_path)} and saving to {os.path.abspath(dn_dataset_path)}")
+
+            dataset_path = os.path.abspath(dataset_path)
 
 
         if self.model_selector.currentText() == "YOLOv8n-seg":
