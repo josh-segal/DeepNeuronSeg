@@ -6,6 +6,7 @@ import yaml
 import pandas as pd
 import xml.etree.ElementTree as ET
 import cv2
+import shutil
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QSpinBox, QCheckBox, QPushButton
 
 def norm_coords(coordinates, max_x=None, max_y=None):
@@ -20,7 +21,7 @@ def parse_png_label(label_file):
     _, _, _, centroids = cv2.connectedComponentsWithStats(label_array)
 
     coordinates = [tuple(map(int, cent)) for cent in centroids[1:]]
-    print(coordinates)
+    # print(coordinates)
     return coordinates
 
 def parse_txt_label(label_file):
@@ -40,7 +41,7 @@ def parse_txt_label(label_file):
                 largest_y = y
 
             coordinates.append((x, y))
-        print(coordinates)  
+        # print(coordinates)  
 
     if largest_x > 512 and largest_y > 512:
         coordinates = norm_coords(coordinates, max_x=largest_x, max_y=largest_y)
@@ -70,7 +71,7 @@ def parse_csv_label(label_file):
     elif largest_y > 512:
         coordinates = norm_coords(coordinates, max_y=largest_y)
     
-    print(coordinates)
+    # print(coordinates)
     return coordinates
 
 def parse_xml_label(label_file):
@@ -98,7 +99,7 @@ def parse_xml_label(label_file):
     elif largest_y > 512:
         coordinates = norm_coords(coordinates, max_y=largest_y)
 
-    print(coordinates)  
+    # print(coordinates)  
     return coordinates
 
 def trim_underscores(file_name):
@@ -188,6 +189,16 @@ def create_yaml(output_yaml_path, train_images_dir, val_images_dir, nc=1):
     # Write the dictionary to a YAML file
     with open(output_yaml_path, 'w') as file:
         yaml.dump(yaml_data, file, default_flow_style=False)
+
+def copy_files(original_dir, target_dir, destination_dir):
+    os.makedirs(target_dir, exist_ok=True)
+    os.makedirs(destination_dir, exist_ok=True)
+
+    for original_file in os.listdir(original_dir):
+        target_file = os.path.join(target_dir, original_file)
+        if os.path.exists(target_file):
+            shutil.copy(target_file, destination_dir)
+            print(f"copied {target_file} to {destination_dir}")
 
 def get_image_mask_label_tuples(data_dir):
     image_paths = []

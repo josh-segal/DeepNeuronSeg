@@ -6,6 +6,9 @@ from torchvision import transforms
 import os
 from PIL import Image
 from tqdm import tqdm
+from utils import create_yaml, copy_files
+import shutil
+from tinydb import Query
 
 class ImageDataset(Dataset):
     def __init__(self, data_dir, transform=None):
@@ -106,13 +109,17 @@ class UNet(nn.Module):
 
 
 class DenoiseModel:
-    def __init__(self, dataset_path='to_be_defined', model_path='to_be_defined'):
+    def __init__(self, dataset_path, model_path=None):
         self.model = None
-        self.dataset_path = dataset_path   
+        self.dataset_path = dataset_path
+        self.images_path = os.path.join(dataset_path, 'images') if os.path.exists(os.path.join(dataset_path, 'images')) else dataset_path 
         self.model_path = model_path
 
     def unet_trainer(self, num_epochs=3, batch_size=4):
         # build the dataset
+        denoise_path = os.path.join(self.dataset_path, "denoise_model.pth")
+        os.makedirs(denoise_path, exist_ok=True)
+        self.model_path = os.path.abspath(denoise_path)
         model = UNet()
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model = model.to(device)
@@ -124,7 +131,8 @@ class DenoiseModel:
         ])
 
         # create dataset
-        dataset = ImageDataset(self.dataset_path, transform)
+
+        dataset = ImageDataset(self.images_path, transform)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
         
         # define loss and optimizer
@@ -160,21 +168,42 @@ class DenoiseModel:
     def load_model(self):
         if self.model is None:
             self.model = UNet()
-            device = device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             self.model.load_state_dict(torch.load(self.model_path, map_location=device))
             self.model.eval()
 
-        return model
+        return self.model
 
     def create_dn_shuffle(self):
-        dn_dir=os.path.join(self.dataset_path, 'denoised')
-        os.makedirs(dn_dir, exist_ok=True)
-        for image in os.listdir(self.dataset_path):
-            image_path = os.path.join(self.dataset_path, image)
+        dn_dir = os.path.join(self.dataset_path, 'denoised')
+        dn_images_path = os.path.join(dn_dir, 'images')
+        os.makedirs(dn_images_path, exist_ok=True)
+
+        for image in os.listdir(self.images_path):
+            image_path = os.path.join(self.images_path, image)
+            save_path = os.path.join(dn_images_path, image)
+            print(image_path)
             image = Image.open(image_path).convert('L')
-            image = transform(image).unsqueeze(0)
             image = self.denoise_image(image)
-            image.save(os.path.join(dn_dir, image_path))
+            image.save(save_path)
+            print(f"Saved denoised image to: {save_path}")
+
+        train_images_dir = os.path.join("train", "images")
+        val_images_dir = os.path.join("val", "images")
+
+        copy_files(os.path.join(self.dataset_path, "train", "images"), os.path.join(self.dataset_path, "denoised", "images"), os.path.join(self.dataset_path, "denoised", "train", "images"))
+        copy_files(os.path.join(self.dataset_path, "val", "images"), os.path.join(self.dataset_path, "denoised", "images"), os.path.join(self.dataset_path, "denoised", "val", "images"))
+
+        
+        shutil.copytree(os.path.join(self.dataset_path, "train", "labels"), os.path.join(self.dataset_path, "denoised", "train", "labels"), dirs_exist_ok=True)
+        shutil.copytree(os.path.join(self.dataset_path, "train", "masks"), os.path.join(self.dataset_path, "denoised", "train", "masks"), dirs_exist_ok=True)
+
+        shutil.copytree(os.path.join(self.dataset_path, "val", "labels"), os.path.join(self.dataset_path, "denoised", "val", "labels"), dirs_exist_ok=True)
+        shutil.copytree(os.path.join(self.dataset_path, "val", "masks"), os.path.join(self.dataset_path, "denoised", "val", "masks"), dirs_exist_ok=True)
+
+        create_yaml(os.path.join(dn_dir, "data.yaml"), train_images_dir, val_images_dir)
+
+        return os.path.abspath(dn_dir)
 
     def denoise_image(self, image):
         model = self.load_model()
@@ -185,9 +214,6 @@ class DenoiseModel:
         image = transform(image).unsqueeze(0)
         with torch.no_grad():
             denoised_image = model(image)
-        denoised_image = ransforms.ToPILImage()(denoised_image.squeeze(0)) 
+        denoised_image = transforms.ToPILImage()(denoised_image.squeeze(0)) 
 
         return denoised_image
-
-
-    

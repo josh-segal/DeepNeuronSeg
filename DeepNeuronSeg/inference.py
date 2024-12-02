@@ -68,7 +68,7 @@ def segment(image_path, input_points, batch_size=64):
 
 def composite_mask(masks):
     num_masks = len(masks)
-    print("composite mask num masks: ", num_masks)
+    # print("composite mask num masks: ", num_masks)
     final_image = np.zeros(masks[0][0].shape)
     # print("final image shape", final_image.shape)
     instances_list = []

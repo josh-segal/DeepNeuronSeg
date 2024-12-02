@@ -58,7 +58,7 @@ class ImageLabel(QLabel):
 
     def _draw_points(self, labels):
         """Draw a point on the image at the given position."""
-        print(f"drawing {len(labels)} points")
+        # print(f"drawing {len(labels)} points")
         painter = QPainter(self.pixmap)
         painter.setPen(QPen(Qt.red, 5))
         for pos in labels:
@@ -85,7 +85,7 @@ class ImageDisplay(QWidget):
 
     def _display_image(self, image_path, image_num, total_images):
         """Load and display an image from the given file path and show image number."""
-        print(image_path, '<----------------------')
+        # print(image_path, '<----------------------')
         self.pixmap = QPixmap(image_path)
         if not self.pixmap.isNull():
             self.image_label.set_pixmap(self.pixmap)
@@ -115,7 +115,7 @@ class ImageDisplay(QWidget):
 
         if index is not None:
             self.upload_tab.current_index = index
-            print(self.upload_tab.current_index)
+            # print(self.upload_tab.current_index)
 
         if items:
             if self.upload_tab.current_index < len(items) and len(items) > 0:
@@ -234,7 +234,7 @@ class UploadTab(QWidget):
                             frame_to_save = img.copy()
                             frame_to_save.save(image_path, format='PNG')
                         else:
-                            print("Converting tif to png", image_path)
+                            # print("Converting tif to png", image_path)
                             img.save(image_path, format='PNG')
 
             # png operations
@@ -540,7 +540,7 @@ class DatasetTab(QWidget):
         4. Save dataset configuration
         """
         selected_images = [os.path.join("data", "data_images", item.text()) for item in  self.image_list.selectedItems()]
-        print(selected_images)
+        # print(selected_images)
         selected_masks = [
             record["mask_data"]["mask_path"]
             for record in self.db.image_table.search(Query().file_path.one_of(selected_images))
@@ -831,11 +831,6 @@ class TrainingTab(QWidget):
         if model_name_exists:
             print("Model name already exists, please choose a different name")
             return
-        else:
-            self.db.model_table.insert({
-                "model_name": self.model_name.text().strip(),
-                "model_path": f'{dataset_path}/results/{self.model_name.text().strip()}/weights/best.pt'
-            })
 
         if self.denoise.isChecked():
             print("Training denoising network")
@@ -844,7 +839,19 @@ class TrainingTab(QWidget):
 
             dn_model = DenoiseModel(dataset_path=dataset_path)
             dn_model.unet_trainer(num_epochs=self.epochs.value(), batch_size=self.batch_size.value())
-            dn_model.create_dn_shuffle()
+            dn_dataset_path = dn_model.create_dn_shuffle()
+
+            dn_dataset_data = Query()
+            print(f'Denoising images in {dataset_path} \n and saving to {dn_dataset_data} \n referencing {dataset_data.dataset_path}')
+            self.db.dataset_table.update({"denoise_dataset_path": os.path.abspath(dn_dataset_data)}, dataset_data.dataset_path == os.path.abspath(dataset_path))
+
+            dataset_path = dn_dataset_data.dataset_path
+
+        elif self.denoise_base.isChecked():
+            print("Using pretrained denoising network")
+            dn_model = DenoiseModel(dataset_path=dataset_path, model_path='models/denoise_model.pth')
+            dataset_path = dn_model.create_dn_shuffle()
+
 
         if self.model_selector.currentText() == "YOLOv8n-seg":
             # offset program load times by loading model here
@@ -862,6 +869,11 @@ class TrainingTab(QWidget):
                 batch = self.batch_size.value(),
                 imgsz = 1024
             )
+        self.db.model_table.insert({
+            "model_name": self.model_name.text().strip(),
+            "model_path": f'{dataset_path}/results/{self.model_name.text().strip()}/weights/best.pt'
+        })
+
     def update(self):
         self.dataset.clear()
         self.dataset.addItems(map(lambda dataset: dataset['dataset_name'], self.db.load_datasets()))
@@ -993,17 +1005,17 @@ class EvaluationTab(QWidget):
         self.model_name = self.model_selector.currentText()
         self.model_path = self.db.model_table.get(Query().model_name == self.model_name)
         self.model_path = self.model_path["model_path"]
-        print(self.model_path, '<----------------')
+        # print(self.model_path, '<----------------')
         # self.model_path = '/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt'
         self.dataset_name = self.dataset_selector.currentText()
         self.dataset_path = self.db.dataset_table.get(Query().dataset_name == self.dataset_name).get('dataset_path')
-        print(self.dataset_path, '<----------------')
+        # print(self.dataset_path, '<----------------')
         # dataset_path = '/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/data/datasets/dataset_0/images'
         # dataset_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/dataset/COCO_train_X'
         # dataset_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/train/images'
 
         self.metrics = DetectionQAMetrics(self.model_path, self.dataset_path)
-        print(self.metrics.dataset_metrics_mean_std)
+        # print(self.metrics.dataset_metrics_mean_std)
         self.plot_metrics(self.metrics.dataset_metrics, self.metrics.dataset_metrics_mean_std)
 
     def plot_metrics(self, metrics, metrics_mean_std):
@@ -1242,11 +1254,11 @@ class AnalysisTab(QWidget):
         for file, result in zip(self.uploaded_files, self.inference_result):
                 masks = result.masks
                 mask_num = len(masks)
-                print(file, '------------')
+                # print(file, '------------')
                 save_path = os.path.join(self.inference_dir, f'{os.path.splitext(os.path.basename(file))[0]}_{mask_num}.png')
                 mask_image = result.plot(labels=False, conf=False, boxes=False)
                 mask_image = Image.fromarray(mask_image)
-                print(save_path)
+                # print(save_path)
                 mask_image.save(save_path)
 
     def download_data(self):
@@ -1267,8 +1279,8 @@ class AnalysisTab(QWidget):
         sorted_num_detections = [self.evaluation_tab.metrics.dataset_metrics["num_detections"][i] for i in sorted_indices]
         sorted_conf_mean = [self.evaluation_tab.metrics.dataset_metrics["confidence_mean"][i] for i in sorted_indices]
 
-        print("sorted_num_detections", sorted_num_detections)
-        print("sorted_conf_mean", sorted_conf_mean)
+        # print("sorted_num_detections", sorted_num_detections)
+        # print("sorted_conf_mean", sorted_conf_mean)
 
         additional_num_detections, additional_conf_mean = self.format_preds(self.inference_result)
         additional_sorted_indices = sorted(range(len(additional_num_detections)), key=lambda i: additional_num_detections[i], reverse=True)
@@ -1276,8 +1288,8 @@ class AnalysisTab(QWidget):
         sorted_additional_num_detections = [additional_num_detections[i] for i in additional_sorted_indices]
         sorted_additiona_conf_mean = [additional_conf_mean[i] for i in additional_sorted_indices]
 
-        print("sorted_additional_num_detections", sorted_additional_num_detections)
-        print("sorted_additiona_conf_mean", sorted_additiona_conf_mean)
+        # print("sorted_additional_num_detections", sorted_additional_num_detections)
+        # print("sorted_additiona_conf_mean", sorted_additiona_conf_mean)
 
         merged_additional_indices = []
         for num in sorted_additional_num_detections:
@@ -1289,24 +1301,24 @@ class AnalysisTab(QWidget):
                     merged_additional_indices.append(i)
                     break
 
-        print("merged_additional_indices", merged_additional_indices)
+        # print("merged_additional_indices", merged_additional_indices)
 
         for i, num in enumerate(merged_additional_indices):
             sorted_num_detections.insert(num, sorted_additional_num_detections[i])
             sorted_conf_mean.insert(num, sorted_additiona_conf_mean[i])
 
-        print("merged_sorted_num_detections", sorted_num_detections)
-        print("merged_sorted_conf_mean", sorted_conf_mean)
+        # print("merged_sorted_num_detections", sorted_num_detections)
+        # print("merged_sorted_conf_mean", sorted_conf_mean)
 
     
         indicies_to_color = [(len(merged_additional_indices) - (index + 1)) + value for index, value in enumerate(merged_additional_indices)]
 
-        print("indicies_to_color", indicies_to_color)
+        # print("indicies_to_color", indicies_to_color)
 
         # Plotting histograms
         colors = ['skyblue' if i in indicies_to_color else 'salmon' for i in range(len(sorted_conf_mean))]
 
-        print("colors", colors)
+        # print("colors", colors)
 
         ax1.bar(range(len(sorted_conf_mean)), sorted_conf_mean, color=colors, edgecolor='black', label='_nolegend_')
         ax1.bar(0, 0, width=0, color='salmon', edgecolor='black', label='Original Data')
@@ -1341,16 +1353,16 @@ class AnalysisTab(QWidget):
         variance_list_of_list = []
         quality_score_list = []
         for i, image in enumerate(reshaped_analysis_list_of_list):
-            print(f"Image {i+1} metrics: {image}")
-            print('-'*50)
+            # print(f"Image {i+1} metrics: {image}")
+            # print('-'*50)
             variance_list = self.evaluation_tab.metrics.compute_variance(image)
             variance_list_of_list.append(variance_list)
-            print(f"Image {i+1} variance: {variance_list}")
-            print('-'*50)
+            # print(f"Image {i+1} variance: {variance_list}")
+            # print('-'*50)
             quality_score = self.evaluation_tab.metrics.compute_quality_score(variance_list)
             quality_score_list.append({self.uploaded_files[i]: quality_score})
-            print(f"Image {i+1} quality score: {quality_score} from {self.uploaded_files[i]}")
-            print('-'*50)
+            # print(f"Image {i+1} quality score: {quality_score} from {self.uploaded_files[i]}")
+            # print('-'*50)
         
 
     def format_preds(self, predictions):
@@ -1363,8 +1375,8 @@ class AnalysisTab(QWidget):
             num_detections_list.append(cell_num)
             mean_confidence_list.append(np.mean(conf.numpy()))
 
-        print("num_detections_list", num_detections_list)
-        print("mean_confidence_list", mean_confidence_list)
+        # print("num_detections_list", num_detections_list)
+        # print("mean_confidence_list", mean_confidence_list)
 
         return num_detections_list, mean_confidence_list
 
@@ -1527,14 +1539,14 @@ class ModelZooTab(QWidget):
         for file, result in zip(self.uploaded_files, self.inference_result):
                 masks = result.masks
                 mask_num = len(masks)
-                print(file, '------------')
+                # print(file, '------------')
                 default_file_name = f"{os.path.splitext(os.path.basename(file))[0]}_{mask_num}.png"
                 save_path, _ = QFileDialog.getSaveFileName(self, "Save Inference", default_file_name, "Images (*.png)")
                 if not save_path:
                     continue
                 mask_image = result.plot(labels=False, conf=False, boxes=False)
                 mask_image = Image.fromarray(mask_image)
-                print(save_path)
+                # print(save_path)
                 mask_image.save(save_path)
 
     def _show_pred(self):
