@@ -685,7 +685,11 @@ class TrainingTab(QWidget):
         self.batch_size = QSpinBox()
         self.batch_size.setRange(1, 128)
         self.model_name = QLineEdit()
-        self.denoise = QCheckBox("Use Denoising Network")
+        self.denoise = QCheckBox("Train and Use Custom Denoising Network")
+        self.denoise_base = QCheckBox("Use DeepNeuronSeg pretrained denoise model")
+
+        self.denoise.toggled.connect(lambda checked: self.denoise_base.setChecked(not checked) if checked else None)
+        self.denoise_base.toggled.connect(lambda checked: self.denoise.setChecked(not checked) if checked else None)
         
         self.epochs_label = QLabel("Epochs:")
         self.dataset_label = QLabel("Dataset:")
@@ -772,6 +776,20 @@ class TrainingTab(QWidget):
         Denoising the dataset can improve the quality of the training data and the performance of the model, but may increase training time and introduces additional preprocessing steps during training and inference.
 
         """)
+        self.denoise_base.setToolTip("""
+        Denoising Network:
+        -------------------
+        Denoising network refers to the use of a UNet model to denoise the dataset before training the main model.
+
+        Default Value:
+        --------------
+        The default value is set to False.
+
+        Notes:
+        -------
+        This setting uses a pretrained denoising model from the DeepNeuronSeg library. No training time required, results may be more or less effective than a custom trained denoise model.
+
+        """)
 
         params_layout.addWidget(self.dataset_label, 0, 0)
         params_layout.addWidget(self.dataset, 0, 1)
@@ -782,6 +800,7 @@ class TrainingTab(QWidget):
         params_layout.addWidget(self.model_name_label, 3, 0)
         params_layout.addWidget(self.model_name, 3, 1)
         params_layout.addWidget(self.denoise, 4, 1)
+        params_layout.addWidget(self.denoise_base, 5, 1)
         
         # Control buttons
         self.train_btn = QPushButton("Start Training")
@@ -821,7 +840,9 @@ class TrainingTab(QWidget):
         if self.denoise.isChecked():
             print("Training denoising network")
 
-            dn_model = DenoiseModel(dataset_path=dataset_path, model_path='models/denoise_model.pth')
+            #TODO: ALLOW USER TO TRAIN OWN MODEL OR USE PRETRAINED
+
+            dn_model = DenoiseModel(dataset_path=dataset_path)
             dn_model.unet_trainer(num_epochs=self.epochs.value(), batch_size=self.batch_size.value())
             dn_model.create_dn_shuffle()
 
