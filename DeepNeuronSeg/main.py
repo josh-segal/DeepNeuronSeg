@@ -18,6 +18,7 @@ from PIL import Image
 import numpy as np
 import tempfile
 from tqdm import tqdm
+from itertools import chain
 from tinydb import TinyDB, Query
 
 
@@ -678,7 +679,15 @@ class TrainingTab(QWidget):
         # Training parameters
         params_layout = QGridLayout()
         self.dataset = QComboBox()
-        self.dataset.addItems(map(lambda dataset: dataset['dataset_name'], self.db.load_datasets()))
+        self.dataset.addItems(
+            chain(
+                *map(
+                    lambda dataset: [dataset['dataset_name']] + 
+                                    ([f"{dataset['dataset_name']} (denoised)"] if 'denoise_dataset_path' in dataset and dataset['denoise_dataset_path'] else []),
+                    self.db.load_datasets()
+                )
+            )
+        )
 
         self.epochs = QSpinBox()
         self.epochs.setRange(1, 1000)
@@ -890,7 +899,15 @@ class TrainingTab(QWidget):
 
     def update(self):
         self.dataset.clear()
-        self.dataset.addItems(map(lambda dataset: dataset['dataset_name'], self.db.load_datasets()))
+        self.dataset.addItems(
+            chain(
+                *map(
+                    lambda dataset: [dataset['dataset_name']] + 
+                                    ([f"{dataset['dataset_name']} (denoised)"] if 'denoise_dataset_path' in dataset and dataset['denoise_dataset_path'] else []),
+                    self.db.load_datasets()
+                )
+            )
+        )
 
 class EvaluationTab(QWidget):
     def __init__(self, db):
@@ -915,7 +932,15 @@ class EvaluationTab(QWidget):
         #     dataset_list = list(dataset_dict.keys())
         #     self.dataset_selector.addItems(dataset_list)
 
-        self.dataset_selector.addItems(map(lambda dataset: dataset['dataset_name'], self.db.load_datasets()))
+        self.dataset_selector.addItems(
+            chain(
+                *map(
+                    lambda dataset: [dataset['dataset_name']] + 
+                                    ([f"{dataset['dataset_name']} (denoised)"] if 'denoise_dataset_path' in dataset and dataset['denoise_dataset_path'] else []),
+                    self.db.load_datasets()
+                )
+            )
+        )
         
         # Visualization area (placeholder for distribution plots)
         self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
@@ -1078,7 +1103,15 @@ class EvaluationTab(QWidget):
         self.model_selector.addItems(map(lambda model: model['model_name'], self.db.load_models()))
 
         self.dataset_selector.clear()
-        self.dataset_selector.addItems(map(lambda dataset: dataset['dataset_name'], self.db.load_datasets()))
+        self.dataset_selector.addItems(
+            chain(
+                *map(
+                    lambda dataset: [dataset['dataset_name']] + 
+                                    ([f"{dataset['dataset_name']} (denoised)"] if 'denoise_dataset_path' in dataset and dataset['denoise_dataset_path'] else []),
+                    self.db.load_datasets()
+                )
+            )
+        )
 
        
 
