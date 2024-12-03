@@ -109,7 +109,8 @@ class UNet(nn.Module):
 
 
 class DenoiseModel:
-    def __init__(self, dataset_path, model_path=None):
+    #TODO: does this make sense as a class? Sometimes I just want to load the model and denoise an image, maybe dataset_path should not be required?
+    def __init__(self, dataset_path, model_path='models/denoise_model.pth'):
         self.model = None
         self.dataset_path = dataset_path
         self.images_path = os.path.join(dataset_path, 'images') if os.path.exists(os.path.join(dataset_path, 'images')) else dataset_path 
@@ -117,9 +118,6 @@ class DenoiseModel:
 
     def unet_trainer(self, num_epochs=3, batch_size=4):
         # build the dataset
-        denoise_path = os.path.join(self.dataset_path, "denoise_model.pth")
-        os.makedirs(denoise_path, exist_ok=True)
-        self.model_path = os.path.abspath(denoise_path)
         model = UNet()
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model = model.to(device)
@@ -131,7 +129,6 @@ class DenoiseModel:
         ])
 
         # create dataset
-
         dataset = ImageDataset(self.images_path, transform)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
         

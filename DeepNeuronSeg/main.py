@@ -845,8 +845,10 @@ class TrainingTab(QWidget):
             print("Training denoising network")
 
             #TODO: ALLOW USER TO TRAIN OWN MODEL OR USE PRETRAINED
+            denoise_path = os.path.join(dataset_path, "denoise_model.pth")
+            os.makedirs(denoise_path, exist_ok=True)
 
-            dn_model = DenoiseModel(dataset_path=dataset_path)
+            dn_model = DenoiseModel(dataset_path=dataset_path, model_path=denoise_path)
             dn_model.unet_trainer(num_epochs=self.epochs.value(), batch_size=self.batch_size.value())
             dn_dataset_path = dn_model.create_dn_shuffle()
 
@@ -862,7 +864,8 @@ class TrainingTab(QWidget):
 
         elif self.denoise_base.isChecked():
             print("Using pretrained denoising network")
-            dn_model = DenoiseModel(dataset_path=dataset_path, model_path='models/denoise_model.pth')
+            denoise_path = os.path.abspath("models/denoise_model.pth")
+            dn_model = DenoiseModel(dataset_path=dataset_path)
             dn_dataset_path = dn_model.create_dn_shuffle()
 
             dataset_data = Query()
@@ -874,7 +877,8 @@ class TrainingTab(QWidget):
             print(f"Denoising images in {os.path.abspath(dataset_path)} and saving to {os.path.abspath(dn_dataset_path)}")
 
             dataset_path = os.path.abspath(dataset_path)
-
+        else:
+            denoise_path = None
 
         if self.model_selector.currentText() == "YOLOv8n-seg":
             # offset program load times by loading model here
@@ -892,9 +896,11 @@ class TrainingTab(QWidget):
                 batch = self.batch_size.value(),
                 imgsz = 1024
             )
+
         self.db.model_table.insert({
             "model_name": self.model_name.text().strip(),
-            "model_path": f'{dataset_path}/results/{self.model_name.text().strip()}/weights/best.pt'
+            "model_path": f'{dataset_path}/results/{self.model_name.text().strip()}/weights/best.pt',
+            "denoise_path": denoise_path
         })
 
     def update(self):
@@ -1045,13 +1051,13 @@ class EvaluationTab(QWidget):
         self.model_path = self.db.model_table.get(Query().model_name == self.model_name)
         self.model_path = self.model_path["model_path"]
         # print(self.model_path, '<----------------')
-        # self.model_path = '/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/results/70_epochs_n_large_data-/weights/best.pt'
         self.dataset_name = self.dataset_selector.currentText()
-        self.dataset_path = self.db.dataset_table.get(Query().dataset_name == self.dataset_name).get('dataset_path')
+        if " (denoised)" in self.dataset_name:
+            dn_dataset_name = self.dataset_name.replace(" (denoised)", "")
+            self.dataset_path = self.db.dataset_table.get(Query().dataset_name == dn_dataset_name).get('denoise_dataset_path')
+        else:
+            self.dataset_path = self.db.dataset_table.get(Query().dataset_name == self.dataset_name).get('dataset_path')
         # print(self.dataset_path, '<----------------')
-        # dataset_path = '/Users/joshua/garnercode/DeepNeuronSeg/DeepNeuronSeg/data/datasets/dataset_0/images'
-        # dataset_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/dataset/COCO_train_X'
-        # dataset_path = 'C:/Users/joshua/garnercode/cellCountingModel/notebooks/yolobooks2/large_dataset/train/images'
 
         self.metrics = DetectionQAMetrics(self.model_path, self.dataset_path)
         # print(self.metrics.dataset_metrics_mean_std)
@@ -1285,12 +1291,17 @@ class AnalysisTab(QWidget):
         from ultralytics import YOLO
         self.model_name = self.model_selector.currentText()
         self.model_path = self.db.model_table.get(Query().model_name == self.model_name).get('model_path')
+        self.model_denoise = self.db.model_table.get(Query().model_name == self.model_name).get('denoise')
         self.model = YOLO(self.model_path)
         self.inference_dir = os.path.join('data/datasets/dataset_0/results/testModel', 'inference')
         os.makedirs(self.inference_dir, exist_ok=True)
         if not self.uploaded_files:
             print("No images selected")
             return  
+        if self.model_denoise is not None:
+            #TODO: NEED TO TEST WITH A REAL MODEL
+            dn_model = DenoiseModel(dataset_path='idc update to not need', model_path=self.model_denoise)
+            self.uploaded_files = [dn_model.denoise_image(image) for image in self.uploaded_files]
         self.inference_result = self.model.predict(self.uploaded_files, conf=0.3, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
         if True:
             self.save_inferences()
@@ -1452,6 +1463,7 @@ class AnalysisTab(QWidget):
                 shutil.copy(file, temp_dir)
             
             # Use the temporary directory as the dataset path
+            #TODO: get rid of evaluation tab instance
             self.analysis_metrics = DetectionQAMetrics(self.evaluation_tab.model_path, temp_dir)
 
         self.analysis_confidence_mean_mean_label.setText(f"Analysis Average Confidence Score: {self.analysis_metrics.dataset_metrics_mean_std['confidence_mean_mean']:.2f}")
@@ -1569,6 +1581,7 @@ class ModelZooTab(QWidget):
         if not self.uploaded_files:
             print("No images selected")
             return  
+        #TODO: if denoise trained model pass through denoise model first
         self.inference_result = self.model.predict(self.uploaded_files, conf=0.3, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
 
         self.display_images()
@@ -1618,7 +1631,8 @@ class DataManager:
         if not self.model_table.search(Query()["model_name"] == "DeepNeuronSegBaseModel"):
             self.model_table.insert({
                 "model_name": "DeepNeuronSegBaseModel",
-                "model_path": os.path.abspath("models/yolov8n-largedata-70-best.pt")
+                "model_path": os.path.abspath("models/yolov8n-largedata-70-best.pt"),
+                "denoise": os.path.abspath("models/denoise_model.pth")
             })
 
     def load_images(self):

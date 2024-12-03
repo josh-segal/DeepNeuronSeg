@@ -6,6 +6,7 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 from torchvision import transforms
 from tqdm import tqdm
+from denoise_model import DenoiseModel
 
 
 # @dataclass
@@ -42,6 +43,7 @@ class DetectionQAMetrics:
     def __init__(self, model_path, dataset_path):
         self.model = self.load_model(model_path)
         print('loaded model')
+        self.denoised = os.path.basename(dataset_path) == 'denoised'
         self.dataset = self.load_dataset(dataset_path)
         print('loaded dataset')
         self.dataset_metrics = {
@@ -202,8 +204,29 @@ class DetectionQAMetrics:
         return model
 
     def load_dataset(self, dataset_path):
-        image_path = os.path.join(dataset_path, 'images') if os.path.exists(os.path.join(dataset_path, 'images')) else dataset_path
-        dataset = ImageDataset(root_dir=image_path)
+        not_temp = os.path.exists(os.path.join(dataset_path, 'images'))
+        if not_temp:
+            image_path = os.path.join(dataset_path, 'images')
+            dataset = ImageDataset(root_dir=image_path)
+        elif self.denoised:
+            if os.path.exists(os.path.join(dataset_path, 'denoise_model.pth')):
+                model_path = os.abspath(os.path.join(dataset_path, 'denoise_model.pth'))
+                print(model_path)
+                dn_model = DenoiseModel(dataset_path, model_path=model_path)
+
+            else:
+                dn_model = DenoiseModel(dataset_path)
+
+            transform = transforms.Compose([
+                    transforms.Lambda(lambda image: dn_model.denoise_image(image)),
+                    transforms.Resize((512, 512)),
+                    transforms.Lambda(lambda image: image.convert("RGB")),
+                    transforms.ToTensor(),
+                ])
+            dataset = ImageDataset(root_dir=dataset_path, transform=transform)
+        else:
+            dataset = ImageDataset(root_dir=dataset_path)
+
         self.batch_size = 4
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
         return dataloader
