@@ -1123,6 +1123,9 @@ class EvaluationTab(QWidget):
 
 
 class AnalysisTab(QWidget):
+
+    calculated_outlier_data = pyqtSignal(dict) #TODO: implement this and switch all pyqt signals to class level instead of instance level
+
     def __init__(self, db):
         super().__init__()
         self.db = db
@@ -1422,6 +1425,8 @@ class AnalysisTab(QWidget):
             # print(f"Image {i+1} quality score: {quality_score} from {self.uploaded_files[i]}")
             # print('-'*50)
         
+        self.calculated_outlier_data.emit(quality_score_list)
+        
 
     def format_preds(self, predictions):
         print("formatting preds")
@@ -1503,11 +1508,19 @@ class OutlierTab(QWidget):
         controls_layout.addWidget(self.skip_btn)
         
         # Outlier list
+        self.outlier_threshold = QDoubleSpinBox()
+        self.outlier_threshold.setSingleStep(0.5)
+        self.outlier_threshold.setValue(3) 
         self.outlier_list = QListWidget()
+
+        threshold_layout = QHBoxLayout()
+
+        threshold_layout.addWidget(QLabel("Outlier Threshold:"))
+        threshold_layout.addWidget(self.outlier_threshold)
         
         layout.addWidget(self.image_display)
         layout.addLayout(controls_layout)
-        layout.addWidget(self.outlier_list)
+        layout.addLayout(threshold_layout)
         self.setLayout(layout)
         
         """
@@ -1696,7 +1709,10 @@ class MainWindow(QMainWindow):
         self.tabs.setTabPosition(QTabWidget.North)
         self.tabs.setMovable(False)
         
-        self.shared_data = {}
+        self.analysis_tab = AnalysisTab(self.data_manager)
+        self.outlier_tab = OutlierTab(self.data_manager)
+
+        self.analysis_tab.calculated_outlier_data.connect(self.outlier_tab.receive_outlier_data)
         
         # Create and add all self.tabs
         self.tabs.addTab(UploadTab(self.data_manager), "Upload Data")
@@ -1705,8 +1721,8 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(DatasetTab(self.data_manager), "Create Dataset")
         self.tabs.addTab(TrainingTab(self.data_manager), "Train Network")
         self.tabs.addTab(EvaluationTab(self.data_manager), "Evaluate Network")
-        self.tabs.addTab(AnalysisTab(self.data_manager), "Analyze Data")
-        self.tabs.addTab(OutlierTab(self.data_manager), "Extract Outliers")
+        self.tabs.addTab(self.analysis_tab, "Analyze Data")
+        self.tabs.addTab(self.outlier_tab, "Extract Outliers")
         self.tabs.addTab(ModelZooTab(self.data_manager), "Model Zoo")
         
         layout.addWidget(self.tabs)

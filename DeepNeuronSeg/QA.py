@@ -213,7 +213,7 @@ class DetectionQAMetrics:
                 model_path = os.abspath(os.path.join(dataset_path, 'denoise_model.pth'))
                 print(model_path)
                 dn_model = DenoiseModel(dataset_path, model_path=model_path)
-
+                
             else:
                 dn_model = DenoiseModel(dataset_path)
 
