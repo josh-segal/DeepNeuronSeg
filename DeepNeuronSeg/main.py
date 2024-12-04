@@ -916,6 +916,9 @@ class TrainingTab(QWidget):
         )
 
 class EvaluationTab(QWidget):
+
+    calculated_dataset_metrics = pyqtSignal(object)
+
     def __init__(self, db):
         super().__init__()
         self.db = db
@@ -1119,12 +1122,10 @@ class EvaluationTab(QWidget):
             )
         )
 
-       
-
-
 class AnalysisTab(QWidget):
 
     calculated_outlier_data = pyqtSignal(dict) #TODO: implement this and switch all pyqt signals to class level instead of instance level
+
 
     def __init__(self, db):
         super().__init__()
@@ -1314,6 +1315,8 @@ class AnalysisTab(QWidget):
     def save_inferences(self):
         for file, result in zip(self.uploaded_files, self.inference_result):
                 masks = result.masks
+                # boxes = result.boxes.xyxy
+                confs = result.boxes.conf
                 mask_num = len(masks)
                 # print(file, '------------')
                 save_path = os.path.join(self.inference_dir, f'{os.path.splitext(os.path.basename(file))[0]}_{mask_num}.png')
@@ -1321,6 +1324,7 @@ class AnalysisTab(QWidget):
                 mask_image = Image.fromarray(mask_image)
                 # print(save_path)
                 mask_image.save(save_path)
+                #TODO: save name, masks, and confs to db
 
     def download_data(self):
         if self.analysis_metrics is not None:
@@ -1328,6 +1332,8 @@ class AnalysisTab(QWidget):
         else:
             print("No metrics to download, please calculate metrics first.")
 
+    def receive_dataset_metrics(self, dataset_metrics):
+        
 
     def plot_inferences_against_dataset(self):
         self.canvas.figure.clf()
@@ -1511,7 +1517,9 @@ class OutlierTab(QWidget):
         self.outlier_threshold = QDoubleSpinBox()
         self.outlier_threshold.setSingleStep(0.5)
         self.outlier_threshold.setValue(3) 
+
         self.outlier_list = QListWidget()
+        self.outlier_list.itemClicked.connect(self.display_outlier_image)
 
         threshold_layout = QHBoxLayout()
 
@@ -1529,6 +1537,21 @@ class OutlierTab(QWidget):
         2. Handle relabeling process
         3. Update dataset with confirmed/relabeled data
         """
+
+    def display_outlier_image(self, item):
+            image_path = item.text()
+            self.image_display._display_image(image_path, self.outlier_list.row(item) + 1, self.outlier_list.count())
+            # if relabel button clicked, add to db, calculate pseudo labels from masks and display labels for refining 
+            # should remove prediction from pred table ? do I need pred table ?
+            #TODO: should model data store db was trained on ?
+    
+
+    def receive_outlier_data(self, data):
+        
+        for file, score in data.items():
+            if score > self.outlier_threshold.value():
+                self.outlier_list.addItem(file)
+                
         
 
     def update(self):
@@ -1713,6 +1736,7 @@ class MainWindow(QMainWindow):
         self.outlier_tab = OutlierTab(self.data_manager)
 
         self.analysis_tab.calculated_outlier_data.connect(self.outlier_tab.receive_outlier_data)
+        self.evaluation_tab.calculated_dataset_metrics.connect(self.analysis_tab.receive_dataset_metrics)
         
         # Create and add all self.tabs
         self.tabs.addTab(UploadTab(self.data_manager), "Upload Data")
