@@ -48,6 +48,9 @@ class EvaluationTab(QWidget):
         self.calculate_metrics_btn = QPushButton("Calculate Metrics")
         self.calculate_metrics_btn.clicked.connect(self.calculate_metrics)
 
+        #TODO: allow toggle to hide show graph post compute, display individual images when graph hidden (?)
+        self.display_graph_checkbox = QCheckBox("Display Graph")
+
         self.downoad_data_btn = QPushButton("Download Data")
         self.downoad_data_btn.clicked.connect(self.download_data)
 
@@ -107,6 +110,7 @@ class EvaluationTab(QWidget):
         layout.addWidget(self.dataset_selector)
         layout.addWidget(self.canvas)
         layout.addWidget(self.calculate_metrics_btn)
+        layout.addWidget(self.display_graph_checkbox)
         layout.addWidget(self.downoad_data_btn)
 
         # Adding metric labels to layout
@@ -152,9 +156,12 @@ class EvaluationTab(QWidget):
         self.calculated_dataset_metrics.emit(self.metrics)
 
         # print(self.metrics.dataset_metrics_mean_std)
-        self.plot_metrics(self.metrics.dataset_metrics, self.metrics.dataset_metrics_mean_std)
+        if self.display_graph_checkbox.isChecked():
+            self.plot_metrics()
 
-    def plot_metrics(self, metrics, metrics_mean_std):
+    def plot_metrics(self):
+        metrics = self.metrics.dataset_metrics
+        metrics_mean_std = self.metrics.dataset_metrics_mean_std
         self.canvas.figure.clf()
         ax1, ax2 = self.canvas.figure.subplots(1, 2)
 

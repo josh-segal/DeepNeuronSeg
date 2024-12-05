@@ -1,5 +1,7 @@
+print("Launching DeepNeuronSeg...")
+
 from PyQt5.QtWidgets import QApplication
-from DeepNeuronSeg.views.main_window import MainWindow
+from DeepNeuronSeg.controllers.app_controller import MainWindow
 
 import sys
 

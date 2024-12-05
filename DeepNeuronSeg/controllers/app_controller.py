@@ -14,7 +14,6 @@ from DeepNeuronSeg.views.tabs.outlier_tab import OutlierTab
 from DeepNeuronSeg.views.tabs.model_zoo_tab import ModelZooTab
 
 class MainWindow(QMainWindow):
-    #TODO: make shared data structure across main window instead of nesting tabs
     def __init__(self):
         super().__init__()
 

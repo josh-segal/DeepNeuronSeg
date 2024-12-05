@@ -33,6 +33,44 @@ class TrainingTab(QWidget):
             )
         )
 
+        self.default_augmentations = {
+            'hsv_h': 0.015,
+            'hsv_s': 0.7,
+            'hsv_v': 0.4,
+            'degrees': 0.0,
+            'translate': 0.1,
+            'scale': 0.5,
+            'shear': 0.0,
+            'perspective': 0.0,
+            'flipud': 0.0,
+            'fliplr': 0.5,
+            'mosaic': 1.0,
+            'mixup': 0.0,
+            'auto_augment': 'randaugment',
+            'erasing': 0.4,
+            'crop_fraction': 1.0
+        }
+
+        self.no_augmentations = {
+            'hsv_h': 0.0,
+            'hsv_s': 0.0,
+            'hsv_v': 0.0,
+            'degrees': 0.0,
+            'translate': 0.0,
+            'scale': 0.0,
+            'shear': 0.0,
+            'perspective': 0.0,
+            'flipud': 0.0,
+            'fliplr': 0.0,
+            'mosaic': 0.0,
+            'mixup': 0.0,
+            'auto_augment': 'randaugment',
+            'erasing': 0.0,
+            'crop_fraction': 1.0
+        }
+
+        self.augmentations = self.default_augmentations
+
         self.epochs = QSpinBox()
         self.epochs.setRange(1, 1000)
         self.batch_size = QSpinBox()
@@ -40,6 +78,23 @@ class TrainingTab(QWidget):
         self.model_name = QLineEdit()
         self.denoise = QCheckBox("Train and Use Custom Denoising Network")
         self.denoise_base = QCheckBox("Use DeepNeuronSeg pretrained denoise model")
+        self.use_augmentations = QCheckBox("Use Default Augmentations")
+        self.use_augmentations.setChecked(True)
+        self.use_augmentations.setToolTip("""
+        Augmentations:
+        --------------
+        Augmentations are techniques applied to training data to increase its diversity and improve model generalization.
+
+        Default Value:
+        --------------
+        Default to using DeepNeuronSeg default augmentations, leaving unchecked will use NO augmentations.
+
+        Notes:
+        -------
+        Augmentations can help prevent overfitting and improve model robustness by exposing it to more varied data. 
+
+        Excessive or unrealistic augmentations can harm performance, experiment with different parameters for your specific project.
+        """)
 
         self.denoise.toggled.connect(lambda checked: self.denoise_base.setChecked(not checked) if checked else None)
         self.denoise_base.toggled.connect(lambda checked: self.denoise.setChecked(not checked) if checked else None)
@@ -231,6 +286,8 @@ class TrainingTab(QWidget):
             from ultralytics import YOLO
             print("Training YOLOv8n-seg")
 
+            
+
             self.model = YOLO((Path(__file__).resolve().parents[2] / "ml" / "yolov8n-seg.pt").resolve())
             # self.model = YOLO("ml/yolov8n-seg.pt")
             self.model.train(
@@ -241,7 +298,22 @@ class TrainingTab(QWidget):
                 epochs = self.epochs.value(),
                 patience = 0,
                 batch = self.batch_size.value(),
-                imgsz = 1024
+                imgsz = 1024,
+                hsv_h=augmentations['hsv_h'], 
+                hsv_s=augmentations['hsv_s'], 
+                hsv_v=augmentations['hsv_v'], 
+                degrees=augmentations['degrees'], 
+                translate=augmentations['translate'], 
+                scale=augmentations['scale'], 
+                shear=augmentations['shear'], 
+                perspective=augmentations['perspective'], 
+                flipud=augmentations['flipud'], 
+                fliplr=augmentations['fliplr'], 
+                mosaic=augmentations['mosaic'], 
+                mixup=augmentations['mixup'],
+                auto_augment=augmentations['auto_augment'],
+                erasing=augmentations['erasing'],
+                crop_fraction=augmentations['crop_fraction']
             )
 
         self.db.model_table.insert({

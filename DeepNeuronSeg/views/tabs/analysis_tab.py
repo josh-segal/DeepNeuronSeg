@@ -15,7 +15,6 @@ class AnalysisTab(QWidget):
 
     calculated_outlier_data = pyqtSignal(dict) #TODO: implement this and switch all pyqt signals to class level instead of instance level
 
-
     def __init__(self, db):
         super().__init__()
         self.db = db
@@ -221,8 +220,8 @@ class AnalysisTab(QWidget):
         else:
             print("No metrics to download, please calculate metrics first.")
 
-    def receive_dataset_metrics(self, dataset_metrics):
-        pass
+    def receive_dataset_metrics(self, dataset_metrics_model):
+        self.dataset_metrics_model = dataset_metrics_model
 
     def plot_inferences_against_dataset(self):
         self.canvas.figure.clf()
@@ -230,10 +229,10 @@ class AnalysisTab(QWidget):
 
         #TODO: add evaluation tab data to shared data to reference here without passing instance of evaluation tab here
         # Sort by num_detections and apply the same order to confidence_mean
-        sorted_indices = sorted(range(len(self.evaluation_tab.metrics.dataset_metrics["num_detections"])), key=lambda i: self.evaluation_tab.metrics.dataset_metrics["num_detections"][i])
+        sorted_indices = sorted(range(len(self.dataset_metrics_model.dataset_metrics["num_detections"])), key=lambda i: self.evaluation_tab.metrics.dataset_metrics["num_detections"][i])
         
-        sorted_num_detections = [self.evaluation_tab.metrics.dataset_metrics["num_detections"][i] for i in sorted_indices]
-        sorted_conf_mean = [self.evaluation_tab.metrics.dataset_metrics["confidence_mean"][i] for i in sorted_indices]
+        sorted_num_detections = [self.dataset_metrics_model.dataset_metrics["num_detections"][i] for i in sorted_indices]
+        sorted_conf_mean = [self.dataset_metrics_model.dataset_metrics["confidence_mean"][i] for i in sorted_indices]
 
         # print("sorted_num_detections", sorted_num_detections)
         # print("sorted_conf_mean", sorted_conf_mean)
@@ -311,11 +310,11 @@ class AnalysisTab(QWidget):
         for i, image in enumerate(reshaped_analysis_list_of_list):
             # print(f"Image {i+1} metrics: {image}")
             # print('-'*50)
-            variance_list = self.evaluation_tab.metrics.compute_variance(image)
+            variance_list = self.dataset_metrics_model.compute_variance(image)
             variance_list_of_list.append(variance_list)
             # print(f"Image {i+1} variance: {variance_list}")
             # print('-'*50)
-            quality_score = self.evaluation_tab.metrics.compute_quality_score(variance_list)
+            quality_score = self.dataset_metrics_model.compute_quality_score(variance_list)
             quality_score_list.append({self.uploaded_files[i]: quality_score})
             # print(f"Image {i+1} quality score: {quality_score} from {self.uploaded_files[i]}")
             # print('-'*50)
@@ -339,7 +338,7 @@ class AnalysisTab(QWidget):
         return num_detections_list, mean_confidence_list
 
     def update_metrics_labels(self):
-        self.metrics_mean_std = self.evaluation_tab.metrics.dataset_metrics_mean_std
+        self.metrics_mean_std = self.dataset_metrics_model.dataset_metrics_mean_std
 
         #TODO: how to know what variance is acceptable, n-fold cross variation as baseline, how to calculate?
         self.confidence_mean_mean_label.setText(f"Average Confidence Score: {self.metrics_mean_std['confidence_mean_mean']:.2f}")
@@ -364,7 +363,7 @@ class AnalysisTab(QWidget):
             
             # Use the temporary directory as the dataset path
             #TODO: get rid of evaluation tab instance
-            self.analysis_metrics = DetectionQAMetrics(self.evaluation_tab.model_path, temp_dir)
+            self.analysis_metrics = DetectionQAMetrics(self.metrics.model_path, temp_dir)
 
         self.analysis_confidence_mean_mean_label.setText(f"Analysis Average Confidence Score: {self.analysis_metrics.dataset_metrics_mean_std['confidence_mean_mean']:.2f}")
         self.analysis_confidence_mean_std_label.setText(f"Analysis Confidence Score Variability: {self.analysis_metrics.dataset_metrics_mean_std['confidence_mean_std']:.2f}")

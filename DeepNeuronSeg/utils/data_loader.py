@@ -1,9 +1,7 @@
 import os
 from PIL import Image
 from torch.utils.data import Dataset
-
 import torchvision.transforms as transforms
-
 
 class ImageDataset(Dataset):
     def __init__(self, root_dir, transform=None):

@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QHBoxLayout
-from PyQt5.QtCore import pyqtSignal, QPoint
+from PyQt5.QtCore import QPoint
 from tinydb import Query
 from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
 

@@ -2,6 +2,10 @@ import os
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from torchvision import transforms
+from torch.utils.data import DataLoader
+from DeepNeuronSeg.utils.data_loader import ImageDataset
+from DeepNeuronSeg.models.denoise_model import DenoiseModel
 
 class DetectionQAMetrics:
     def __init__(self, model_path, dataset_path):
@@ -36,8 +40,6 @@ class DetectionQAMetrics:
         for img_conf, img_bboxes, img_name in tqdm(zip(self.confidences, self.bbox_bounds, image_names), total=len(self.confidences), desc="Computing Metrics", unit="image"):
             # print("computing metrics for image")
             img_metrics = self.compute_image_metrics(img_conf, img_bboxes)
-
-
 
             self.img_level_metrics.append(img_metrics)
 
@@ -166,6 +168,34 @@ class DetectionQAMetrics:
         from ultralytics import YOLO
         model = YOLO(model_path)
         return model
+
+    def load_dataset(self, dataset_path):
+        not_temp = os.path.exists(os.path.join(dataset_path, 'images'))
+        if not_temp:
+            image_path = os.path.join(dataset_path, 'images')
+            dataset = ImageDataset(root_dir=image_path)
+        elif self.denoised:
+            if os.path.exists(os.path.join(dataset_path, 'denoise_model.pth')):
+                model_path = os.abspath(os.path.join(dataset_path, 'denoise_model.pth'))
+                print(model_path)
+                dn_model = DenoiseModel(dataset_path, model_path=model_path)
+                
+            else:
+                dn_model = DenoiseModel(dataset_path)
+
+            transform = transforms.Compose([
+                    transforms.Lambda(lambda image: dn_model.denoise_image(image)),
+                    transforms.Resize((512, 512)),
+                    transforms.Lambda(lambda image: image.convert("RGB")),
+                    transforms.ToTensor(),
+                ])
+            dataset = ImageDataset(root_dir=dataset_path, transform=transform)
+        else:
+            dataset = ImageDataset(root_dir=dataset_path)
+
+        self.batch_size = 4
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+        return dataloader
 
     
         
