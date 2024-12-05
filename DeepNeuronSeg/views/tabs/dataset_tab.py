@@ -80,6 +80,7 @@ class DatasetTab(QWidget):
 
         dataset_dir = 'dataset'
         counter = 0
+        #TODO: possibly broken for module logic ?
         self.dataset_path = os.path.abspath(os.path.join(dataset_parent_dir, f"{dataset_dir}_{counter}"))
         while os.path.exists(self.dataset_path):
             counter += 1

@@ -9,6 +9,7 @@ from tqdm import tqdm
 import shutil
 from tinydb import Query
 from DeepNeuronSeg.utils.utils import create_yaml, copy_files
+from pathlib import Path
 
 class ImageDataset(Dataset):
     def __init__(self, data_dir, transform=None):
@@ -110,11 +111,12 @@ class UNet(nn.Module):
 
 class DenoiseModel:
     #TODO: does this make sense as a class? Sometimes I just want to load the model and denoise an image, maybe dataset_path should not be required?
-    def __init__(self, dataset_path, model_path='ml/denoise_model.pth'):
+    def __init__(self, dataset_path, model_path=(Path(__file__).resolve().parents[1] / "ml" / "denoise_model.pth").resolve()):
         self.model = None
         self.dataset_path = dataset_path
         self.images_path = os.path.join(dataset_path, 'images') if os.path.exists(os.path.join(dataset_path, 'images')) else dataset_path 
         self.model_path = model_path
+        print("init model path:", self.model_path)
 
     def unet_trainer(self, num_epochs=3, batch_size=4):
         # build the dataset

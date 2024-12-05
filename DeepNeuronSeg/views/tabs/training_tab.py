@@ -6,6 +6,7 @@ from itertools import chain
 from tinydb import Query
 import os
 from DeepNeuronSeg.models.denoise_model import DenoiseModel
+from pathlib import Path
 
 
 class TrainingTab(QWidget):
@@ -207,7 +208,9 @@ class TrainingTab(QWidget):
 
         elif self.denoise_base.isChecked():
             print("Using pretrained denoising network")
-            denoise_path = os.path.abspath("ml/denoise_model.pth")
+            denoise_path = (Path(__file__).resolve().parents[2] / "ml" / "denoise_model.pth").resolve()
+            print('denoise path: ', denoise_path)
+            # denoise_path = os.path.abspath("ml/denoise_model.pth")
             dn_model = DenoiseModel(dataset_path=dataset_path)
             dn_dataset_path = dn_model.create_dn_shuffle()
 
@@ -228,7 +231,8 @@ class TrainingTab(QWidget):
             from ultralytics import YOLO
             print("Training YOLOv8n-seg")
 
-            self.model = YOLO("ml/yolov8n-seg.pt")
+            self.model = YOLO((Path(__file__).resolve().parents[2] / "ml" / "yolov8n-seg.pt").resolve())
+            # self.model = YOLO("ml/yolov8n-seg.pt")
             self.model.train(
                 #TODO: if denoised use denoised data dir, recreate yaml (?)
                 data = os.path.abspath(f'{dataset_path}/data.yaml'),
@@ -243,7 +247,7 @@ class TrainingTab(QWidget):
         self.db.model_table.insert({
             "model_name": self.model_name.text().strip(),
             "model_path": f'{dataset_path}/results/{self.model_name.text().strip()}/weights/best.pt',
-            "denoise_path": denoise_path
+            "denoise_path": str(denoise_path)
         })
 
     def update(self):

@@ -1,5 +1,6 @@
 import os
 from tinydb import TinyDB, Query
+from pathlib import Path
 
 class DataManager:
     def __init__(self, db_path='data/db.json'):
@@ -11,8 +12,10 @@ class DataManager:
         if not self.model_table.search(Query()["model_name"] == "DeepNeuronSegBaseModel"):
             self.model_table.insert({
                 "model_name": "DeepNeuronSegBaseModel",
-                "model_path": os.path.abspath("ml/yolov8n-largedata-70-best.pt"),
-                "denoise": os.path.abspath("ml/denoise_model.pth")
+                "model_path": str((Path(__file__).resolve().parents[1] / "ml" / "yolov8n-largedata-70-best.pt").resolve()),
+                # os.path.abspath("ml/yolov8n-largedata-70-best.pt"),
+                "denoise": str((Path(__file__).resolve().parent[1] / "ml" / "denoise_model.pth").resolve()) 
+                # os.path.abspath("ml/denoise_model.pth")
             })
 
     def load_images(self):
