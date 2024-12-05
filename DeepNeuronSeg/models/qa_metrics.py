@@ -1,43 +1,7 @@
 import os
-import pandas as pd
-from PIL import Image
-import torch
-from torch.utils.data import Dataset, DataLoader
 import numpy as np
-from torchvision import transforms
+import pandas as pd
 from tqdm import tqdm
-from denoise_model import DenoiseModel
-
-
-# @dataclass
-# class ImageMetrics:
-#     """Class to store computed metrics for a single image"""
-#     mean_confidence: float
-#     confidence_std: float
-#     num_detections: int
-#     avg_area: float
-#     area_std: float
-#     overlap_ratio: float
-
-
-class ImageDataset(Dataset):
-    def __init__(self, root_dir, transform=None):
-        self.root_dir = root_dir
-        self.transform = transform or transforms.ToTensor()
-        self.image_files = [f for f in os.listdir(root_dir) if f.endswith('.png')]
-
-    def __len__(self):
-        return len(self.image_files)
-
-    def __getitem__(self, idx):
-        img_path = os.path.join(self.root_dir, self.image_files[idx])
-        image = Image.open(img_path)
-        
-        if self.transform:
-            image = self.transform(image)
-        
-        return image, self.image_files[idx]
-
 
 class DetectionQAMetrics:
     def __init__(self, model_path, dataset_path):
@@ -203,31 +167,5 @@ class DetectionQAMetrics:
         model = YOLO(model_path)
         return model
 
-    def load_dataset(self, dataset_path):
-        not_temp = os.path.exists(os.path.join(dataset_path, 'images'))
-        if not_temp:
-            image_path = os.path.join(dataset_path, 'images')
-            dataset = ImageDataset(root_dir=image_path)
-        elif self.denoised:
-            if os.path.exists(os.path.join(dataset_path, 'denoise_model.pth')):
-                model_path = os.abspath(os.path.join(dataset_path, 'denoise_model.pth'))
-                print(model_path)
-                dn_model = DenoiseModel(dataset_path, model_path=model_path)
-                
-            else:
-                dn_model = DenoiseModel(dataset_path)
-
-            transform = transforms.Compose([
-                    transforms.Lambda(lambda image: dn_model.denoise_image(image)),
-                    transforms.Resize((512, 512)),
-                    transforms.Lambda(lambda image: image.convert("RGB")),
-                    transforms.ToTensor(),
-                ])
-            dataset = ImageDataset(root_dir=dataset_path, transform=transform)
-        else:
-            dataset = ImageDataset(root_dir=dataset_path)
-
-        self.batch_size = 4
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
-        return dataloader
+    
         

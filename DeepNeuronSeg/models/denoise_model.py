@@ -6,9 +6,9 @@ from torchvision import transforms
 import os
 from PIL import Image
 from tqdm import tqdm
-from utils import create_yaml, copy_files
 import shutil
 from tinydb import Query
+from DeepNeuronSeg.utils.utils import create_yaml, copy_files
 
 class ImageDataset(Dataset):
     def __init__(self, data_dir, transform=None):
@@ -110,7 +110,7 @@ class UNet(nn.Module):
 
 class DenoiseModel:
     #TODO: does this make sense as a class? Sometimes I just want to load the model and denoise an image, maybe dataset_path should not be required?
-    def __init__(self, dataset_path, model_path='models/denoise_model.pth'):
+    def __init__(self, dataset_path, model_path='ml/denoise_model.pth'):
         self.model = None
         self.dataset_path = dataset_path
         self.images_path = os.path.join(dataset_path, 'images') if os.path.exists(os.path.join(dataset_path, 'images')) else dataset_path 
