@@ -19,7 +19,7 @@ class TrainingTab(QWidget):
         # Model selection
         self.model = None
         self.model_selector = QComboBox()
-        self.model_selector.addItems(["YOLOv8n-seg"])
+        self.model_selector.addItems(["YOLOv8n-seg", "YOLOv8l-seg"])
         
         # Training parameters
         params_layout = QGridLayout()
@@ -317,22 +317,58 @@ class TrainingTab(QWidget):
                 patience = 0,
                 batch = self.batch_size.value(),
                 imgsz = 1024,
-                hsv_h=augmentations['hsv_h'], 
-                hsv_s=augmentations['hsv_s'], 
-                hsv_v=augmentations['hsv_v'], 
-                degrees=augmentations['degrees'], 
-                translate=augmentations['translate'], 
-                scale=augmentations['scale'], 
-                shear=augmentations['shear'], 
-                perspective=augmentations['perspective'], 
-                flipud=augmentations['flipud'], 
-                fliplr=augmentations['fliplr'], 
-                mosaic=augmentations['mosaic'], 
-                mixup=augmentations['mixup'],
-                auto_augment=augmentations['auto_augment'],
-                erasing=augmentations['erasing'],
-                crop_fraction=augmentations['crop_fraction']
+                hsv_h=self.augmentations['hsv_h'], 
+                hsv_s=self.augmentations['hsv_s'], 
+                hsv_v=self.augmentations['hsv_v'], 
+                degrees=self.augmentations['degrees'], 
+                translate=self.augmentations['translate'], 
+                scale=self.augmentations['scale'], 
+                shear=self.augmentations['shear'], 
+                perspective=self.augmentations['perspective'], 
+                flipud=self.augmentations['flipud'], 
+                fliplr=self.augmentations['fliplr'], 
+                mosaic=self.augmentations['mosaic'], 
+                mixup=self.augmentations['mixup'],
+                auto_augment=self.augmentations['auto_augment'],
+                erasing=self.augmentations['erasing'],
+                crop_fraction=self.augmentations['crop_fraction']
             )
+
+        elif self.model_selector.currentText() == "YOLOv8l-seg":
+            # offset program load times by loading model here
+            from ultralytics import YOLO
+            print("Training YOLOv8n-seg")
+
+            
+
+            self.model = YOLO((Path(__file__).resolve().parents[2] / "ml" / "yolov8l-seg.pt").resolve())
+            # self.model = YOLO("ml/yolov8n-seg.pt")
+            self.model.train(
+                #TODO: if denoised use denoised data dir, recreate yaml (?)
+                data = os.path.abspath(f'{dataset_path}/data.yaml'),
+                project = f'{dataset_path}/results',
+                name = self.model_name.text().strip(),
+                epochs = self.epochs.value(),
+                patience = 0,
+                batch = self.batch_size.value(),
+                imgsz = 1024,
+                hsv_h=self.augmentations['hsv_h'], 
+                hsv_s=self.augmentations['hsv_s'], 
+                hsv_v=self.augmentations['hsv_v'], 
+                degrees=self.augmentations['degrees'], 
+                translate=self.augmentations['translate'], 
+                scale=self.augmentations['scale'], 
+                shear=self.augmentations['shear'], 
+                perspective=self.augmentations['perspective'], 
+                flipud=self.augmentations['flipud'], 
+                fliplr=self.augmentations['fliplr'], 
+                mosaic=self.augmentations['mosaic'], 
+                mixup=self.augmentations['mixup'],
+                auto_augment=self.augmentations['auto_augment'],
+                erasing=self.augmentations['erasing'],
+                crop_fraction=self.augmentations['crop_fraction']
+            )
+            
 
         self.db.model_table.insert({
             "model_name": self.model_name.text().strip(),
