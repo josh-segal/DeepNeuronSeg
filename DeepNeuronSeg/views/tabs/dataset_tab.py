@@ -20,17 +20,17 @@ class DatasetTab(QWidget):
         self.dataset_name = QLineEdit()
         
         # Augmentation options
-        self.flip_horizontal = QCheckBox("Horizontal Flip")
-        self.flip_vertical = QCheckBox("Vertical Flip")
-        self.enable_rotation = QCheckBox("Enable Rotation")
-        self.enable_crop = QCheckBox("Random Crop")
+        # self.flip_horizontal = QCheckBox("Horizontal Flip")
+        # self.flip_vertical = QCheckBox("Vertical Flip")
+        # self.enable_rotation = QCheckBox("Enable Rotation")
+        # self.enable_crop = QCheckBox("Random Crop")
         
         config_layout.addWidget(QLabel("Train Split:"), 0, 0)
         config_layout.addWidget(self.train_split, 0, 1)
-        config_layout.addWidget(self.flip_horizontal, 1, 0)
-        config_layout.addWidget(self.flip_vertical, 1, 1)
-        config_layout.addWidget(self.enable_rotation, 2, 0)
-        config_layout.addWidget(self.enable_crop, 2, 1)
+        # config_layout.addWidget(self.flip_horizontal, 1, 0)
+        # config_layout.addWidget(self.flip_vertical, 1, 1)
+        # config_layout.addWidget(self.enable_rotation, 2, 0)
+        # config_layout.addWidget(self.enable_crop, 2, 1)
         config_layout.addWidget(QLabel("Dataset Name:"), 3, 0)
         config_layout.addWidget(self.dataset_name, 3, 1)
         

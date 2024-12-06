@@ -15,10 +15,10 @@ class OutlierTab(QWidget):
         controls_layout = QHBoxLayout()
         self.confirm_btn = QPushButton("Confirm")
         self.relabel_btn = QPushButton("Relabel")
-        self.skip_btn = QPushButton("Skip")
+        # self.skip_btn = QPushButton("Skip")
         controls_layout.addWidget(self.confirm_btn)
         controls_layout.addWidget(self.relabel_btn)
-        controls_layout.addWidget(self.skip_btn)
+        # controls_layout.addWidget(self.skip_btn)
         
         # Outlier list
         self.outlier_threshold = QDoubleSpinBox()

@@ -3,8 +3,9 @@ from DeepNeuronSeg.models.qa_metrics import DetectionQAMetrics
 import shutil
 import tempfile
 import numpy as np
+import os
 from PIL import Image
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QLabel, QComboBox, QPushButton, QFileDialog
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QLabel, QComboBox, QPushButton, QFileDialog, QCheckBox
 from PyQt5.QtCore import pyqtSignal
 from matplotlib.backends.backend_qt5agg import FigureCanvas
 from matplotlib.figure import Figure
@@ -31,6 +32,8 @@ class AnalysisTab(QWidget):
         self.inference_btn = QPushButton("Inference Images")
         self.save_btn = QPushButton("Save Inferences")
         self.download_btn = QPushButton("Download Data")  
+
+        self.display_graph_checkbox = QCheckBox("Display Graph")
 
         self.confidence_mean_mean_label = QLabel("Average Confidence Score: N/A")
         self.confidence_mean_mean_label.setToolTip("""
@@ -141,6 +144,7 @@ class AnalysisTab(QWidget):
         layout.addWidget(self.model_selector)
         layout.addWidget(self.select_btn)
         layout.addWidget(self.inference_btn)
+        layout.addWidget(self.display_graph_checkbox)
         layout.addWidget(self.save_btn)
         layout.addWidget(self.canvas)
 
@@ -193,11 +197,19 @@ class AnalysisTab(QWidget):
         if self.model_denoise is not None:
             #TODO: NEED TO TEST WITH A REAL MODEL
             dn_model = DenoiseModel(dataset_path='idc update to not need', model_path=self.model_denoise)
-            self.uploaded_files = [dn_model.denoise_image(image) for image in self.uploaded_files]
-        self.inference_result = self.model.predict(self.uploaded_files, conf=0.3, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
+            uploaded_images = [
+                dn_model.denoise_image(Image.open(image_path).convert('L')) 
+                for image_path in self.uploaded_files
+            ]
+        self.inference_result = self.model.predict(uploaded_images, conf=0.3, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
+
+        self.update_metrics_labels()
+
+        self.update_analysis_metrics_labels()
+
         if True:
             self.save_inferences()
-        if True:
+        if self.display_graph_checkbox.isChecked():
             self.plot_inferences_against_dataset()
 
     def save_inferences(self):
@@ -220,8 +232,10 @@ class AnalysisTab(QWidget):
         else:
             print("No metrics to download, please calculate metrics first.")
 
-    def receive_dataset_metrics(self, dataset_metrics_model):
+    def receive_dataset_metrics(self, dataset_metrics_model: DetectionQAMetrics):
+        print("received dataset_metrics_model", dataset_metrics_model)
         self.dataset_metrics_model = dataset_metrics_model
+        
 
     def plot_inferences_against_dataset(self):
         self.canvas.figure.clf()
@@ -296,10 +310,6 @@ class AnalysisTab(QWidget):
         self.canvas.draw()
         # print("plotted")
 
-        self.update_metrics_labels()
-
-        self.update_analysis_metrics_labels()
-
         # each list is a metric where values in list are individual image values
         # restructure to be a list of list of image metrics each list contains all metrics for a single image
         analysis_list_of_list = self.analysis_metrics.get_analysis_metrics()
@@ -339,6 +349,7 @@ class AnalysisTab(QWidget):
 
     def update_metrics_labels(self):
         self.metrics_mean_std = self.dataset_metrics_model.dataset_metrics_mean_std
+        
 
         #TODO: how to know what variance is acceptable, n-fold cross variation as baseline, how to calculate?
         self.confidence_mean_mean_label.setText(f"Average Confidence Score: {self.metrics_mean_std['confidence_mean_mean']:.2f}")

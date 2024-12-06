@@ -11,6 +11,7 @@ class DetectionQAMetrics:
     def __init__(self, model_path, dataset_path):
         self.model = self.load_model(model_path)
         print('loaded model')
+        #TODO: misses case where not_temp and denoised
         self.denoised = os.path.basename(dataset_path) == 'denoised'
         self.dataset = self.load_dataset(dataset_path)
         print('loaded dataset')

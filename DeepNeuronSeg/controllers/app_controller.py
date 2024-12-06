@@ -40,6 +40,7 @@ class MainWindow(QMainWindow):
 
         self.analysis_tab.calculated_outlier_data.connect(self.outlier_tab.receive_outlier_data)
         self.evaluation_tab.calculated_dataset_metrics.connect(self.analysis_tab.receive_dataset_metrics)
+        print("Connected signal to receive_dataset_metrics")
         
         # Create and add all self.tabs
         self.tabs.addTab(UploadTab(self.data_manager), "Upload Data")

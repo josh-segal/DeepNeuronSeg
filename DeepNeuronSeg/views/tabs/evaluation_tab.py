@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QComboBox, QPushButton, QLabel
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QComboBox, QPushButton, QLabel, QCheckBox
 from PyQt5.QtCore import pyqtSignal
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -154,8 +154,11 @@ class EvaluationTab(QWidget):
         self.metrics = DetectionQAMetrics(self.model_path, self.dataset_path)
 
         self.calculated_dataset_metrics.emit(self.metrics)
+        print("emitted calculated_dataset_metrics", self.metrics)
 
         # print(self.metrics.dataset_metrics_mean_std)
+        self.update_metrics_labels(self.metrics.dataset_metrics_mean_std)
+
         if self.display_graph_checkbox.isChecked():
             self.plot_metrics()
 
@@ -186,7 +189,7 @@ class EvaluationTab(QWidget):
         self.canvas.figure.tight_layout()
         self.canvas.draw()
 
-        self.update_metrics_labels(metrics_mean_std)
+        
 
     def update_metrics_labels(self, metrics_mean_std):
         self.confidence_mean_mean_label.setText(f"Average Confidence Score: {metrics_mean_std['confidence_mean_mean']:.2f}")

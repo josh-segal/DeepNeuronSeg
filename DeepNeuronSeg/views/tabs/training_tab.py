@@ -6,6 +6,7 @@ from itertools import chain
 from tinydb import Query
 import os
 from DeepNeuronSeg.models.denoise_model import DenoiseModel
+from DeepNeuronSeg.views.widgets.hideable_input_panel import HideableInputPanel
 from pathlib import Path
 
 
@@ -69,7 +70,8 @@ class TrainingTab(QWidget):
             'crop_fraction': 1.0
         }
 
-        self.augmentations = self.default_augmentations
+        self.augmentations = self.default_augmentations.copy()
+        self.augmentation_panel = HideableInputPanel(self.augmentations)
 
         self.epochs = QSpinBox()
         self.epochs.setRange(1, 1000)
@@ -79,6 +81,9 @@ class TrainingTab(QWidget):
         self.denoise = QCheckBox("Train and Use Custom Denoising Network")
         self.denoise_base = QCheckBox("Use DeepNeuronSeg pretrained denoise model")
         self.use_augmentations = QCheckBox("Use Default Augmentations")
+        self.use_augmentations.setChecked(True)
+        self.use_augmentations.toggled.connect(lambda checked: self.set_augmentations(checked))
+
         self.use_augmentations.setChecked(True)
         self.use_augmentations.setToolTip("""
         Augmentations:
@@ -209,6 +214,8 @@ class TrainingTab(QWidget):
         params_layout.addWidget(self.model_name, 3, 1)
         params_layout.addWidget(self.denoise, 4, 1)
         params_layout.addWidget(self.denoise_base, 5, 1)
+        params_layout.addWidget(self.use_augmentations, 6, 1)
+        params_layout.addWidget(self.augmentation_panel, 7, 1)
         
         # Control buttons
         self.train_btn = QPushButton("Start Training")
@@ -226,8 +233,19 @@ class TrainingTab(QWidget):
         # layout.addWidget(self.stop_btn)
         self.setLayout(layout)
 
-    def trainer(self):
+    def set_augmentations(self, checked):
+        if checked:
+            self.augmentations = self.default_augmentations.copy()
+            self.augmentation_panel.update(self.augmentations)
+            print(self.augmentations)
+            # print('-'*50)
+            # print(self.default_augmentations)
+        else:
+            self.augmentations = self.no_augmentations.copy()
+            self.augmentation_panel.update(self.augmentations)
+            print(self.augmentations)
 
+    def trainer(self):
         if not self.model_name.text().strip():
             print("Model name required")
             return
