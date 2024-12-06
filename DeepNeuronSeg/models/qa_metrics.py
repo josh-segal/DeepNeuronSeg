@@ -1,48 +1,17 @@
 import os
-import pandas as pd
-from PIL import Image
-import torch
-from torch.utils.data import Dataset, DataLoader
 import numpy as np
-from torchvision import transforms
+import pandas as pd
 from tqdm import tqdm
-from denoise_model import DenoiseModel
-
-
-# @dataclass
-# class ImageMetrics:
-#     """Class to store computed metrics for a single image"""
-#     mean_confidence: float
-#     confidence_std: float
-#     num_detections: int
-#     avg_area: float
-#     area_std: float
-#     overlap_ratio: float
-
-
-class ImageDataset(Dataset):
-    def __init__(self, root_dir, transform=None):
-        self.root_dir = root_dir
-        self.transform = transform or transforms.ToTensor()
-        self.image_files = [f for f in os.listdir(root_dir) if f.endswith('.png')]
-
-    def __len__(self):
-        return len(self.image_files)
-
-    def __getitem__(self, idx):
-        img_path = os.path.join(self.root_dir, self.image_files[idx])
-        image = Image.open(img_path)
-        
-        if self.transform:
-            image = self.transform(image)
-        
-        return image, self.image_files[idx]
-
+from torchvision import transforms
+from torch.utils.data import DataLoader
+from DeepNeuronSeg.utils.data_loader import ImageDataset
+from DeepNeuronSeg.models.denoise_model import DenoiseModel
 
 class DetectionQAMetrics:
     def __init__(self, model_path, dataset_path):
         self.model = self.load_model(model_path)
         print('loaded model')
+        #TODO: misses case where not_temp and denoised
         self.denoised = os.path.basename(dataset_path) == 'denoised'
         self.dataset = self.load_dataset(dataset_path)
         print('loaded dataset')
@@ -72,8 +41,6 @@ class DetectionQAMetrics:
         for img_conf, img_bboxes, img_name in tqdm(zip(self.confidences, self.bbox_bounds, image_names), total=len(self.confidences), desc="Computing Metrics", unit="image"):
             # print("computing metrics for image")
             img_metrics = self.compute_image_metrics(img_conf, img_bboxes)
-
-
 
             self.img_level_metrics.append(img_metrics)
 
@@ -230,4 +197,6 @@ class DetectionQAMetrics:
         self.batch_size = 4
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
         return dataloader
+
+    
         
