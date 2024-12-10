@@ -23,9 +23,8 @@ class AnalysisController:
         self.model.download_data()
 
     def update_model_selector(self):
-
         models = map(lambda model: model['model_name'], self.model.load_models())
-        self.view.set_model_names(models)
+        self.view.update(models)
 
     def receive_dataset_metrics(self, dataset_metrics_model):
             print("received dataset_metrics_model", dataset_metrics_model)

@@ -22,7 +22,6 @@ class AnalysisView(QWidget):
         super().__init__()
         layout = QVBoxLayout()
         metrics_layout = QGridLayout()
-        self.uploaded_files = []
         
         # Model selection
         self.model_selector = QComboBox()
@@ -191,10 +190,6 @@ class AnalysisView(QWidget):
     def download_data(self):
         self.download_data_signal.emit()
 
-    def set_model_names(self, models):
-        self.model_selector.clear()
-        self.model_selector.addItems(models)
-
     # TODO: select multiple models and compare results / ensemble ?
     def select_images(self):
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
@@ -265,5 +260,6 @@ class AnalysisView(QWidget):
         self.analysis_overlap_ratio_mean_label.setText(f"Analysis Average Overlap Ratio: {metrics['overlap_ratio_mean']:.2f}")
         self.analysis_overlap_ratio_std_label.setText(f"Analysis Overlap Ratio Variability: {metrics['overlap_ratio_std']:.2f}")
 
-    def update(self):
-        pass
+    def update(self, models):
+        self.model_selector.clear()
+        self.model_selector.addItems(models)

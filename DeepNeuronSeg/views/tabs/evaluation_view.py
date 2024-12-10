@@ -4,43 +4,24 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from itertools import chain
 from tinydb import Query
-from DeepNeuronSeg.models.qa_metrics import DetectionQAMetrics
 
-class EvaluationTab(QWidget):
+class EvaluationView(QWidget):
 
-    calculated_dataset_metrics = pyqtSignal(object)
+    calculate_metrics_signal = pyqtSignal(str, str, bool)
+    display_graph_signal = pyqtSignal(bool)
+    download_data_signal = pyqtSignal()
+    update_signal = pyqtSignal()
 
-    def __init__(self, db):
+    def __init__(self):
         super().__init__()
-        self.db = db
         layout = QVBoxLayout()
         metrics_layout = QGridLayout()
         self.metrics = None
         
         # Model selection
         self.model_selector = QComboBox()
-        # model_dict = get_data(file_path='ml/model_metadata.json')
-        # if model_dict:
-        #     model_list = list(model_dict.keys())
-        #     self.model_selector.addItems(model_list)
-
-        self.model_selector.addItems(map(lambda model: model['model_name'], self.db.load_models()))
 
         self.dataset_selector = QComboBox()
-        # dataset_dict = get_data(file_path='data/datasets/dataset_metadata.json')
-        # if dataset_dict:
-        #     dataset_list = list(dataset_dict.keys())
-        #     self.dataset_selector.addItems(dataset_list)
-
-        self.dataset_selector.addItems(
-            chain(
-                *map(
-                    lambda dataset: [dataset['dataset_name']] + 
-                                    ([f"{dataset['dataset_name']} (denoised)"] if 'denoise_dataset_path' in dataset and dataset['denoise_dataset_path'] else []),
-                    self.db.load_datasets()
-                )
-            )
-        )
         
         # Visualization area (placeholder for distribution plots)
         self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
@@ -50,6 +31,7 @@ class EvaluationTab(QWidget):
 
         #TODO: allow toggle to hide show graph post compute, display individual images when graph hidden (?)
         self.display_graph_checkbox = QCheckBox("Display Graph")
+        self.display_graph_checkbox.toggled.connect(self.display_graph)
 
         self.downoad_data_btn = QPushButton("Download Data")
         self.downoad_data_btn.clicked.connect(self.download_data)
@@ -137,44 +119,13 @@ class EvaluationTab(QWidget):
         # display metrics and distributions in meaningful way
         # in analyze data return quality score of inferenced image
 
-    def calculate_metrics(self):
-        # TODO: abstract
-        self.model_name = self.model_selector.currentText()
-        self.model_path = self.db.model_table.get(Query().model_name == self.model_name)
-        self.model_path = self.model_path["model_path"]
-        # print(self.model_path, '<----------------')
-        self.dataset_name = self.dataset_selector.currentText()
-        if " (denoised)" in self.dataset_name:
-            dn_dataset_name = self.dataset_name.replace(" (denoised)", "")
-            self.dataset_path = self.db.dataset_table.get(Query().dataset_name == dn_dataset_name).get('denoise_dataset_path')
-        else:
-            self.dataset_path = self.db.dataset_table.get(Query().dataset_name == self.dataset_name).get('dataset_path')
-        # print(self.dataset_path, '<----------------')
+    def display_graph(self, checked):
+        self.display_graph_signal.emit(checked)
 
-        self.metrics = DetectionQAMetrics(self.model_path, self.dataset_path)
-
-        self.calculated_dataset_metrics.emit(self.metrics)
-        print("emitted calculated_dataset_metrics", self.metrics)
-
-        # print(self.metrics.dataset_metrics_mean_std)
-        self.update_metrics_labels(self.metrics.dataset_metrics_mean_std)
-
-        if self.display_graph_checkbox.isChecked():
-            self.plot_metrics()
-
-    def plot_metrics(self):
-        metrics = self.metrics.dataset_metrics
-        metrics_mean_std = self.metrics.dataset_metrics_mean_std
+    def update_graph(self, sorted_num_dets, sorted_conf_mean):
         self.canvas.figure.clf()
         ax1, ax2 = self.canvas.figure.subplots(1, 2)
 
-        # Sort by num_detections and apply the same order to confidence_mean
-        sorted_indices = sorted(range(len(metrics["num_detections"])), key=lambda i: metrics["num_detections"][i])
-
-        sorted_num_detections = [metrics["num_detections"][i] for i in sorted_indices]
-        sorted_conf_mean = [metrics["confidence_mean"][i] for i in sorted_indices]
-        
-        # Plotting histograms
         ax1.bar(range(len(sorted_conf_mean)), sorted_conf_mean, color='skyblue', edgecolor='black')
         ax1.set_title("Mean Confidence of Predictions Per Image")
         ax1.set_xlabel("Image")
@@ -185,43 +136,38 @@ class EvaluationTab(QWidget):
         ax2.set_xlabel("Image")
         ax2.set_ylabel("Number of Detections")
 
-        # Adjust layout and render
         self.canvas.figure.tight_layout()
         self.canvas.draw()
 
-        
+    def calculate_metrics(self):
+        model_name = self.model_selector.currentText()
+        dataset_name = self.dataset_selector.currentText()
 
-    def update_metrics_labels(self, metrics_mean_std):
-        self.confidence_mean_mean_label.setText(f"Average Confidence Score: {metrics_mean_std['confidence_mean_mean']:.2f}")
-        self.confidence_mean_std_label.setText(f"Confidence Score Variability: {metrics_mean_std['confidence_mean_std']:.2f}")
-        self.confidence_std_mean_label.setText(f"Average Confidence Spread: {metrics_mean_std['confidence_std_mean']:.2f}")
-        self.confidence_std_std_label.setText(f"Confidence Spread Variability: {metrics_mean_std['confidence_std_std']:.2f}")
-        self.num_detections_mean_label.setText(f"Average Number of Detections: {metrics_mean_std['num_detections_mean']:.2f}")
-        self.num_detections_std_label.setText(f"Detection Count Variability: {metrics_mean_std['num_detections_std']:.2f}")
-        self.area_mean_mean_label.setText(f"Average Detection Area: {metrics_mean_std['area_mean_mean']:.2f}")
-        self.area_mean_std_label.setText(f"Detection Area Variability: {metrics_mean_std['area_mean_std']:.2f}")
-        self.area_std_mean_label.setText(f"Average Area Spread: {metrics_mean_std['area_std_mean']:.2f}")
-        self.area_std_std_label.setText(f"Area Spread Variability: {metrics_mean_std['area_std_std']:.2f}")
-        self.overlap_ratio_mean_label.setText(f"Average Overlap Ratio: {metrics_mean_std['overlap_ratio_mean']:.2f}")
-        self.overlap_ratio_std_label.setText(f"Overlap Ratio Variability: {metrics_mean_std['overlap_ratio_std']:.2f}")
+        self.calculate_metrics_signal.emit(model_name, dataset_name)
+
+    def update_metrics_labels(self, metrics):
+        self.confidence_mean_mean_label.setText(f"Average Confidence Score: {metrics['confidence_mean_mean']:.2f}")
+        self.confidence_mean_std_label.setText(f"Confidence Score Variability: {metrics['confidence_mean_std']:.2f}")
+        self.confidence_std_mean_label.setText(f"Average Confidence Spread: {metrics['confidence_std_mean']:.2f}")
+        self.confidence_std_std_label.setText(f"Confidence Spread Variability: {metrics['confidence_std_std']:.2f}")
+        self.num_detections_mean_label.setText(f"Average Number of Detections: {metrics['num_detections_mean']:.2f}")
+        self.num_detections_std_label.setText(f"Detection Count Variability: {metrics['num_detections_std']:.2f}")
+        self.area_mean_mean_label.setText(f"Average Detection Area: {metrics['area_mean_mean']:.2f}")
+        self.area_mean_std_label.setText(f"Detection Area Variability: {metrics['area_mean_std']:.2f}")
+        self.area_std_mean_label.setText(f"Average Area Spread: {metrics['area_std_mean']:.2f}")
+        self.area_std_std_label.setText(f"Area Spread Variability: {metrics['area_std_std']:.2f}")
+        self.overlap_ratio_mean_label.setText(f"Average Overlap Ratio: {metrics['overlap_ratio_mean']:.2f}")
+        self.overlap_ratio_std_label.setText(f"Overlap Ratio Variability: {metrics['overlap_ratio_std']:.2f}")
 
     def download_data(self):
-        if self.metrics is not None:
-            self.metrics.export_image_metrics_to_csv(filename=f'{self.dataset_name}_image_metrics.csv')
-        else:
-            print("No metrics to download, please calculate metrics first.")
+        self.download_data_signal.emit()
 
     def update(self):
-        self.model_selector.clear()
-        self.model_selector.addItems(map(lambda model: model['model_name'], self.db.load_models()))
+        self.update_signal.emit()
 
+    def update_response(self, models, datasets):
+        self.model_selector.clear()
         self.dataset_selector.clear()
-        self.dataset_selector.addItems(
-            chain(
-                *map(
-                    lambda dataset: [dataset['dataset_name']] + 
-                                    ([f"{dataset['dataset_name']} (denoised)"] if 'denoise_dataset_path' in dataset and dataset['denoise_dataset_path'] else []),
-                    self.db.load_datasets()
-                )
-            )
-        )
+        
+        self.model_selector.addItems(models)
+        self.dataset_selector.addItems(datasets)

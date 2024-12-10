@@ -5,10 +5,7 @@ import tempfile
 import numpy as np
 import os
 from PIL import Image
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QLabel, QComboBox, QPushButton, QFileDialog, QCheckBox
 from PyQt5.QtCore import pyqtSignal
-from matplotlib.backends.backend_qt5agg import FigureCanvas
-from matplotlib.figure import Figure
 from tinydb import Query
 
 
@@ -52,7 +49,17 @@ class AnalysisModel:
         if True:
             self.save_inferences()
         if self.display_graph_checkbox.isChecked():
-            self.plot_inferences_against_dataset()
+            self.compute_analysis()
+
+    def update_metrics_labels(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Copy the selected files to the temporary directory
+            for file in self.uploaded_files:
+                shutil.copy(file, temp_dir)
+            
+            # Use the temporary directory as the dataset path
+            #TODO: get rid of evaluation tab instance
+            self.analysis_metrics = DetectionQAMetrics(self.metrics.model_path, temp_dir)
 
     def download_data(self):
         if self.analysis_metrics is not None:
@@ -73,30 +80,33 @@ class AnalysisModel:
                 # print(save_path)
                 mask_image.save(save_path)
                 #TODO: save name, masks, and confs to db
-        
-    def plot_inferences_against_dataset(self):
-        self.canvas.figure.clf()
-        ax1, ax2 = self.canvas.figure.subplots(1, 2)
 
-        #TODO: add evaluation tab data to shared data to reference here without passing instance of evaluation tab here
-        # Sort by num_detections and apply the same order to confidence_mean
+    def compute_analysis(self):
+        sorted_num_detections, sorted_conf_mean = self.sort_metrics()
+        sorted_additional_num_detections, sorted_additiona_conf_mean = self.sort_additions_metrics()
+
+        sorted_all_num_detections, sorted_all_conf_mean, merged_additional_indices = self.merge_sorted_metrics(sorted_num_detections, sorted_conf_mean, sorted_additional_num_detections, sorted_additiona_conf_mean)
+        colors = self.find_colors(merged_additional_indices, sorted_all_conf_mean)
+
+        
+    def sort_metrics(self):
         sorted_indices = sorted(range(len(self.dataset_metrics_model.dataset_metrics["num_detections"])), key=lambda i: self.evaluation_tab.metrics.dataset_metrics["num_detections"][i])
         
         sorted_num_detections = [self.dataset_metrics_model.dataset_metrics["num_detections"][i] for i in sorted_indices]
         sorted_conf_mean = [self.dataset_metrics_model.dataset_metrics["confidence_mean"][i] for i in sorted_indices]
+    
+        return sorted_num_detections, sorted_conf_mean
 
-        # print("sorted_num_detections", sorted_num_detections)
-        # print("sorted_conf_mean", sorted_conf_mean)
-
+    def sort_additions_metrics(self):
         additional_num_detections, additional_conf_mean = self.format_preds(self.inference_result)
         additional_sorted_indices = sorted(range(len(additional_num_detections)), key=lambda i: additional_num_detections[i], reverse=True)
         
         sorted_additional_num_detections = [additional_num_detections[i] for i in additional_sorted_indices]
         sorted_additiona_conf_mean = [additional_conf_mean[i] for i in additional_sorted_indices]
 
-        # print("sorted_additional_num_detections", sorted_additional_num_detections)
-        # print("sorted_additiona_conf_mean", sorted_additiona_conf_mean)
+        return sorted_additional_num_detections, sorted_additiona_conf_mean
 
+    def merge_sorted_metrics(sorted_num_detections, sorted_conf_mean, sorted_additional_num_detections, sorted_additiona_conf_mean):
         merged_additional_indices = []
         for num in sorted_additional_num_detections:
             if num > sorted_num_detections[-1]:
@@ -107,25 +117,18 @@ class AnalysisModel:
                     merged_additional_indices.append(i)
                     break
 
-        # print("merged_additional_indices", merged_additional_indices)
-
         for i, num in enumerate(merged_additional_indices):
             sorted_num_detections.insert(num, sorted_additional_num_detections[i])
             sorted_conf_mean.insert(num, sorted_additiona_conf_mean[i])
 
-        # print("merged_sorted_num_detections", sorted_num_detections)
-        # print("merged_sorted_conf_mean", sorted_conf_mean)
+        return sorted_num_detections, sorted_conf_mean, merged_additional_indices
 
-    
+    def find_colors(self, merged_additional_indices, sorted_conf_mean):
         indicies_to_color = [(len(merged_additional_indices) - (index + 1)) + value for index, value in enumerate(merged_additional_indices)]
-
-        # print("indicies_to_color", indicies_to_color)
-
-        # Plotting histograms
         colors = ['skyblue' if i in indicies_to_color else 'salmon' for i in range(len(sorted_conf_mean))]
 
-        # each list is a metric where values in list are individual image values
-        # restructure to be a list of list of image metrics each list contains all metrics for a single image
+        return colors
+
 
 
     def diff_function_for_plotting(self):
@@ -150,7 +153,7 @@ class AnalysisModel:
         
 
     def format_preds(self, predictions):
-        print("formatting preds")
+        # print("formatting preds")
         num_detections_list = []
         mean_confidence_list = []
         for pred in predictions:

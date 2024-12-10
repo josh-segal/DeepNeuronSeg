@@ -9,13 +9,16 @@ from DeepNeuronSeg.models.upload_model import UploadModel
 from DeepNeuronSeg.models.labeling_model import LabelingModel
 from DeepNeuronSeg.models.generate_labels_model import GenerateLabelsModel
 from DeepNeuronSeg.models.dataset_model import DatasetModel
+from DeepNeuronSeg.models.training_model import TrainingModel
+from DeepNeuronSeg.models.evaluation_model import EvaluationModel
 from DeepNeuronSeg.models.analysis_model import AnalysisModel
 
 from DeepNeuronSeg.views.tabs.upload_view import UploadView
 from DeepNeuronSeg.views.tabs.labeling_view import LabelingView
 from DeepNeuronSeg.views.tabs.generate_labels_view import GenerateLabelsView
 from DeepNeuronSeg.views.tabs.dataset_view import DatasetView
-from DeepNeuronSeg.views.tabs.evaluation_tab import EvaluationTab
+from DeepNeuronSeg.views.tabs.training_view import TrainingView
+from DeepNeuronSeg.views.tabs.evaluation_view import EvaluationView
 from DeepNeuronSeg.views.tabs.analysis_view import AnalysisView
 from DeepNeuronSeg.views.tabs.outlier_tab import OutlierTab
 from DeepNeuronSeg.views.tabs.model_zoo_tab import ModelZooTab
@@ -24,9 +27,9 @@ from DeepNeuronSeg.controllers.upload_controller import UploadController
 from DeepNeuronSeg.controllers.labeling_controller import LabelingController
 from DeepNeuronSeg.controllers.generate_labels_controller import GenerateLabelsController
 from DeepNeuronSeg.controllers.dataset_controller import DatasetController
+from DeepNeuronSeg.controllers.training_controller import TrainingController
+from DeepNeuronSeg.controllers.evaluation_controller import EvaluationController
 from DeepNeuronSeg.controllers.analysis_controller import AnalysisController
-
-from DeepNeuronSeg.views.tabs.training_tab import TrainingTab
 
 
 class MainWindow(QMainWindow):
@@ -69,9 +72,16 @@ class MainWindow(QMainWindow):
         self.dataset_model = DatasetModel(self.data_manager)
         self.dataset_view = DatasetView()
         self.dataset_controller = DatasetController(self.dataset_model, self.dataset_view)
-        
-        
-        
+
+        self.training_model = TrainingModel(self.data_manager)
+        self.augmentations = self.training_model.augmentations.copy()        
+        self.training_view = TrainingView(self.augmentations)
+        self.training_controller = TrainingController(self.training_model, self.training_view)
+
+        self.evaluation_model = EvaluationModel(self.data_manager)
+        self.evaluation_view = EvaluationView()
+        self.evaluation_controller = EvaluationController(self.evaluation_model, self.evaluation_view)
+                
         self.analysis_view = AnalysisView()
         self.analysis_model = AnalysisModel(self.data_manager)
         self.analysis_controller = AnalysisController(self.analysis_model, self.analysis_view)
@@ -88,8 +98,8 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.labeling_view, "Label Data")
         self.tabs.addTab(self.generate_labels_view, "Generate Labels")
         self.tabs.addTab(self.dataset_view, "Create Dataset")
-        self.tabs.addTab(TrainingTab(self.data_manager), "Train Network")
-        self.tabs.addTab(EvaluationTab(self.data_manager), "Evaluate Network")
+        self.tabs.addTab(self.training_view, "Train Network")
+        self.tabs.addTab(self.evaluation_view, "Evaluate Network")
         self.tabs.addTab(self.analysis_view, "Analyze Data")
         self.tabs.addTab(self.outlier_tab, "Extract Outliers")
         self.tabs.addTab(ModelZooTab(self.data_manager), "Model Zoo")
