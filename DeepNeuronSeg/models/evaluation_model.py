@@ -6,7 +6,7 @@ from DeepNeuronSeg.models.qa_metrics import DetectionQAMetrics
 class EvaluationModel(QObject):
 
     calculated_dataset_metrics_signal = pyqtSignal(dict)
-    update_metrics_labels_signal = pyqtSignal(dict, dict, str)
+    update_metrics_labels_signal = pyqtSignal(dict, dict, dict, str)
 
     def __init__(self, db):
         super().__init__()
@@ -14,7 +14,6 @@ class EvaluationModel(QObject):
         self.metrics = None
 
     def calculate_metrics(self, model_name, dataset_name):
-        # TODO: abstract
         self.model_path = self.db.model_table.get(Query().model_name == model_name)
         self.model_path = self.model_path["model_path"]
         # print(self.model_path, '<----------------')
@@ -26,7 +25,7 @@ class EvaluationModel(QObject):
         # print(self.dataset_path, '<----------------')
 
         self.metrics = DetectionQAMetrics(self.model_path, self.dataset_path)
-        self.update_metrics_labels_signal.emit(self.metrics.dataset_metrics_mean_std, self.metrics.dataset_metrics, self.metrics.model_path)
+        self.update_metrics_labels_signal.emit(self.metrics.dataset_metrics_mean_std, self.metrics.dataset_metrics, self.metrics.get_analysis_metrics(), self.metrics.model_path)
         return self.metrics.dataset_metrics_mean_std 
     
     def display_graph(self):

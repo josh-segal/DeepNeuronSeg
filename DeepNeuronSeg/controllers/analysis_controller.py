@@ -30,7 +30,6 @@ class AnalysisController(QObject):
 
     def inference_images(self, model_name, uploaded_files):
         self.model.inference_images(model_name, uploaded_files)
-        print("controller recieved signal",)
 
     def save_inferences(self):
         self.model.save_inferences()
@@ -42,8 +41,8 @@ class AnalysisController(QObject):
         models = map(lambda model: model['model_name'], self.model.load_models())
         self.view.update_response(models)
 
-    def receive_dataset_metrics(self, dataset_metrics, variance_baselines, model_path):
-            self.model.receive_dataset_metrics(dataset_metrics, variance_baselines, model_path)
+    def receive_dataset_metrics(self, dataset_metrics, analysis_metrics, variance_baselines, model_path):
+            self.model.receive_dataset_metrics(dataset_metrics, analysis_metrics, variance_baselines, model_path)
 
     def update_dataset_metrics(self, dataset_metrics):
         self.view.update_dataset_metrics(dataset_metrics)

@@ -11,7 +11,7 @@ from tinydb import Query
 
 class AnalysisModel(QObject):
 
-    calculated_outlier_data = pyqtSignal(dict)
+    calculated_outlier_data = pyqtSignal(list)
     dataset_metrics_signal = pyqtSignal(dict)
     analysis_metrics_signal = pyqtSignal(dict)
 
@@ -53,14 +53,17 @@ class AnalysisModel(QObject):
 
         self.sorted_all_num_detections, self.sorted_all_conf_mean, self.colors = self.compute_analysis()
 
+        self.calculate_variance()
+
     def display_graph(self):
         if self.sorted_all_num_detections is not None and self.sorted_all_conf_mean is not None and self.colors is not None:
             return self.sorted_all_num_detections, self.sorted_all_conf_mean, self.colors
         else:
             return None, None, None
 
-    def receive_dataset_metrics(self, dataset_metrics, variance_baselines, model_path):
+    def receive_dataset_metrics(self, dataset_metrics, analysis_metrics, variance_baselines, model_path):
         self.dataset_metrics = dataset_metrics
+        self.analysis_metrics = analysis_metrics
         self.variance_baselines = variance_baselines
         self.analysis_model_path = model_path
 
@@ -81,13 +84,12 @@ class AnalysisModel(QObject):
                 shutil.copy(file, temp_dir)
             
             # Use the temporary directory as the dataset path
-            #TODO: get rid of evaluation tab instance
-            self.analysis_metrics = DetectionQAMetrics(self.analysis_model_path, temp_dir)
-            self.analysis_metrics_signal.emit(self.analysis_metrics.dataset_metrics_mean_std)
+            self.analysis_metrics_model = DetectionQAMetrics(self.analysis_model_path, temp_dir)
+            self.analysis_metrics_signal.emit(self.analysis_metrics_model.dataset_metrics_mean_std)
 
     def download_data(self):
-        if self.analysis_metrics is not None:
-            self.analysis_metrics.export_image_metrics_to_csv()
+        if self.analysis_metrics_model is not None:
+            self.analysis_metrics_model.export_image_metrics_to_csv()
         else:
             print("No metrics to download, please calculate metrics first.")
 
@@ -115,10 +117,10 @@ class AnalysisModel(QObject):
         return sorted_all_num_detections, sorted_all_conf_mean, colors
 
     def sort_metrics(self):
-        sorted_indices = sorted(range(len(self.variance_baselines["num_detections"])), key=lambda i: self.variance_baselines["num_detections"][i])
+        sorted_indices = sorted(range(len(self.analysis_metrics["num_detections"])), key=lambda i: self.analysis_metrics["num_detections"][i])
         
-        sorted_num_detections = [self.variance_baselines["num_detections"][i] for i in sorted_indices]
-        sorted_conf_mean = [self.variance_baselines["confidence_mean"][i] for i in sorted_indices]
+        sorted_num_detections = [self.analysis_metrics["num_detections"][i] for i in sorted_indices]
+        sorted_conf_mean = [self.analysis_metrics["confidence_mean"][i] for i in sorted_indices]
     
         return sorted_num_detections, sorted_conf_mean
 
@@ -155,29 +157,34 @@ class AnalysisModel(QObject):
         return colors
 
     def calculate_variance(self):
-        reshaped_analysis_list_of_list = [dict(zip(variance_baselines.keys(), values)) for values in zip(*variance_baselines.values())]
-
+        analysis_metrics = self.analysis_metrics_model.get_analysis_metrics()
+        print(analysis_metrics)
+        reshaped_analysis_list_of_list = [dict(zip(analysis_metrics.keys(), values)) for values in zip(*analysis_metrics.values())]
+        print(reshaped_analysis_list_of_list)
         variance_list_of_list = []
         quality_score_list = []
         for i, image in enumerate(reshaped_analysis_list_of_list):
-            # print(f"Image {i+1} metrics: {image}")
-            # print('-'*50)
+            print(f"Image {i+1} metrics: {image}")
+            print('-'*50)
             variance_list = self.compute_variance(image)
             variance_list_of_list.append(variance_list)
-            # print(f"Image {i+1} variance: {variance_list}")
-            # print('-'*50)
+            print(f"Image {i+1} variance: {variance_list}")
+            print('-'*50)
             quality_score = self.compute_quality_score(variance_list)
-            quality_score_list.append({self.uploaded_files[i]: quality_score})
-            # print(f"Image {i+1} quality score: {quality_score} from {self.uploaded_files[i]}")
-            # print('-'*50)
+            # quality_score_list.append({self.uploaded_files[i]: quality_score})
+            quality_score_list.append({self.uploaded_files[i]: 10}) #TODO: make better quality score equation
+            print(f"Image {i+1} quality score: {quality_score} from {self.uploaded_files[i]}")
+            print('-'*50)
         
         self.calculated_outlier_data.emit(quality_score_list)
 
 
     def compute_variance(self, analysis_metrics):
         """ Compute the variance of the computed metrics """
+        print("analysis_metrics: ", analysis_metrics)
         metric_variance = {}
         for metric, value in self.dataset_metrics.items():
+            print(f"metric: {metric}")
             analysis_metric = "analysis_" + metric
             if analysis_metric in analysis_metrics:
                 variance_metric = "variance_" + metric
@@ -190,7 +197,7 @@ class AnalysisModel(QObject):
     def compute_quality_score(self, variances):
         return np.mean(np.array(list(variances.values())))
 
-    def change_last_to_std(var_name):
+    def change_last_to_std(self, var_name):
         parts = var_name.split('_')
         parts[-1] = 'std'
         return '_'.join(parts)

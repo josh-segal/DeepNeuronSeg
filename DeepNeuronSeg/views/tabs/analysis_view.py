@@ -188,7 +188,7 @@ class AnalysisView(QWidget):
     def inference_images(self):
         self.model_name = self.model_selector.currentText()
         self.inference_images_signal.emit(self.model_name, self.uploaded_files)
-        print("view inference_images_signal emitted")
+        # print("view inference_images_signal emitted")
 
     def save_inferences(self):
         self.save_inferences_signal.emit()

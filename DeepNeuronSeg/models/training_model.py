@@ -81,8 +81,6 @@ class TrainingModel:
 
         if denoise:
             print("Training denoising network")
-
-            #TODO: ALLOW USER TO TRAIN OWN MODEL OR USE PRETRAINED
             denoise_path = os.path.join(dataset_path, "denoise_model.pth")
             os.makedirs(denoise_path, exist_ok=True)
 

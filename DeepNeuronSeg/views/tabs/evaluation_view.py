@@ -29,7 +29,7 @@ class EvaluationView(QWidget):
         self.calculate_metrics_btn = QPushButton("Calculate Metrics")
         self.calculate_metrics_btn.clicked.connect(self.calculate_metrics)
 
-        #TODO: allow toggle to hide show graph post compute, display individual images when graph hidden (?)
+        #TODO: display individual images when graph hidden (?)
         self.display_graph_checkbox = QCheckBox("Display Graph")
         self.display_graph_checkbox.toggled.connect(self.display_graph)
 

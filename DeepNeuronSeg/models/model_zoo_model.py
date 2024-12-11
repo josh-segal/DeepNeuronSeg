@@ -2,44 +2,49 @@ import os
 import tempfile
 from PIL import Image
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QPushButton, QLabel, QFileDialog
+from PyQt5.QtCore import pyqtSignal, QObject
 from tinydb import Query
 from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
 
-class ModelZooModel:
+class ModelZooModel(QObject):
+
+    display_image_signal = pyqtSignal(list, list, int)
+
     def __init__(self, db):
         super().__init__()
         self.db = db
         
         self.current_index = 0
         # Model selection
-        
-    def select_images(self):
-        pass
 
-    def inference_images(self):
-
+    def inference_images(self, name_of_model, uploaded_files):
+        print("model inferencing images")
         from ultralytics import YOLO
-
-        self.model_name = self.model_selector.currentText()
-        self.model_path = self.db.model_table.get(Query().model_name == self.model_name).get('model_path')
+        self.uploaded_files = uploaded_files
+        self.model_path = self.db.model_table.get(Query().model_name == name_of_model).get('model_path')
+        self.model_denoise = self.db.model_table.get(Query().model_name == name_of_model).get('denoise')
         self.model = YOLO(self.model_path)
-        self.inference_dir = os.path.join('data', 'data_inference')
+        self.inference_dir = os.path.join('data', 'inferences', name_of_model)
         os.makedirs(self.inference_dir, exist_ok=True)
-        if not self.uploaded_files:
+        if not uploaded_files:
             print("No images selected")
             return  
-        #TODO: if denoise trained model pass through denoise model first
-        self.inference_result = self.model.predict(self.uploaded_files, conf=0.3, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
+        if self.model_denoise:
+            #TODO: NEED TO TEST WITH A REAL MODEL
+            dn_model = DenoiseModel(dataset_path='idc update to not need', model_path=self.model_denoise)
+            uploaded_images = [
+                dn_model.denoise_image(Image.open(image_path).convert('L')) 
+                for image_path in uploaded_files
+            ]
+        else:
+            uploaded_images = [Image.open(image_path) for image_path in uploaded_files]
+            
+        self.inference_result = self.model.predict(uploaded_images, conf=0.3, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
 
         self.display_images()
 
     def display_images(self):
-        if len(self.inference_result) > 0 and len(self.uploaded_files) > 0:
-            
-            self.left_image._display_image(self.uploaded_files[self.current_index], self.current_index + 1, len(self.uploaded_files))
-            self._show_pred()
-
-            self.current_index = (self.current_index + 1) % len(self.uploaded_files)
+        self.display_image_signal.emit(self.uploaded_files, self.inference_result, self.current_index)
             
 
     def save_inferences(self):
@@ -56,13 +61,8 @@ class ModelZooModel:
                 # print(save_path)
                 mask_image.save(save_path)
 
-    def _show_pred(self):
-        result = self.inference_result[self.current_index]
-        mask_image = result.plot(labels=False, conf=False, boxes=False)
-        mask_image = Image.fromarray(mask_image)
-        temp_image_path = os.path.join(tempfile.gettempdir(), "temp_mask_image.png")
-        mask_image.save(temp_image_path, format='PNG')
-        self.right_image._display_image(temp_image_path, self.current_index + 1, len(self.inference_result))
+    def update_index(self, index):
+        self.current_index = index
 
     def update(self):
         pass

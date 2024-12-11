@@ -1,8 +1,10 @@
+from PyQt5.QtCore import QObject
 
-class OutlierModel:
+class OutlierModel(QObject):
     def __init__(self, db):
         super().__init__()
         self.db = db
+        self.outlier_threshold = 3
 
     def display_outlier_image(self, item):
             image_path = item.text()
@@ -10,15 +12,18 @@ class OutlierModel:
             # if relabel button clicked, add to db, calculate pseudo labels from masks and display labels for refining 
             # should remove prediction from pred table ? do I need pred table ?
             #TODO: should model data store db was trained on ?
-    
+
+    def update_outlier_threshold(self, value):
+        self.outlier_threshold = value
 
     def receive_outlier_data(self, data):
-        
-        for file, score in data.items():
-            if score > self.outlier_threshold.value():
-                self.outlier_list.addItem(file)
-                
-        
+        #TODO: filter the dict by score instead so can surface the score in the UI
+        outlier_list = []
+        for item in data:
+            for file, score in item.items():
+                if score > self.outlier_threshold:
+                    outlier_list.append(file)
+        return outlier_list
 
     def update(self):
         pass
