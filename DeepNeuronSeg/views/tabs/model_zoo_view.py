@@ -5,17 +5,14 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QPushB
 from tinydb import Query
 from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
 
-class ModelZooTab(QWidget):
-    def __init__(self, db):
+class ModelZooView(QWidget):
+    def __init__(self):
         super().__init__()
-        self.db = db
         layout = QVBoxLayout()
         image_layout = QHBoxLayout()
-        
-        self.current_index = 0
+
         # Model selection
         self.model_selector = QComboBox()
-        self.model_selector.addItems(map(lambda model: model['model_name'], self.db.load_models()))
 
         # image display
         self.left_image = ImageDisplay(self)

@@ -17,6 +17,8 @@ class AnalysisView(QWidget):
     inference_images_signal = pyqtSignal(str, list)
     save_inferences_signal = pyqtSignal()
     download_data_signal = pyqtSignal()
+    update_signal = pyqtSignal()
+    display_graph_signal = pyqtSignal(bool)
 
     def __init__(self):
         super().__init__()
@@ -34,6 +36,7 @@ class AnalysisView(QWidget):
         self.download_btn = QPushButton("Download Data")  
 
         self.display_graph_checkbox = QCheckBox("Display Graph")
+        self.display_graph_checkbox.toggled.connect(self.display_graph)
 
         self.confidence_mean_mean_label = QLabel("Average Confidence Score: N/A")
         self.confidence_mean_mean_label.setToolTip("""
@@ -179,6 +182,9 @@ class AnalysisView(QWidget):
         layout.addLayout(metrics_layout)
         self.setLayout(layout)
 
+    def display_graph(self, checked):
+        self.display_graph_signal.emit(checked)
+
     def inference_images(self):
         self.model_name = self.model_selector.currentText()
         self.inference_images_signal.emit(self.model_name, self.uploaded_files)
@@ -194,7 +200,7 @@ class AnalysisView(QWidget):
     def select_images(self):
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
         
-    def plot_inferences_against_dataset(self, sorted_conf_mean, sorted_num_detections, colors):
+    def update_graph(self, sorted_conf_mean, sorted_num_detections, colors):
         self.canvas.figure.clf()
         ax1, ax2 = self.canvas.figure.subplots(1, 2)
 
@@ -218,35 +224,26 @@ class AnalysisView(QWidget):
         self.canvas.figure.tight_layout()
         self.canvas.draw()
 
-    def update_metrics_labels(self, metrics):
-        # self.metrics_mean_std = self.dataset_metrics_model.dataset_metrics_mean_std
-        
+    def clear_graph(self):
+        self.canvas.figure.clf()
+        self.canvas.draw()
 
+    def update_dataset_metrics(self, metrics):
         #TODO: how to know what variance is acceptable, n-fold cross variation as baseline, how to calculate?
-        self.confidence_mean_mean_label.setText(f"Average Confidence Score: {self.metrics['confidence_mean_mean']:.2f}")
-        self.confidence_mean_std_label.setText(f"Confidence Score Variability: {self.metrics['confidence_mean_std']:.2f}")
-        self.confidence_std_mean_label.setText(f"Average Confidence Spread: {self.metrics['confidence_std_mean']:.2f}")
-        self.confidence_std_std_label.setText(f"Confidence Spread Variability: {self.metrics['confidence_std_std']:.2f}")
-        self.num_detections_mean_label.setText(f"Average Number of Detections: {self.metrics['num_detections_mean']:.2f}")
-        self.num_detections_std_label.setText(f"Detection Count Variability: {self.metrics['num_detections_std']:.2f}")
-        self.area_mean_mean_label.setText(f"Average Detection Area: {self.metrics['area_mean_mean']:.2f}")
-        self.area_mean_std_label.setText(f"Detection Area Variability: {self.metrics['area_mean_std']:.2f}")
-        self.area_std_mean_label.setText(f"Average Area Spread: {self.metrics['area_std_mean']:.2f}")
-        self.area_std_std_label.setText(f"Area Spread Variability: {self.metrics['area_std_std']:.2f}")
-        self.overlap_ratio_mean_label.setText(f"Average Overlap Ratio: {self.metrics['overlap_ratio_mean']:.2f}")
-        self.overlap_ratio_std_label.setText(f"Overlap Ratio Variability: {self.metrics['overlap_ratio_std']:.2f}")
+        self.confidence_mean_mean_label.setText(f"Average Confidence Score: {metrics['confidence_mean_mean']:.2f}")
+        self.confidence_mean_std_label.setText(f"Confidence Score Variability: {metrics['confidence_mean_std']:.2f}")
+        self.confidence_std_mean_label.setText(f"Average Confidence Spread: {metrics['confidence_std_mean']:.2f}")
+        self.confidence_std_std_label.setText(f"Confidence Spread Variability: {metrics['confidence_std_std']:.2f}")
+        self.num_detections_mean_label.setText(f"Average Number of Detections: {metrics['num_detections_mean']:.2f}")
+        self.num_detections_std_label.setText(f"Detection Count Variability: {metrics['num_detections_std']:.2f}")
+        self.area_mean_mean_label.setText(f"Average Detection Area: {metrics['area_mean_mean']:.2f}")
+        self.area_mean_std_label.setText(f"Detection Area Variability: {metrics['area_mean_std']:.2f}")
+        self.area_std_mean_label.setText(f"Average Area Spread: {metrics['area_std_mean']:.2f}")
+        self.area_std_std_label.setText(f"Area Spread Variability: {metrics['area_std_std']:.2f}")
+        self.overlap_ratio_mean_label.setText(f"Average Overlap Ratio: {metrics['overlap_ratio_mean']:.2f}")
+        self.overlap_ratio_std_label.setText(f"Overlap Ratio Variability: {metrics['overlap_ratio_std']:.2f}")
     
-    def update_analysis_metrics_labels(self, metrics):
-        # # Create a temporary directory
-        # with tempfile.TemporaryDirectory() as temp_dir:
-        #     # Copy the selected files to the temporary directory
-        #     for file in self.uploaded_files:
-        #         shutil.copy(file, temp_dir)
-            
-        #     # Use the temporary directory as the dataset path
-        #     #TODO: get rid of evaluation tab instance
-        #     self.analysis_metrics = DetectionQAMetrics(self.metrics.model_path, temp_dir)
-
+    def update_analysis_metrics(self, metrics):
         self.analysis_confidence_mean_mean_label.setText(f"Analysis Average Confidence Score: {metrics['confidence_mean_mean']:.2f}")
         self.analysis_confidence_mean_std_label.setText(f"Analysis Confidence Score Variability: {metrics['confidence_mean_std']:.2f}")
         self.analysis_confidence_std_mean_label.setText(f"Analysis Average Confidence Spread: {metrics['confidence_std_mean']:.2f}")
@@ -260,6 +257,9 @@ class AnalysisView(QWidget):
         self.analysis_overlap_ratio_mean_label.setText(f"Analysis Average Overlap Ratio: {metrics['overlap_ratio_mean']:.2f}")
         self.analysis_overlap_ratio_std_label.setText(f"Analysis Overlap Ratio Variability: {metrics['overlap_ratio_std']:.2f}")
 
-    def update(self, models):
+    def update(self):
+        self.update_signal.emit()
+
+    def update_response(self, models):
         self.model_selector.clear()
         self.model_selector.addItems(models)

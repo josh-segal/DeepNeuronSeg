@@ -3,6 +3,7 @@ import shutil
 import random
 from tinydb import Query
 from DeepNeuronSeg.utils.utils import get_image_mask_label_tuples, create_yaml
+from PyQt5.QtCore import QObject
 
 class DatasetModel:
     def __init__(self, db):
@@ -46,7 +47,7 @@ class DatasetModel:
             return
 
         self.db.dataset_table.insert({
-            "dataset_name": dataset_dir,
+            "dataset_name": dataset_name,
             "dataset_path": dataset_path
         })
 
@@ -78,9 +79,9 @@ class DatasetModel:
                     # print("normalized label", normalized_label)
                     f.write(f"0 " + " ".join(normalized_label) + "\n")
 
-        self.create_shuffle(dataset_path)
+        self.create_shuffle(dataset_path, train_split)
 
-    def create_shuffle(self):
+    def create_shuffle(self, dataset_path, train_split):
         image_paths, mask_paths, label_paths = get_image_mask_label_tuples(dataset_path)
 
         #TODO: would train test split be more appropriate here?
@@ -88,7 +89,7 @@ class DatasetModel:
         random.shuffle(combined)
         shuffled_image_paths, shuffled_mask_paths, shuffled_label_paths = zip(*combined)
 
-        split_index = int(len(shuffled_image_paths) * self.train_split.value())
+        split_index = int(len(shuffled_image_paths) * train_split)
 
         train_images = shuffled_image_paths[:split_index]
         val_images = shuffled_image_paths[split_index:]

@@ -7,9 +7,9 @@ from tinydb import Query
 
 class EvaluationView(QWidget):
 
-    calculate_metrics_signal = pyqtSignal(str, str, bool)
+    calculate_metrics_signal = pyqtSignal(str, str)
     display_graph_signal = pyqtSignal(bool)
-    download_data_signal = pyqtSignal()
+    download_data_signal = pyqtSignal(str)
     update_signal = pyqtSignal()
 
     def __init__(self):
@@ -131,12 +131,16 @@ class EvaluationView(QWidget):
         ax1.set_xlabel("Image")
         ax1.set_ylabel("Mean Confidence")
 
-        ax2.bar(range(len(sorted_num_detections)), sorted_num_detections, color='salmon', edgecolor='black')
+        ax2.bar(range(len(sorted_num_dets)), sorted_num_dets, color='salmon', edgecolor='black')
         ax2.set_title("Number of Detections Per Image")
         ax2.set_xlabel("Image")
         ax2.set_ylabel("Number of Detections")
 
         self.canvas.figure.tight_layout()
+        self.canvas.draw()
+
+    def clear_graph(self):
+        self.canvas.figure.clf()
         self.canvas.draw()
 
     def calculate_metrics(self):
@@ -160,7 +164,8 @@ class EvaluationView(QWidget):
         self.overlap_ratio_std_label.setText(f"Overlap Ratio Variability: {metrics['overlap_ratio_std']:.2f}")
 
     def download_data(self):
-        self.download_data_signal.emit()
+        dataset_name = self.dataset_selector.currentText()
+        self.download_data_signal.emit(dataset_name)
 
     def update(self):
         self.update_signal.emit()

@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QComboBox, QGridLayout, QSpinBox, QLineEdit, QCheckBox, QLabel, QPushButton, QSizePolicy
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import pyqtSignal
 from itertools import chain
 from tinydb import Query
 import os
@@ -12,7 +12,9 @@ from pathlib import Path
 
 class TrainingView(QWidget):
 
+    update_signal = pyqtSignal()
     set_augmentations_signal = pyqtSignal(bool)
+    train_signal = pyqtSignal(str, str, str, bool, bool, int, int)
 
     def __init__(self, augmentations):
         super().__init__()
@@ -186,6 +188,16 @@ class TrainingView(QWidget):
         layout.addLayout(params_layout)
         layout.addWidget(self.train_btn)
         self.setLayout(layout)
+
+    def trainer(self):
+        base_model = self.model_selector.currentText()
+        dataset_name = self.dataset.currentText()
+        epochs = self.epochs.value()
+        batch_size = self.batch_size.value()
+        model_name = self.model_name.text()
+        denoise = self.denoise.isChecked()
+        denoise_base = self.denoise_base.isChecked()
+        self.train_signal.emit(model_name, base_model, dataset_name, denoise, denoise_base, epochs, batch_size)
 
     def set_augmentations(self, checked):
         self.set_augmentations_signal.emit(checked)

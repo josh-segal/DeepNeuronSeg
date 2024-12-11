@@ -1,10 +1,9 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QDoubleSpinBox, QListWidget, QLabel
 from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
 
-class OutlierTab(QWidget):
-    def __init__(self, db):
+class OutlierView(QWidget):
+    def __init__(self):
         super().__init__()
-        self.db = db
         layout = QVBoxLayout()
         
         

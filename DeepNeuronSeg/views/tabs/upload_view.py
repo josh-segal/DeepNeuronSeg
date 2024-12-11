@@ -63,6 +63,7 @@ class UploadView(QWidget):
     def upload_images(self):
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png *.tif)")
         self.upload_images_signal.emit(self.uploaded_files, self.project.text(), self.cohort.text(), self.brain_region.text(), self.image_id.text())
+        print("uploading images")
 
     def update_images(self, items):
         self.file_list.clear()

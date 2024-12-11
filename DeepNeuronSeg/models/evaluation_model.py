@@ -1,11 +1,12 @@
 from itertools import chain
 from tinydb import Query
+from PyQt5.QtCore import pyqtSignal, QObject
 from DeepNeuronSeg.models.qa_metrics import DetectionQAMetrics
 
-class EvaluationModel:
+class EvaluationModel(QObject):
 
     calculated_dataset_metrics_signal = pyqtSignal(dict)
-    update_metrics_labels_signal = pyqtSignal(dict)
+    update_metrics_labels_signal = pyqtSignal(dict, dict, str)
 
     def __init__(self, db):
         super().__init__()
@@ -25,20 +26,16 @@ class EvaluationModel:
         # print(self.dataset_path, '<----------------')
 
         self.metrics = DetectionQAMetrics(self.model_path, self.dataset_path)
-        self.update_metrics_labels_signal.emit(self.metrics.dataset_metrics_mean_std)
+        self.update_metrics_labels_signal.emit(self.metrics.dataset_metrics_mean_std, self.metrics.dataset_metrics, self.metrics.model_path)
+        return self.metrics.dataset_metrics_mean_std 
     
-    def display_graph(self, checked):
-        if checked:
-            if self.metrics is not None:
-                sorted_num_dets, sorted_conf_mean = self.sort_metrics()
-                return sorted_num_dets, sorted_conf_mean
-            else:
-                print("No metrics to display, please calculate metrics first.")
-                return None, None
+    def display_graph(self):
+        if self.metrics is not None:
+            sorted_num_dets, sorted_conf_mean = self.sort_metrics()
+            return sorted_num_dets, sorted_conf_mean
         else:
-            if self.metrics is not None:
-                #TODO: unhide individual image preds scrollable
-                return None, None
+            print("No metrics to display, please calculate metrics first.")
+            return None, None
 
     def sort_metrics(self):
         metrics = self.metrics.dataset_metrics
@@ -52,9 +49,9 @@ class EvaluationModel:
 
         return sorted_num_detections, sorted_conf_mean
 
-    def download_data(self):
+    def download_data(self, dataset_name):
         if self.metrics is not None:
-            self.metrics.export_image_metrics_to_csv(filename=f'{self.dataset_name}_image_metrics.csv')
+            self.metrics.export_image_metrics_to_csv(filename=f'{dataset_name}_image_metrics.csv')
         else:
             print("No metrics to download, please calculate metrics first.")
 

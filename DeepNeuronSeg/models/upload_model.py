@@ -1,8 +1,8 @@
 import os
 import shutil
 from PIL import Image
-from PyQt5.QtWidgets import QWidget, QDialog
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QDialog
+from PyQt5.QtCore import pyqtSignal, QObject
 from tinydb import Query
 from DeepNeuronSeg.utils.utils import trim_underscores
 from DeepNeuronSeg.utils.label_parsers import parse_png_label, parse_txt_label, parse_csv_label, parse_xml_label
@@ -10,7 +10,7 @@ from DeepNeuronSeg.views.widgets.frame_selection_dialog import FrameSelectionDia
 
 
 
-class UploadModel(QWidget):
+class UploadModel(QObject):
 
     upload_images_signal = pyqtSignal(list)
     update_images_signal = pyqtSignal(list)
@@ -22,6 +22,7 @@ class UploadModel(QWidget):
         self.uploaded_files = []
     
     def upload_images(self, uploaded_files, project, cohort, brain_region, image_id):
+        print("upload images model")
 
         self.use_selected_frame_for_all = False
         self.selected_frame = 0

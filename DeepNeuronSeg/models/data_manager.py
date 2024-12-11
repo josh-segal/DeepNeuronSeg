@@ -14,7 +14,7 @@ class DataManager:
                 "model_name": "DeepNeuronSegBaseModel",
                 "model_path": str((Path(__file__).resolve().parents[1] / "ml" / "yolov8n-largedata-70-best.pt").resolve()),
                 # os.path.abspath("ml/yolov8n-largedata-70-best.pt"),
-                "denoise": None
+                "denoise": ""
                 # str((Path(__file__).resolve().parents[1] / "ml" / "denoise_model.pth").resolve()) 
                 # os.path.abspath("ml/denoise_model.pth")
             })

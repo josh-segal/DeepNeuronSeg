@@ -12,6 +12,8 @@ from DeepNeuronSeg.models.dataset_model import DatasetModel
 from DeepNeuronSeg.models.training_model import TrainingModel
 from DeepNeuronSeg.models.evaluation_model import EvaluationModel
 from DeepNeuronSeg.models.analysis_model import AnalysisModel
+from DeepNeuronSeg.models.outlier_model import OutlierModel
+from DeepNeuronSeg.models.model_zoo_model import ModelZooModel
 
 from DeepNeuronSeg.views.tabs.upload_view import UploadView
 from DeepNeuronSeg.views.tabs.labeling_view import LabelingView
@@ -20,8 +22,8 @@ from DeepNeuronSeg.views.tabs.dataset_view import DatasetView
 from DeepNeuronSeg.views.tabs.training_view import TrainingView
 from DeepNeuronSeg.views.tabs.evaluation_view import EvaluationView
 from DeepNeuronSeg.views.tabs.analysis_view import AnalysisView
-from DeepNeuronSeg.views.tabs.outlier_tab import OutlierTab
-from DeepNeuronSeg.views.tabs.model_zoo_tab import ModelZooTab
+from DeepNeuronSeg.views.tabs.outlier_view import OutlierView
+from DeepNeuronSeg.views.tabs.model_zoo_view import ModelZooView
 
 from DeepNeuronSeg.controllers.upload_controller import UploadController
 from DeepNeuronSeg.controllers.labeling_controller import LabelingController
@@ -30,6 +32,8 @@ from DeepNeuronSeg.controllers.dataset_controller import DatasetController
 from DeepNeuronSeg.controllers.training_controller import TrainingController
 from DeepNeuronSeg.controllers.evaluation_controller import EvaluationController
 from DeepNeuronSeg.controllers.analysis_controller import AnalysisController
+from DeepNeuronSeg.controllers.outlier_controller import OutlierController
+from DeepNeuronSeg.controllers.model_zoo_controller import ModelZooController
 
 
 class MainWindow(QMainWindow):
@@ -86,12 +90,16 @@ class MainWindow(QMainWindow):
         self.analysis_model = AnalysisModel(self.data_manager)
         self.analysis_controller = AnalysisController(self.analysis_model, self.analysis_view)
 
-        self.outlier_tab = OutlierTab(self.data_manager)
-        self.evaluation_tab = EvaluationTab(self.data_manager)
+        self.outlier_view = OutlierView()
+        self.outlier_model = OutlierModel(self.data_manager)
+        self.outlier_controller = OutlierController(self.outlier_model, self.outlier_view)
 
-        # self.analysis_view.calculated_outlier_data.connect(self.outlier_tab.receive_outlier_data)
-        self.evaluation_tab.calculated_dataset_metrics.connect(self.analysis_controller.receive_dataset_metrics)
-        # print("Connected signal to receive_dataset_metrics")
+        self.model_zoo_view = ModelZooView()
+        self.model_zoo_model = ModelZooModel(self.data_manager)
+        self.model_zoo_controller = ModelZooController(self.model_zoo_model, self.model_zoo_view)
+
+
+        self.evaluation_model.update_metrics_labels_signal.connect(self.analysis_controller.receive_dataset_metrics)
         
         # Create and add all self.tabs
         self.tabs.addTab(self.upload_view, "Upload Data")
@@ -101,8 +109,8 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.training_view, "Train Network")
         self.tabs.addTab(self.evaluation_view, "Evaluate Network")
         self.tabs.addTab(self.analysis_view, "Analyze Data")
-        self.tabs.addTab(self.outlier_tab, "Extract Outliers")
-        self.tabs.addTab(ModelZooTab(self.data_manager), "Model Zoo")
+        self.tabs.addTab(self.outlier_view, "Extract Outliers")
+        self.tabs.addTab(self.model_zoo_view, "Model Zoo")
         
         layout.addWidget(self.tabs)
         self.tabs.currentChanged.connect(self.update_current_tab)

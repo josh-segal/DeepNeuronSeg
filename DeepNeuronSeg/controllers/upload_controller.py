@@ -1,8 +1,8 @@
+from PyQt5.QtCore import QObject
 
-
-
-class UploadController:
+class UploadController(QObject):
     def __init__(self, model, view):
+        super().__init__()
         self.model = model
         self.view = view
 
@@ -12,11 +12,11 @@ class UploadController:
         
         
         self.model.update_images_signal.connect(self.update_images)
-        
-
 
     def upload_images(self, images, project, cohort, brain_region, image_id):
+        print("upload images controller")
         self.model.upload_images(images, project, cohort, brain_region, image_id)
+        
 
     def update_images(self, images):
         self.view.update_images(images)

@@ -5,18 +5,22 @@ import tempfile
 import numpy as np
 import os
 from PIL import Image
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, QObject
 from tinydb import Query
 
 
-class AnalysisModel:
+class AnalysisModel(QObject):
 
     calculated_outlier_data = pyqtSignal(dict)
+    dataset_metrics_signal = pyqtSignal(dict)
+    analysis_metrics_signal = pyqtSignal(dict)
 
     def __init__(self, db):
         super().__init__()
         self.db = db
         self.uploaded_files = []
+        self.dataset_metrics = None
+        self.sorted_all_num_detections, self.sorted_all_conf_mean, self.colors = None, None, None
 
     def load_models(self):
         return self.db.load_models()
@@ -33,33 +37,53 @@ class AnalysisModel:
         if not uploaded_files:
             print("No images selected")
             return  
-        if self.model_denoise is not None:
+        if self.model_denoise:
             #TODO: NEED TO TEST WITH A REAL MODEL
             dn_model = DenoiseModel(dataset_path='idc update to not need', model_path=self.model_denoise)
             uploaded_images = [
                 dn_model.denoise_image(Image.open(image_path).convert('L')) 
                 for image_path in uploaded_files
             ]
+        else:
+            uploaded_images = [Image.open(image_path) for image_path in uploaded_files]
+            
         self.inference_result = self.model.predict(uploaded_images, conf=0.3, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
 
         self.update_metrics_labels()
 
-        self.update_analysis_metrics_labels()
+        self.sorted_all_num_detections, self.sorted_all_conf_mean, self.colors = self.compute_analysis()
 
-        if True:
-            self.save_inferences()
-        if self.display_graph_checkbox.isChecked():
-            self.compute_analysis()
+    def display_graph(self):
+        if self.sorted_all_num_detections is not None and self.sorted_all_conf_mean is not None and self.colors is not None:
+            return self.sorted_all_num_detections, self.sorted_all_conf_mean, self.colors
+        else:
+            return None, None, None
+
+    def receive_dataset_metrics(self, dataset_metrics, variance_baselines, model_path):
+        self.dataset_metrics = dataset_metrics
+        self.variance_baselines = variance_baselines
+        self.analysis_model_path = model_path
 
     def update_metrics_labels(self):
+        if self.dataset_metrics is not None:
+            self.dataset_metrics_signal.emit(self.dataset_metrics)
+            self.update_analysis_metrics_labels()
+        else:
+            print("No dataset metrics, please calculate metrics first in Evaluation Tab.")
+
+    def update_analysis_metrics_labels(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             # Copy the selected files to the temporary directory
+            if not self.uploaded_files:
+                print("No uploaded files to process.")
+                return
             for file in self.uploaded_files:
                 shutil.copy(file, temp_dir)
             
             # Use the temporary directory as the dataset path
             #TODO: get rid of evaluation tab instance
-            self.analysis_metrics = DetectionQAMetrics(self.metrics.model_path, temp_dir)
+            self.analysis_metrics = DetectionQAMetrics(self.analysis_model_path, temp_dir)
+            self.analysis_metrics_signal.emit(self.analysis_metrics.dataset_metrics_mean_std)
 
     def download_data(self):
         if self.analysis_metrics is not None:
@@ -88,12 +112,13 @@ class AnalysisModel:
         sorted_all_num_detections, sorted_all_conf_mean, merged_additional_indices = self.merge_sorted_metrics(sorted_num_detections, sorted_conf_mean, sorted_additional_num_detections, sorted_additiona_conf_mean)
         colors = self.find_colors(merged_additional_indices, sorted_all_conf_mean)
 
-        
+        return sorted_all_num_detections, sorted_all_conf_mean, colors
+
     def sort_metrics(self):
-        sorted_indices = sorted(range(len(self.dataset_metrics_model.dataset_metrics["num_detections"])), key=lambda i: self.evaluation_tab.metrics.dataset_metrics["num_detections"][i])
+        sorted_indices = sorted(range(len(self.variance_baselines["num_detections"])), key=lambda i: self.variance_baselines["num_detections"][i])
         
-        sorted_num_detections = [self.dataset_metrics_model.dataset_metrics["num_detections"][i] for i in sorted_indices]
-        sorted_conf_mean = [self.dataset_metrics_model.dataset_metrics["confidence_mean"][i] for i in sorted_indices]
+        sorted_num_detections = [self.variance_baselines["num_detections"][i] for i in sorted_indices]
+        sorted_conf_mean = [self.variance_baselines["confidence_mean"][i] for i in sorted_indices]
     
         return sorted_num_detections, sorted_conf_mean
 
@@ -106,7 +131,7 @@ class AnalysisModel:
 
         return sorted_additional_num_detections, sorted_additiona_conf_mean
 
-    def merge_sorted_metrics(sorted_num_detections, sorted_conf_mean, sorted_additional_num_detections, sorted_additiona_conf_mean):
+    def merge_sorted_metrics(self, sorted_num_detections, sorted_conf_mean, sorted_additional_num_detections, sorted_additiona_conf_mean):
         merged_additional_indices = []
         for num in sorted_additional_num_detections:
             if num > sorted_num_detections[-1]:
@@ -129,27 +154,46 @@ class AnalysisModel:
 
         return colors
 
-
-
-    def diff_function_for_plotting(self):
-        analysis_list_of_list = self.analysis_metrics.get_analysis_metrics()
-        reshaped_analysis_list_of_list = [dict(zip(analysis_list_of_list.keys(), values)) for values in zip(*analysis_list_of_list.values())]
+    def calculate_variance(self):
+        reshaped_analysis_list_of_list = [dict(zip(variance_baselines.keys(), values)) for values in zip(*variance_baselines.values())]
 
         variance_list_of_list = []
         quality_score_list = []
         for i, image in enumerate(reshaped_analysis_list_of_list):
             # print(f"Image {i+1} metrics: {image}")
             # print('-'*50)
-            variance_list = self.dataset_metrics_model.compute_variance(image)
+            variance_list = self.compute_variance(image)
             variance_list_of_list.append(variance_list)
             # print(f"Image {i+1} variance: {variance_list}")
             # print('-'*50)
-            quality_score = self.dataset_metrics_model.compute_quality_score(variance_list)
+            quality_score = self.compute_quality_score(variance_list)
             quality_score_list.append({self.uploaded_files[i]: quality_score})
             # print(f"Image {i+1} quality score: {quality_score} from {self.uploaded_files[i]}")
             # print('-'*50)
         
         self.calculated_outlier_data.emit(quality_score_list)
+
+
+    def compute_variance(self, analysis_metrics):
+        """ Compute the variance of the computed metrics """
+        metric_variance = {}
+        for metric, value in self.dataset_metrics.items():
+            analysis_metric = "analysis_" + metric
+            if analysis_metric in analysis_metrics:
+                variance_metric = "variance_" + metric
+                std_metric = self.change_last_to_std(metric)
+
+                metric_variance[variance_metric] = (analysis_metrics[analysis_metric] - value) / self.dataset_metrics[std_metric]
+        
+        return metric_variance
+
+    def compute_quality_score(self, variances):
+        return np.mean(np.array(list(variances.values())))
+
+    def change_last_to_std(var_name):
+        parts = var_name.split('_')
+        parts[-1] = 'std'
+        return '_'.join(parts)
         
 
     def format_preds(self, predictions):
@@ -161,8 +205,5 @@ class AnalysisModel:
             cell_num = len(conf)
             num_detections_list.append(cell_num)
             mean_confidence_list.append(np.mean(conf.numpy()))
-
-        # print("num_detections_list", num_detections_list)
-        # print("mean_confidence_list", mean_confidence_list)
 
         return num_detections_list, mean_confidence_list
