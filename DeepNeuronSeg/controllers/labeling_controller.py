@@ -7,6 +7,7 @@ class LabelingController(QObject):
         self.view = view
 
         self.view.add_cell_marker_signal.connect(self.add_cell_marker)
+        self.view.upload_labels_signal.connect(self.upload_labels)
         self.view.remove_cell_marker_signal.connect(self.remove_cell_marker)
 
     def add_cell_marker(self, pos):
@@ -14,3 +15,6 @@ class LabelingController(QObject):
 
     def remove_cell_marker(self, pos, tolerance=5):
         self.model.remove_cell_marker(pos, tolerance)
+
+    def upload_labels(self, labels):
+        self.model.parse_labels(labels)

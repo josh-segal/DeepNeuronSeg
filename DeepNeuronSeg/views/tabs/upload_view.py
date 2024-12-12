@@ -6,7 +6,6 @@ from PyQt5.QtCore import pyqtSignal
 class UploadView(QWidget):
 
     upload_images_signal = pyqtSignal(list, str, str, str, str)
-    upload_labels_signal = pyqtSignal(list)
     update_signal = pyqtSignal()
 
     def __init__(self, image_display):
@@ -21,13 +20,11 @@ class UploadView(QWidget):
         self.file_list = QListWidget()
         # File selection
         self.upload_btn = QPushButton("Upload Images")
-        self.upload_label_btn = QPushButton("Upload Labels")
         self.next_btn = QPushButton("Next Image")
         self.load_btn = QPushButton("Display Data")
         self.set_text_btn = QPushButton("Update Image Metadata")
 
         self.upload_btn.clicked.connect(self.upload_images)
-        self.upload_label_btn.clicked.connect(self.upload_labels)
         self.load_btn.clicked.connect(self.image_display.show_item)
         self.next_btn.clicked.connect(lambda: self.image_display.show_item(next_item=True))
         
@@ -50,7 +47,6 @@ class UploadView(QWidget):
 
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.upload_btn)
-        button_layout.addWidget(self.upload_label_btn)
         button_layout.addWidget(self.next_btn)
         button_layout.addWidget(self.load_btn)
         
@@ -69,10 +65,6 @@ class UploadView(QWidget):
         self.file_list.clear()
         self.file_list.addItems([os.path.basename(file) for file in items])
         self.image_display.show_item()
-
-    def upload_labels(self):
-        uploaded_labels, _ = QFileDialog.getOpenFileNames(self, "Select Labels", "", "Labels (*.png *.txt *.csv *.xml)")
-        self.upload_labels_signal.emit(uploaded_labels)
 
     def update(self):
         self.update_signal.emit()

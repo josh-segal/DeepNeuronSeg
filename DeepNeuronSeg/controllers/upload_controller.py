@@ -7,7 +7,6 @@ class UploadController(QObject):
         self.view = view
 
         self.view.upload_images_signal.connect(self.upload_images)
-        self.view.upload_labels_signal.connect(self.upload_labels)
         self.view.update_signal.connect(self.update_view)
         
         
@@ -21,8 +20,7 @@ class UploadController(QObject):
     def update_images(self, images):
         self.view.update_images(images)
 
-    def upload_labels(self, labels):
-        self.model.parse_labels(labels)
+    
 
     def update_view(self):
         images = self.model.db.load_images()

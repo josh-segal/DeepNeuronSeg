@@ -5,7 +5,6 @@ from PyQt5.QtWidgets import QDialog
 from PyQt5.QtCore import pyqtSignal, QObject
 from tinydb import Query
 from DeepNeuronSeg.utils.utils import trim_underscores
-from DeepNeuronSeg.utils.label_parsers import parse_png_label, parse_txt_label, parse_csv_label, parse_xml_label
 from DeepNeuronSeg.views.widgets.frame_selection_dialog import FrameSelectionDialog
 
 
@@ -79,35 +78,6 @@ class UploadModel(QObject):
 
         items = self.db.load_images()
         self.update_images_signal.emit(items)
-
-    def parse_labels(self, labels):
-
-        for label_file in labels:
-            label_name = os.path.splitext(os.path.basename(label_file))[0]
-            label_name = trim_underscores(label_name)
-            label_name = label_name + ".png"
-            label_name = os.path.join('data', 'data_images', label_name)
-
-            image_data = Query()
-            matched_image = self.db.image_table.get(image_data.file_path == label_name)
-            if matched_image:
-                if label_file.endswith(".png"):
-                    label_data = parse_png_label(label_file)
-                elif label_file.endswith(".txt"):
-                    label_data = parse_txt_label(label_file)
-                elif label_file.endswith(".csv"):
-                    label_data = parse_csv_label(label_file)
-                elif label_file.endswith(".xml"):
-                    label_data = parse_xml_label(label_file)
-                else:
-                    print("Invalid label format")
-                    label_data = []
-
-                if label_data:
-                    self.db.image_table.update({"labels": label_data}, image_data.file_path == label_name)
-            else:
-                print(f"Image not found in database {label_name}")
-                continue
 
     def update(self):
         self.file_list.clear()
