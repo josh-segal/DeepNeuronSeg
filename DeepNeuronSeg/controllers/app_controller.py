@@ -87,8 +87,9 @@ class MainWindow(QMainWindow):
         self.evaluation_view = EvaluationView(self.evaluation_image_displayer)
         self.evaluation_controller = EvaluationController(self.evaluation_model, self.evaluation_view)
                 
-        self.analysis_view = AnalysisView()
         self.analysis_model = AnalysisModel(self.data_manager)
+        self.analysis_image_displayer = ImageDisplay(self.analysis_model)
+        self.analysis_view = AnalysisView(self.analysis_image_displayer)
         self.analysis_controller = AnalysisController(self.analysis_model, self.analysis_view)
 
         self.outlier_view = OutlierView()

@@ -15,13 +15,19 @@ class ImageDisplay(QWidget):
         self.image_label = ImageLabel()
         self.text_label = QLabel()
         self.upload_tab = upload_tab
-        
-        self.layout.addWidget(self.image_label)
-        self.layout.addWidget(self.text_label)
 
         self.image_label.setMinimumSize(512, 512)
         self.image_label.setAlignment(Qt.AlignCenter)
-        self.text_label.setAlignment(Qt.AlignBottom | Qt.AlignCenter)
+        
+        self.text_label.setAlignment(Qt.AlignCenter)    
+
+        self.layout.addWidget(self.image_label)
+        self.layout.addWidget(self.text_label)
+
+    def clear(self):
+        """Clear the image display and reset labels"""
+        self.image_label.clear()
+        self.text_label.setText("")
 
     def _display_image(self, image_path, image_num, total_images):
         """Load and display an image from the given file path and show image number."""

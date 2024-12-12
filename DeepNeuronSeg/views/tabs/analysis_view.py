@@ -20,9 +20,9 @@ class AnalysisView(QWidget):
     update_signal = pyqtSignal()
     display_graph_signal = pyqtSignal(bool)
 
-    def __init__(self):
+    def __init__(self, image_display):
         super().__init__()
-        layout = QVBoxLayout()
+        self.layout = QVBoxLayout()
         metrics_layout = QGridLayout()
         
         # Model selection
@@ -34,9 +34,10 @@ class AnalysisView(QWidget):
         self.inference_btn = QPushButton("Inference Images")
         self.save_btn = QPushButton("Save Inferences")
         self.download_btn = QPushButton("Download Data")  
+        self.next_btn = QPushButton("Next Image")
 
         self.display_graph_checkbox = QCheckBox("Display Graph")
-        self.display_graph_checkbox.toggled.connect(self.display_graph)
+        self.display_graph_checkbox.toggled.connect(self.toggle_image_display_visibility)
 
         self.confidence_mean_mean_label = QLabel("Average Confidence Score: N/A")
         self.confidence_mean_mean_label.setToolTip("""
@@ -138,18 +139,25 @@ class AnalysisView(QWidget):
         
         self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
 
+        self.image_display = image_display
+
         self.select_btn.clicked.connect(self.select_images)
         self.inference_btn.clicked.connect(self.inference_images)
         self.save_btn.clicked.connect(self.save_inferences)
         self.download_btn.clicked.connect(self.download_data)
-        
-        layout.addWidget(QLabel("Trained Model:"))
-        layout.addWidget(self.model_selector)
-        layout.addWidget(self.select_btn)
-        layout.addWidget(self.inference_btn)
-        layout.addWidget(self.display_graph_checkbox)
-        layout.addWidget(self.save_btn)
-        layout.addWidget(self.canvas)
+        self.next_btn.clicked.connect(lambda: self.image_display.show_item(next_item=True))
+
+        self.layout.addWidget(QLabel("Trained Model:"))
+        self.layout.addWidget(self.model_selector)
+        self.layout.addWidget(self.image_display)
+        self.layout.addWidget(self.next_btn)
+        self.image_display.hide()
+        self.next_btn.hide()
+        self.layout.addWidget(self.select_btn)
+        self.layout.addWidget(self.inference_btn)
+        self.layout.addWidget(self.display_graph_checkbox)
+        self.layout.addWidget(self.save_btn)
+        self.layout.addWidget(self.canvas)
 
         metrics_layout.addWidget(self.confidence_mean_mean_label, 0, 0)
         metrics_layout.addWidget(self.confidence_mean_std_label, 0, 1)
@@ -179,11 +187,38 @@ class AnalysisView(QWidget):
         metrics_layout.addWidget(self.analysis_overlap_ratio_mean_label, 3, 4)
         metrics_layout.addWidget(self.analysis_overlap_ratio_std_label, 3, 5)
 
-        layout.addLayout(metrics_layout)
-        self.setLayout(layout)
+        self.layout.addLayout(metrics_layout)
+        self.setLayout(self.layout)
 
-    def display_graph(self, checked):
+    def toggle_image_display_visibility(self, checked):
         self.display_graph_signal.emit(checked)
+
+    def handle_image_display(self):
+        self.layout.removeWidget(self.canvas)
+        self.canvas.hide()
+        self.layout.insertWidget(4, self.image_display)
+        self.image_display.show()
+        self.layout.insertWidget(5, self.next_btn)
+        self.next_btn.show()
+        self.image_display.show_item()
+
+    def handle_graph_display(self, sorted_all_num_dets, sorted_all_conf_mean, colors):
+        if sorted_all_num_dets is not None and sorted_all_conf_mean is not None and colors is not None:
+            self.switch_to_graph_view(sorted_all_num_dets, sorted_all_conf_mean, colors)
+        else:
+            self.display_graph_checkbox.setChecked(False)
+            self.clear_graph()
+            print("No metrics to display, please calculate metrics first.")
+
+    def switch_to_graph_view(self, sorted_all_num_dets, sorted_all_conf_mean, colors):
+        self.image_display.clear()
+        self.layout.removeWidget(self.image_display)
+        self.image_display.hide()
+        self.layout.removeWidget(self.next_btn)
+        self.next_btn.hide()
+        self.layout.insertWidget(4, self.canvas)
+        self.canvas.show()
+        self.update_graph(sorted_all_num_dets, sorted_all_conf_mean, colors)
 
     def inference_images(self):
         self.model_name = self.model_selector.currentText()
@@ -202,6 +237,7 @@ class AnalysisView(QWidget):
         
     def update_graph(self, sorted_conf_mean, sorted_num_detections, colors):
         self.canvas.figure.clf()
+        self.canvas.setMinimumSize(800, 400)
         ax1, ax2 = self.canvas.figure.subplots(1, 2)
 
         ax1.bar(range(len(sorted_conf_mean)), sorted_conf_mean, color=colors, edgecolor='black', label='_nolegend_')
@@ -220,7 +256,6 @@ class AnalysisView(QWidget):
         ax2.set_ylabel("Number of Detections")
         ax2.legend()
 
-        # Adjust layout and render
         self.canvas.figure.tight_layout()
         self.canvas.draw()
 

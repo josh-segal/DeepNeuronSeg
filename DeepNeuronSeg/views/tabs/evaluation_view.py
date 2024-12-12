@@ -14,7 +14,7 @@ class EvaluationView(QWidget):
 
     def __init__(self, image_display):
         super().__init__()
-        layout = QVBoxLayout()
+        self.layout = QVBoxLayout()
         metrics_layout = QGridLayout()
         self.metrics = None
         
@@ -33,8 +33,10 @@ class EvaluationView(QWidget):
 
         #TODO: display individual images when graph hidden (?)
         self.display_graph_checkbox = QCheckBox("Display Graph")
-        self.display_graph_checkbox.toggled.connect(self.display_graph)
+        self.display_graph_checkbox.toggled.connect(self.toggle_image_display_visibility)
 
+        self.next_btn = QPushButton("Next Image")
+        self.next_btn.clicked.connect(lambda: self.image_display.show_item(next_item=True))
         self.downoad_data_btn = QPushButton("Download Data")
         self.downoad_data_btn.clicked.connect(self.download_data)
 
@@ -88,16 +90,18 @@ class EvaluationView(QWidget):
         Standard deviation of overlap ratio of detections per image.
         """)
 
-        layout.addWidget(QLabel("Trained Model:"))
-        layout.addWidget(self.model_selector)
-        layout.addWidget(QLabel("Dataset:"))
-        layout.addWidget(self.dataset_selector)
-        layout.addWidget(self.canvas)
-        layout.addWidget(self.calculate_metrics_btn)
-        layout.addWidget(self.display_graph_checkbox)
-        layout.addWidget(self.downoad_data_btn)
+        self.layout.addWidget(QLabel("Trained Model:"))
+        self.layout.addWidget(self.model_selector)
+        self.layout.addWidget(QLabel("Dataset:"))
+        self.layout.addWidget(self.dataset_selector)
+        self.layout.addWidget(self.image_display)
+        self.layout.addWidget(self.next_btn)
+        self.layout.addWidget(self.canvas)
+        self.layout.addWidget(self.calculate_metrics_btn)
+        self.layout.addWidget(self.display_graph_checkbox)
+        self.layout.addWidget(self.downoad_data_btn)
 
-        # Adding metric labels to layout
+        # Adding metric labels to self.layout
         metrics_layout.addWidget(self.confidence_mean_mean_label, 0, 0)
         metrics_layout.addWidget(self.confidence_mean_std_label, 0, 1)
         metrics_layout.addWidget(self.confidence_std_mean_label, 0, 2)
@@ -111,8 +115,8 @@ class EvaluationView(QWidget):
         metrics_layout.addWidget(self.overlap_ratio_mean_label, 1, 4)
         metrics_layout.addWidget(self.overlap_ratio_std_label, 1, 5)
 
-        layout.addLayout(metrics_layout)
-        self.setLayout(layout)
+        self.layout.addLayout(metrics_layout)
+        self.setLayout(self.layout)
     
         # check if metrics already calculated for model
         # load the dataset images
@@ -121,11 +125,39 @@ class EvaluationView(QWidget):
         # display metrics and distributions in meaningful way
         # in analyze data return quality score of inferenced image
 
-    def display_graph(self, checked):
+    def toggle_image_display_visibility(self, checked):
         self.display_graph_signal.emit(checked)
+
+    def handle_image_display(self):
+        self.layout.removeWidget(self.canvas)
+        self.canvas.hide()
+        self.layout.insertWidget(4, self.image_display)
+        self.image_display.show()
+        self.layout.insertWidget(5, self.next_btn)
+        self.next_btn.show()
+        self.image_display.show_item()
+
+    def handle_graph_display(self, sorted_num_dets, sorted_conf_mean):
+        if sorted_num_dets is not None and sorted_conf_mean is not None:
+            self.switch_to_graph_view(sorted_num_dets, sorted_conf_mean)
+        else:
+            self.display_graph_checkbox.setChecked(False)
+            self.clear_graph()
+            print("No metrics to display, please calculate metrics first.")
+
+    def switch_to_graph_view(self, sorted_num_dets, sorted_conf_mean):
+        self.image_display.clear()
+        self.layout.removeWidget(self.image_display)
+        self.image_display.hide()
+        self.layout.removeWidget(self.next_btn)
+        self.next_btn.hide()
+        self.layout.insertWidget(4, self.canvas)
+        self.canvas.show()
+        self.update_graph(sorted_num_dets, sorted_conf_mean)
 
     def update_graph(self, sorted_num_dets, sorted_conf_mean):
         self.canvas.figure.clf()
+        self.canvas.setMinimumSize(800, 400)
         ax1, ax2 = self.canvas.figure.subplots(1, 2)
 
         ax1.bar(range(len(sorted_conf_mean)), sorted_conf_mean, color='skyblue', edgecolor='black')
@@ -170,6 +202,7 @@ class EvaluationView(QWidget):
         self.download_data_signal.emit(dataset_name)
 
     def update(self):
+        self.image_display.show_item()
         self.update_signal.emit()
 
     def update_response(self, models, datasets):

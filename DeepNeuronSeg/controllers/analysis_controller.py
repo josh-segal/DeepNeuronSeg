@@ -20,13 +20,9 @@ class AnalysisController(QObject):
     def display_graph(self, checked):
         if checked:
             sorted_all_num_detections, sorted_all_conf_mean, colors = self.model.display_graph()
-            if sorted_all_num_detections is not None and sorted_all_conf_mean is not None and colors is not None:
-                self.view.update_graph(sorted_all_num_detections, sorted_all_conf_mean, colors)
-            else:
-                print("No metrics to display, please calculate metrics first.")
+            self.view.handle_graph_display(sorted_all_num_detections, sorted_all_conf_mean, colors)
         else:
-            self.view.clear_graph()
-
+            self.view.handle_image_display()
 
     def inference_images(self, model_name, uploaded_files):
         self.model.inference_images(model_name, uploaded_files)

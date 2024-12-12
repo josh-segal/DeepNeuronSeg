@@ -12,6 +12,7 @@ class EvaluationModel(QObject):
         super().__init__()
         self.db = db
         self.metrics = None
+        self.current_index = 0
 
     def calculate_metrics(self, model_name, dataset_name):
         self.model_path = self.db.model_table.get(Query().model_name == model_name)
@@ -33,7 +34,6 @@ class EvaluationModel(QObject):
             sorted_num_dets, sorted_conf_mean = self.sort_metrics()
             return sorted_num_dets, sorted_conf_mean
         else:
-            print("No metrics to display, please calculate metrics first.")
             return None, None
 
     def sort_metrics(self):

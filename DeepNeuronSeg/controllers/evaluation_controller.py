@@ -20,13 +20,9 @@ class EvaluationController(QObject):
     def display_graph(self, checked):
         if checked:
             sorted_num_dets, sorted_conf_mean = self.model.display_graph()
-            if sorted_num_dets is not None and sorted_conf_mean is not None:
-                self.view.update_graph(sorted_num_dets, sorted_conf_mean)
-            else:
-                print("No metrics to display, please calculate metrics first.")
+            self.view.handle_graph_display(sorted_num_dets, sorted_conf_mean)
         else:
-            self.view.clear_graph()
-            
+            self.view.handle_image_display()
 
     def download_data(self, dataset_name):
         self.model.download_data(dataset_name)

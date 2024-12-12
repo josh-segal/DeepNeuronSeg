@@ -19,6 +19,7 @@ class AnalysisModel(QObject):
         super().__init__()
         self.db = db
         self.uploaded_files = []
+        self.current_index = 0
         self.dataset_metrics = None
         self.sorted_all_num_detections, self.sorted_all_conf_mean, self.colors = None, None, None
 

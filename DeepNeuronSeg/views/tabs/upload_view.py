@@ -10,7 +10,6 @@ class UploadView(QWidget):
 
     def __init__(self, image_display):
         super().__init__()
-        self.current_index = 0
         layout = QVBoxLayout()
 
          # Image preview
@@ -67,6 +66,7 @@ class UploadView(QWidget):
         self.image_display.show_item()
 
     def update(self):
+        self.image_display.show_item()
         self.update_signal.emit()
     
     def update_response(self, items):
