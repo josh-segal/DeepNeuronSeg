@@ -83,7 +83,8 @@ class MainWindow(QMainWindow):
         self.training_controller = TrainingController(self.training_model, self.training_view)
 
         self.evaluation_model = EvaluationModel(self.data_manager)
-        self.evaluation_view = EvaluationView()
+        self.evaluation_image_displayer = ImageDisplay(self.evaluation_model)
+        self.evaluation_view = EvaluationView(self.evaluation_image_displayer)
         self.evaluation_controller = EvaluationController(self.evaluation_model, self.evaluation_view)
                 
         self.analysis_view = AnalysisView()

@@ -12,7 +12,7 @@ class EvaluationView(QWidget):
     download_data_signal = pyqtSignal(str)
     update_signal = pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, image_display):
         super().__init__()
         layout = QVBoxLayout()
         metrics_layout = QGridLayout()
@@ -25,6 +25,8 @@ class EvaluationView(QWidget):
         
         # Visualization area (placeholder for distribution plots)
         self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
+
+        self.image_display = image_display
 
         self.calculate_metrics_btn = QPushButton("Calculate Metrics")
         self.calculate_metrics_btn.clicked.connect(self.calculate_metrics)

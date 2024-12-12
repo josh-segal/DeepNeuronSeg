@@ -26,6 +26,7 @@ class EvaluationController(QObject):
                 print("No metrics to display, please calculate metrics first.")
         else:
             self.view.clear_graph()
+            
 
     def download_data(self, dataset_name):
         self.model.download_data(dataset_name)
