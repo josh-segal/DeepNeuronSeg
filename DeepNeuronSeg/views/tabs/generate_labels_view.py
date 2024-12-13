@@ -12,14 +12,14 @@ class GenerateLabelsView(QWidget):
 
     generate_labels_signal = pyqtSignal()
 
-    def __init__(self, image_display_left, image_display_right):
+    def __init__(self):
         super().__init__()
         layout = QVBoxLayout()
         image_layout = QHBoxLayout()
         config_layout = QHBoxLayout()
 
-        self.left_image = image_display_left
-        self.right_image = image_display_right
+        self.left_image = ImageDisplay()
+        self.right_image = ImageDisplay()
 
         self.generate_btn = QPushButton("Generate Labels")
         self.next_btn = QPushButton("Next Image")

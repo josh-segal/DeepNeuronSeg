@@ -12,7 +12,7 @@ class OutlierView(QWidget):
         
         
         # Image display
-        self.image_display = ImageDisplay(self)
+        self.image_display = ImageDisplay()
         
         # Outlier controls
         controls_layout = QHBoxLayout()

@@ -1,8 +1,6 @@
 import os
 from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QTabWidget
 
-from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
-
 from DeepNeuronSeg.models.data_manager import DataManager
 
 from DeepNeuronSeg.models.upload_model import UploadModel
@@ -58,19 +56,15 @@ class MainWindow(QMainWindow):
         self.tabs.setMovable(False)
 
         self.upload_model = UploadModel(self.data_manager)
-        self.upload_image_displayer = ImageDisplay(self.upload_model)
-        self.upload_view = UploadView(self.upload_image_displayer)
+        self.upload_view = UploadView()
         self.upload_controller = UploadController(self.upload_model, self.upload_view)
         
         self.labeling_model = LabelingModel(self.data_manager)
-        self.labeling_image_displayer = ImageDisplay(self.labeling_model)
-        self.labeling_view = LabelingView(self.labeling_image_displayer)
+        self.labeling_view = LabelingView()
         self.labeling_controller = LabelingController(self.labeling_model, self.labeling_view)
 
         self.generate_labels_model = GenerateLabelsModel(self.data_manager)
-        self.generate_labels_image_displayer_left = ImageDisplay(self.generate_labels_model)
-        self.generate_labels_image_displayer_right = ImageDisplay(self.generate_labels_model)
-        self.generate_labels_view = GenerateLabelsView(self.generate_labels_image_displayer_left, self.generate_labels_image_displayer_right)
+        self.generate_labels_view = GenerateLabelsView()
         self.generate_labels_controller = GenerateLabelsController(self.generate_labels_model, self.generate_labels_view)
 
         self.dataset_model = DatasetModel(self.data_manager)
@@ -83,13 +77,11 @@ class MainWindow(QMainWindow):
         self.training_controller = TrainingController(self.training_model, self.training_view)
 
         self.evaluation_model = EvaluationModel(self.data_manager)
-        self.evaluation_image_displayer = ImageDisplay(self.evaluation_model)
-        self.evaluation_view = EvaluationView(self.evaluation_image_displayer)
+        self.evaluation_view = EvaluationView()
         self.evaluation_controller = EvaluationController(self.evaluation_model, self.evaluation_view)
                 
         self.analysis_model = AnalysisModel(self.data_manager)
-        self.analysis_image_displayer = ImageDisplay(self.analysis_model)
-        self.analysis_view = AnalysisView(self.analysis_image_displayer)
+        self.analysis_view = AnalysisView()
         self.analysis_controller = AnalysisController(self.analysis_model, self.analysis_view)
 
         self.outlier_view = OutlierView()

@@ -1,15 +1,15 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QHBoxLayout, QFileDialog
 from PyQt5.QtCore import QPoint, pyqtSignal
-
+from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
 class LabelingView(QWidget):
 
     add_cell_marker_signal = pyqtSignal(QPoint)
     remove_cell_marker_signal = pyqtSignal(QPoint, int)
     upload_labels_signal = pyqtSignal(list)
 
-    def __init__(self, image_display):
+    def __init__(self):
         super().__init__()
-        self.image_display = image_display
+        self.image_display = ImageDisplay()
         layout = QVBoxLayout()
         self.upload_label_btn = QPushButton("Upload Labels")
         self.load_btn = QPushButton("Display Data")

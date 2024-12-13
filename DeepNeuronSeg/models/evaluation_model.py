@@ -2,6 +2,7 @@ from itertools import chain
 from tinydb import Query
 from PyQt5.QtCore import pyqtSignal, QObject
 from DeepNeuronSeg.models.qa_metrics import DetectionQAMetrics
+from DeepNeuronSeg.models.image_manager import ImageManager
 
 class EvaluationModel(QObject):
 
@@ -12,7 +13,7 @@ class EvaluationModel(QObject):
         super().__init__()
         self.db = db
         self.metrics = None
-        self.current_index = 0
+        self.image_manager = ImageManager(self.db)
 
     def calculate_metrics(self, model_name, dataset_name):
         self.model_path = self.db.model_table.get(Query().model_name == model_name)

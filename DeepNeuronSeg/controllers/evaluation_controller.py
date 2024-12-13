@@ -10,8 +10,19 @@ class EvaluationController(QObject):
         self.view.display_graph_signal.connect(self.display_graph)
         self.view.download_data_signal.connect(self.download_data)
         self.view.update_signal.connect(self.update)
+        self.view.next_image_signal.connect(self.next_image)
+        self.view.curr_image_signal.connect(self.curr_image)
 
         self.update()
+
+    def next_image(self):
+        self.model.image_manager.next_image()
+        item, index, total, points = self.model.image_manager.get_item()
+        self.view.image_display.display_frame(item, index, total, points)
+
+    def curr_image(self):
+        item, index, total, points = self.model.image_manager.get_item()
+        self.view.image_display.display_frame(item, index, total, points)
 
     def calculate_metrics(self, model_name, dataset_name):
         dataset_metrics = self.model.calculate_metrics(model_name, dataset_name)

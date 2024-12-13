@@ -21,9 +21,9 @@ class ModelZooView(QWidget):
         self.model_selector = QComboBox()
 
         # image display
-        self.left_image = ImageDisplay(self)
+        self.left_image = ImageDisplay()
         # pred display
-        self.right_image = ImageDisplay(self)
+        self.right_image = ImageDisplay()
         
         # Image selection for inference
         self.select_btn = QPushButton("Select Images")

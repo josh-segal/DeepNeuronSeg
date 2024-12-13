@@ -1,5 +1,6 @@
 from DeepNeuronSeg.models.denoise_model import DenoiseModel
 from DeepNeuronSeg.models.qa_metrics import DetectionQAMetrics
+from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
 import shutil
 import tempfile
 import numpy as np
@@ -20,11 +21,11 @@ class AnalysisView(QWidget):
     update_signal = pyqtSignal()
     display_graph_signal = pyqtSignal(bool)
 
-    def __init__(self, image_display):
+    def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout()
         metrics_layout = QGridLayout()
-        
+        self.image_display = ImageDisplay()
         # Model selection
         self.model_selector = QComboBox()
         # self.model_selector.addItems(map(lambda model: model['model_name'], self.db.load_models()))
@@ -138,8 +139,6 @@ class AnalysisView(QWidget):
         """)
         
         self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
-
-        self.image_display = image_display
 
         self.select_btn.clicked.connect(self.select_images)
         self.inference_btn.clicked.connect(self.inference_images)

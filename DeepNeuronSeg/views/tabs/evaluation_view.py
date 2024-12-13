@@ -2,21 +2,23 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QComboBox, QPushB
 from PyQt5.QtCore import pyqtSignal
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from itertools import chain
-from tinydb import Query
+from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
 
 class EvaluationView(QWidget):
 
+    curr_image_signal = pyqtSignal()
+    next_image_signal = pyqtSignal()
     calculate_metrics_signal = pyqtSignal(str, str)
     display_graph_signal = pyqtSignal(bool)
     download_data_signal = pyqtSignal(str)
     update_signal = pyqtSignal()
 
-    def __init__(self, image_display):
+    def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout()
         metrics_layout = QGridLayout()
         self.metrics = None
+        self.image_display = ImageDisplay()
         
         # Model selection
         self.model_selector = QComboBox()
@@ -26,8 +28,6 @@ class EvaluationView(QWidget):
         # Visualization area (placeholder for distribution plots)
         self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
 
-        self.image_display = image_display
-
         self.calculate_metrics_btn = QPushButton("Calculate Metrics")
         self.calculate_metrics_btn.clicked.connect(self.calculate_metrics)
 
@@ -36,7 +36,8 @@ class EvaluationView(QWidget):
         self.display_graph_checkbox.toggled.connect(self.toggle_image_display_visibility)
 
         self.next_btn = QPushButton("Next Image")
-        self.next_btn.clicked.connect(lambda: self.image_display.show_item(next_item=True))
+        self.next_btn.clicked.connect(self.next_image)
+
         self.downoad_data_btn = QPushButton("Download Data")
         self.downoad_data_btn.clicked.connect(self.download_data)
 
@@ -125,6 +126,9 @@ class EvaluationView(QWidget):
         # display metrics and distributions in meaningful way
         # in analyze data return quality score of inferenced image
 
+    def next_image(self):
+        self.next_image_signal.emit()
+
     def toggle_image_display_visibility(self, checked):
         self.display_graph_signal.emit(checked)
 
@@ -135,7 +139,8 @@ class EvaluationView(QWidget):
         self.image_display.show()
         self.layout.insertWidget(5, self.next_btn)
         self.next_btn.show()
-        self.image_display.show_item()
+        self.curr_image_signal.emit()
+        # self.image_display.show_item()
 
     def handle_graph_display(self, sorted_num_dets, sorted_conf_mean):
         if sorted_num_dets is not None and sorted_conf_mean is not None:
@@ -202,7 +207,7 @@ class EvaluationView(QWidget):
         self.download_data_signal.emit(dataset_name)
 
     def update(self):
-        self.image_display.show_item()
+        self.curr_image_signal.emit()
         self.update_signal.emit()
 
     def update_response(self, models, datasets):

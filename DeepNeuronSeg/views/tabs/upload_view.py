@@ -1,19 +1,20 @@
 import os
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QListWidget, QFileDialog, QLineEdit, QLabel, QGridLayout, QHBoxLayout
 from PyQt5.QtCore import pyqtSignal
-
+from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
 
 class UploadView(QWidget):
 
+    curr_image_signal = pyqtSignal()
     upload_images_signal = pyqtSignal(list, str, str, str, str)
     update_signal = pyqtSignal()
 
-    def __init__(self, image_display):
+    def __init__(self):
         super().__init__()
         layout = QVBoxLayout()
 
          # Image preview
-        self.image_display = image_display
+        self.image_display = ImageDisplay()
         
         # File list
         self.file_list = QListWidget()
@@ -24,10 +25,9 @@ class UploadView(QWidget):
         self.set_text_btn = QPushButton("Update Image Metadata")
 
         self.upload_btn.clicked.connect(self.upload_images)
-        self.load_btn.clicked.connect(self.image_display.show_item)
-        self.next_btn.clicked.connect(lambda: self.image_display.show_item(next_item=True))
+        self.next_btn.clicked.connect(self.next_image)
         
-        self.file_list.itemClicked.connect(lambda item: self.image_display.show_item(index=self.file_list.row(item)))
+        self.file_list.itemClicked.connect(lambda item: self.load_image(index=self.file_list.row(item)))
         
         # Metadata input fields
         metadata_layout = QGridLayout()
@@ -54,6 +54,12 @@ class UploadView(QWidget):
         layout.addWidget(self.image_display)
         layout.addWidget(self.file_list)
         self.setLayout(layout)
+
+    def next_image(self):
+        self.next_image_signal.emit()
+
+    def load_image(self, index):
+        self.load_image_signal.emit(index)
     
     def upload_images(self):
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png *.tif)")
@@ -63,10 +69,10 @@ class UploadView(QWidget):
     def update_images(self, items):
         self.file_list.clear()
         self.file_list.addItems([os.path.basename(file) for file in items])
-        self.image_display.show_item()
+        self.curr_image_signal.emit()
 
     def update(self):
-        self.image_display.show_item()
+        self.curr_image_signal.emit()
         self.update_signal.emit()
     
     def update_response(self, items):
