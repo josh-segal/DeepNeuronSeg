@@ -74,7 +74,7 @@ class ImageManager:
             if f.suffix.lower() in self.SUPPORTED_FORMATS
         ])
 
-    def get_item(self, show_masks=False, show_labels=False, subdir: Optional[str] = None) -> Tuple[Optional[str], int, int, Optional[List]]:
+    def get_item(self, show_masks=False, show_labels=False, no_wrap=False, subdir: Optional[str] = None) -> Tuple[Optional[str], int, int, Optional[List]]:
         """
         Get information about the current image
         
@@ -95,8 +95,10 @@ class ImageManager:
         if not items:
             return None, 0, 0, None
             
-        if self.current_index >= len(items):
+        if self.current_index >= len(items) and not no_wrap:
             self.current_index = 0
+        elif self.current_index >= len(items) and no_wrap:
+            return None, 0, 0, None
             
         current_item = items[self.current_index]
         total_items = len(items)
@@ -122,6 +124,8 @@ class ImageManager:
     def get_images(self, subdir: Optional[str] = None):
         if self.dataset_path:
             images = self._load_directory_images(subdir)
-            # print(images)
+            images = [os.path.splitext(os.path.basename(path))[0] for path in images]
             return images
-        return self.db.load_images() if self.db else []
+        images = self.db.load_images() if self.db else []
+        images = [os.path.splitext(os.path.basename(path))[0] for path in images]
+        return images

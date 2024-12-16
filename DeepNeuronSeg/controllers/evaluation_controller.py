@@ -22,12 +22,18 @@ class EvaluationController(QObject):
         item, index, total, points = self.model.image_manager.get_item(subdir='images')
         if item:
             self.view.image_display.display_frame(item, index, total, points)
+        else:
+            self.view.image_display.clear()
+            self.view.image_display.text_label.setText("No image found")
 
     def next_image(self):
         self.model.image_manager.next_image(subdir='images')
         item, index, total, points = self.model.image_manager.get_item(subdir='images')
         if item:
             self.view.image_display.display_frame(item, index, total, points)
+        else:
+            self.view.image_display.clear()
+            self.view.image_display.text_label.setText("No image found")
 
     def calculate_metrics(self, model_name, dataset_name):
         dataset_metrics = self.model.calculate_metrics(model_name, dataset_name)
@@ -48,6 +54,9 @@ class EvaluationController(QObject):
         item, index, total, points = self.model.image_manager.get_item(subdir='images')
         if item:
             self.view.image_display.display_frame(item, index, total, points)
+        else:
+            self.view.image_display.clear()
+            self.view.image_display.text_label.setText("No image found")
 
     def update(self):
         images = self.model.image_manager.get_images(subdir='images')
@@ -57,3 +66,6 @@ class EvaluationController(QObject):
         item, index, total, points = self.model.image_manager.get_item(subdir='images')
         if item:
             self.view.image_display.display_frame(item, index, total, points)
+        else:
+            self.view.image_display.clear()
+            self.view.image_display.text_label.setText("No image found")

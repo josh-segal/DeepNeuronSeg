@@ -18,6 +18,7 @@ class UploadController(QObject):
     def upload_images(self, images, project, cohort, brain_region, image_id):
         print("upload images controller")
         self.model.upload_images(images, project, cohort, brain_region, image_id)
+        self.update_view()
         
 
     def update_images(self, images):
@@ -26,16 +27,28 @@ class UploadController(QObject):
     def load_image(self, index):
         self.model.image_manager.set_index(index)
         item, index, total, points = self.model.image_manager.get_item(show_labels=False)
-        self.view.image_display.display_frame(item, index, total, points)
+        if item:
+            self.view.image_display.display_frame(item, index, total, points)
+        else:
+            self.view.image_display.clear()
+            self.view.image_display.text_label.setText("No image found")
 
     def next_image(self):
         self.model.image_manager.next_image()
         item, index, total, points = self.model.image_manager.get_item(show_labels=False)
-        self.view.image_display.display_frame(item, index, total, points)
+        if item:
+            self.view.image_display.display_frame(item, index, total, points)
+        else:
+            self.view.image_display.clear()
+            self.view.image_display.text_label.setText("No image found")
 
     def update_view(self):
         images = self.model.image_manager.get_images()
         self.view.update_response(images)
         item, index, total, points = self.model.image_manager.get_item(show_labels=False)
-        self.view.image_display.display_frame(item, index, total, points)
+        if item:
+            self.view.image_display.display_frame(item, index, total, points)
+        else:
+            self.view.image_display.clear()
+            self.view.image_display.text_label.setText("No image found")
     
