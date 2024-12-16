@@ -1,14 +1,8 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QComboBox, QGridLayout, QSpinBox, QLineEdit, QCheckBox, QLabel, QPushButton, QSizePolicy
 )
-from PyQt5.QtCore import pyqtSignal
-from itertools import chain
-from tinydb import Query
-import os
-from DeepNeuronSeg.models.denoise_model import DenoiseModel
+from PyQt5.QtCore import pyqtSignal  
 from DeepNeuronSeg.views.widgets.hideable_input_panel import HideableInputPanel
-from pathlib import Path
-
 
 class TrainingView(QWidget):
 

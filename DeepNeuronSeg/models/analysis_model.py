@@ -1,5 +1,6 @@
 from DeepNeuronSeg.models.denoise_model import DenoiseModel
 from DeepNeuronSeg.models.qa_metrics import DetectionQAMetrics
+from DeepNeuronSeg.models.image_manager import ImageManager
 import shutil
 import tempfile
 import numpy as np
@@ -14,14 +15,16 @@ class AnalysisModel(QObject):
     calculated_outlier_data = pyqtSignal(list)
     dataset_metrics_signal = pyqtSignal(dict)
     analysis_metrics_signal = pyqtSignal(dict)
+    update_images_signal = pyqtSignal()
 
     def __init__(self, db):
         super().__init__()
         self.db = db
-        self.uploaded_files = []
-        self.current_index = 0
         self.dataset_metrics = None
         self.sorted_all_num_detections, self.sorted_all_conf_mean, self.colors = None, None, None
+
+        self.dataset_path = tempfile.mkdtemp()
+        self.image_manager = ImageManager(dataset_path=self.dataset_path)
 
     def load_models(self):
         return self.db.load_models()
@@ -76,17 +79,15 @@ class AnalysisModel(QObject):
             print("No dataset metrics, please calculate metrics first in Evaluation Tab.")
 
     def update_analysis_metrics_labels(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Copy the selected files to the temporary directory
-            if not self.uploaded_files:
-                print("No uploaded files to process.")
-                return
-            for file in self.uploaded_files:
-                shutil.copy(file, temp_dir)
-            
-            # Use the temporary directory as the dataset path
-            self.analysis_metrics_model = DetectionQAMetrics(self.analysis_model_path, temp_dir)
-            self.analysis_metrics_signal.emit(self.analysis_metrics_model.dataset_metrics_mean_std)
+        if not self.uploaded_files:
+            print("No uploaded files to process.")
+            return
+        for file in self.uploaded_files:
+            shutil.copy(file, self.dataset_path)
+        
+        self.update_images_signal.emit()
+        self.analysis_metrics_model = DetectionQAMetrics(self.analysis_model_path, self.dataset_path)
+        self.analysis_metrics_signal.emit(self.analysis_metrics_model.dataset_metrics_mean_std)
 
     def download_data(self):
         if self.analysis_metrics_model is not None:

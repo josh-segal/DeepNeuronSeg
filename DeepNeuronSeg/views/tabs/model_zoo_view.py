@@ -3,7 +3,6 @@ import tempfile
 from PIL import Image
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QPushButton, QLabel, QFileDialog
-from tinydb import Query
 from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
 
 class ModelZooView(QWidget):
@@ -21,9 +20,9 @@ class ModelZooView(QWidget):
         self.model_selector = QComboBox()
 
         # image display
-        self.left_image = ImageDisplay(self)
+        self.left_image = ImageDisplay()
         # pred display
-        self.right_image = ImageDisplay(self)
+        self.right_image = ImageDisplay()
         
         # Image selection for inference
         self.select_btn = QPushButton("Select Images")

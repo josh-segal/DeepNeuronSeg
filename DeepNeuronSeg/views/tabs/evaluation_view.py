@@ -1,32 +1,37 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QComboBox, QPushButton, QLabel, QCheckBox
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QComboBox, QPushButton, QLabel, QCheckBox, QListWidget
 from PyQt5.QtCore import pyqtSignal
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from itertools import chain
-from tinydb import Query
+from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
 
 class EvaluationView(QWidget):
 
+    curr_image_signal = pyqtSignal()
+    next_image_signal = pyqtSignal()
     calculate_metrics_signal = pyqtSignal(str, str)
     display_graph_signal = pyqtSignal(bool)
     download_data_signal = pyqtSignal(str)
     update_signal = pyqtSignal()
-
-    def __init__(self, image_display):
+    dataset_changed_signal = pyqtSignal(str)
+    load_image_signal = pyqtSignal(int)
+    
+    def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout()
         metrics_layout = QGridLayout()
         self.metrics = None
-        
+        self.image_display = ImageDisplay()
+
+        self.file_list = QListWidget()
+        self.file_list.itemClicked.connect(lambda item: self.load_image(index=self.file_list.row(item)))
         # Model selection
         self.model_selector = QComboBox()
 
         self.dataset_selector = QComboBox()
+        self.dataset_selector.activated.connect(self.on_dataset_changed)
         
         # Visualization area (placeholder for distribution plots)
         self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
-
-        self.image_display = image_display
 
         self.calculate_metrics_btn = QPushButton("Calculate Metrics")
         self.calculate_metrics_btn.clicked.connect(self.calculate_metrics)
@@ -36,7 +41,8 @@ class EvaluationView(QWidget):
         self.display_graph_checkbox.toggled.connect(self.toggle_image_display_visibility)
 
         self.next_btn = QPushButton("Next Image")
-        self.next_btn.clicked.connect(lambda: self.image_display.show_item(next_item=True))
+        self.next_btn.clicked.connect(self.next_image)
+
         self.downoad_data_btn = QPushButton("Download Data")
         self.downoad_data_btn.clicked.connect(self.download_data)
 
@@ -100,7 +106,7 @@ class EvaluationView(QWidget):
         self.layout.addWidget(self.calculate_metrics_btn)
         self.layout.addWidget(self.display_graph_checkbox)
         self.layout.addWidget(self.downoad_data_btn)
-
+        self.layout.addWidget(self.file_list)
         # Adding metric labels to self.layout
         metrics_layout.addWidget(self.confidence_mean_mean_label, 0, 0)
         metrics_layout.addWidget(self.confidence_mean_std_label, 0, 1)
@@ -125,6 +131,13 @@ class EvaluationView(QWidget):
         # display metrics and distributions in meaningful way
         # in analyze data return quality score of inferenced image
 
+    def on_dataset_changed(self, dataset_index):
+        dataset_name = self.dataset_selector.itemText(dataset_index)
+        self.dataset_changed_signal.emit(dataset_name)
+
+    def next_image(self):
+        self.next_image_signal.emit()
+
     def toggle_image_display_visibility(self, checked):
         self.display_graph_signal.emit(checked)
 
@@ -135,7 +148,7 @@ class EvaluationView(QWidget):
         self.image_display.show()
         self.layout.insertWidget(5, self.next_btn)
         self.next_btn.show()
-        self.image_display.show_item()
+        self.curr_image_signal.emit()
 
     def handle_graph_display(self, sorted_num_dets, sorted_conf_mean):
         if sorted_num_dets is not None and sorted_conf_mean is not None:
@@ -202,12 +215,17 @@ class EvaluationView(QWidget):
         self.download_data_signal.emit(dataset_name)
 
     def update(self):
-        self.image_display.show_item()
         self.update_signal.emit()
 
-    def update_response(self, models, datasets):
+    def load_image(self, index):
+        self.load_image_signal.emit(index)
+
+    def update_response(self, models, datasets, images):
         self.model_selector.clear()
         self.dataset_selector.clear()
         
         self.model_selector.addItems(models)
         self.dataset_selector.addItems(datasets)
+
+        self.file_list.clear()
+        self.file_list.addItems(images)

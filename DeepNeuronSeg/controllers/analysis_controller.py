@@ -12,10 +12,27 @@ class AnalysisController(QObject):
         self.view.download_data_signal.connect(self.download_data)
         self.model.dataset_metrics_signal.connect(self.update_dataset_metrics)
         self.model.analysis_metrics_signal.connect(self.update_analysis_metrics)
-        self.view.update_signal.connect(self.update_model_selector)
+        self.view.update_signal.connect(self.update)
         self.view.display_graph_signal.connect(self.display_graph)
+        self.view.curr_image_signal.connect(self.curr_image)
+        self.view.load_image_signal.connect(self.load_image)
+        self.view.next_image_signal.connect(self.next_image)
+        self.model.update_images_signal.connect(self.update)
 
-        self.update_model_selector()
+        self.update()
+
+    def next_image(self):
+        self.model.image_manager.next_image()
+        self.curr_image()
+
+    def load_image(self, index):
+        self.model.image_manager.set_index(index)
+        self.curr_image()
+
+    def curr_image(self):
+        item, index, total, points = self.model.image_manager.get_item()
+        if item:
+            self.view.image_display.display_frame(item, index, total, points)
 
     def display_graph(self, checked):
         if checked:
@@ -33,9 +50,11 @@ class AnalysisController(QObject):
     def download_data(self):
         self.model.download_data()
 
-    def update_model_selector(self):
+    def update(self):
         models = map(lambda model: model['model_name'], self.model.load_models())
-        self.view.update_response(models)
+        images = self.model.image_manager.get_images()
+        self.view.update_response(models, images)
+        self.curr_image()
 
     def receive_dataset_metrics(self, dataset_metrics, analysis_metrics, variance_baselines, model_path):
             self.model.receive_dataset_metrics(dataset_metrics, analysis_metrics, variance_baselines, model_path)

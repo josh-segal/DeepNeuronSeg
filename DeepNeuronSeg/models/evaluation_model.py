@@ -2,6 +2,7 @@ from itertools import chain
 from tinydb import Query
 from PyQt5.QtCore import pyqtSignal, QObject
 from DeepNeuronSeg.models.qa_metrics import DetectionQAMetrics
+from DeepNeuronSeg.models.image_manager import ImageManager
 
 class EvaluationModel(QObject):
 
@@ -12,19 +13,24 @@ class EvaluationModel(QObject):
         super().__init__()
         self.db = db
         self.metrics = None
-        self.current_index = 0
+        # get first dataset path
+        dataset_name = next(map(lambda dataset: dataset['dataset_name'], self.db.load_datasets()), None)
+        self.dataset_path = self.get_dataset_path(dataset_name) if dataset_name else None
+        self.image_manager = ImageManager(dataset_path=self.dataset_path)
+
+    def get_dataset_path(self, dataset_name):
+        if " (denoised)" in dataset_name:
+            dn_dataset_name = dataset_name.replace(" (denoised)", "")
+            return self.db.dataset_table.get(Query().dataset_name == dn_dataset_name).get('denoise_dataset_path')
+        else:
+            return self.db.dataset_table.get(Query().dataset_name == dataset_name).get('dataset_path')
 
     def calculate_metrics(self, model_name, dataset_name):
         self.model_path = self.db.model_table.get(Query().model_name == model_name)
         self.model_path = self.model_path["model_path"]
-        # print(self.model_path, '<----------------')
-        if " (denoised)" in dataset_name:
-            dn_dataset_name = dataset_name.replace(" (denoised)", "")
-            self.dataset_path = self.db.dataset_table.get(Query().dataset_name == dn_dataset_name).get('denoise_dataset_path')
-        else:
-            self.dataset_path = self.db.dataset_table.get(Query().dataset_name == dataset_name).get('dataset_path')
-        # print(self.dataset_path, '<----------------')
+        self.dataset_path = self.get_dataset_path(dataset_name)
 
+        self.image_manager.set_dataset_path(self.dataset_path)
         self.metrics = DetectionQAMetrics(self.model_path, self.dataset_path)
         self.update_metrics_labels_signal.emit(self.metrics.dataset_metrics_mean_std, self.metrics.dataset_metrics, self.metrics.get_analysis_metrics(), self.metrics.model_path)
         return self.metrics.dataset_metrics_mean_std 

@@ -6,6 +6,7 @@ from PyQt5.QtCore import pyqtSignal, QObject
 from tinydb import Query
 from DeepNeuronSeg.utils.utils import trim_underscores
 from DeepNeuronSeg.views.widgets.frame_selection_dialog import FrameSelectionDialog
+from DeepNeuronSeg.models.image_manager import ImageManager
 
 
 
@@ -19,6 +20,7 @@ class UploadModel(QObject):
         self.db = db
         self.current_index = 0
         self.uploaded_files = []
+        self.image_manager = ImageManager(self.db)
     
     def upload_images(self, uploaded_files, project, cohort, brain_region, image_id):
         print("upload images model")
@@ -78,6 +80,17 @@ class UploadModel(QObject):
 
         items = self.db.load_images()
         self.update_images_signal.emit(items)
+    
+    def load_image(self, index):
+        self.current_index = index
+        self.image_manager.set_index(index)
+        item, index, total, points = self.image_manager.get_item()
+        return item, index, total, points
+
+    def next_image(self):
+        self.image_manager.next_image()
+        item, index, total, points = self.image_manager.get_item()
+        return item, index, total, points
 
     def update(self):
         self.file_list.clear()

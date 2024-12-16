@@ -2,6 +2,7 @@ from tinydb import Query
 from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
 from DeepNeuronSeg.utils.label_parsers import parse_png_label, parse_txt_label, parse_csv_label, parse_xml_label
 from DeepNeuronSeg.utils.utils import trim_underscores
+from DeepNeuronSeg.models.image_manager import ImageManager
 import os
 from PyQt5.QtCore import QObject
 
@@ -10,8 +11,7 @@ class LabelingModel(QObject):
     def __init__(self, db):
         super().__init__()
         self.db = db
-        self.current_index = 0
-        self.uploaded_files = []
+        self.image_manager = ImageManager(self.db)
 
     def parse_labels(self, labels):
 
@@ -44,38 +44,52 @@ class LabelingModel(QObject):
         
     def add_cell_marker(self, pos):
         # print("adding cell")
-        adjusted_pos = self.image_display.image_label.adjust_pos(pos)
-        if not (0 <= adjusted_pos.x() <= 512 and 0 <= adjusted_pos.y() <= 512):
-            return
+        if not (0 <= pos.x() <= 512 and 0 <= pos.y() <= 512):
+            return None, None, None, None
 
         # Get all records from the image_table
-        images = self.db.load_images()
+        images = self.image_manager.get_images()
 
         # Define file_path based on self.current_index
-        file_path = images[self.current_index]['file_path'] if 0 <= self.current_index < len(images) else None
+        file_path = images[self.image_manager.current_index] if 0 <= self.image_manager.current_index < len(images) else None
 
         image_query = Query()
         image_data = self.db.image_table.get(image_query.file_path == file_path)
         if image_data:
-            self.db.image_table.update({"labels": image_data.get("labels", []) + [(adjusted_pos.x(), adjusted_pos.y())]}, image_query.file_path == file_path)
-            self.image_display.show_item(points=True)
-            # self.image_display.show_image_with_points()
+            self.db.image_table.update({"labels": image_data.get("labels", []) + [(pos.x(), pos.y())]}, image_query.file_path == file_path)
+            item, index, total, points = self.image_manager.get_item(show_labels=True)
+            return item, index, total, points
+        else:
+            print(f"Image not found in database {file_path}")
+            return None, None, None, None
 
     def remove_cell_marker(self, pos, tolerance=5):
-        adjusted_pos = self.image_display.image_label.adjust_pos(pos)
-        if not (0 <= adjusted_pos.x() <= 512 and 0 <= adjusted_pos.y() <= 512):
-            return
+        if not (0 <= pos.x() <= 512 and 0 <= pos.y() <= 512):
+            return None, None, None, None
 
         # Get all records from the image_table
-        images = self.db.load_images()
+        images = self.image_manager.get_images()
 
         # Define file_path based on self.current_index
-        file_path = images[self.current_index]['file_path'] if 0 <= self.current_index < len(images) else None
+        file_path = images[self.image_manager.current_index] if 0 <= self.image_manager.current_index < len(images) else None
 
         image_query = Query()
         image_data = self.db.image_table.get(image_query.file_path == file_path)
         if image_data:
             # Update labels: append the new position
-            self.db.image_table.update({"labels": [label for label in image_data.get("labels", []) if not (abs(label[0] - adjusted_pos.x()) < tolerance and abs(label[1] - adjusted_pos.y()) < tolerance)]}, image_query.file_path == file_path)
-            self.image_display.show_item(points=True)
-            # self.image_display.show_image_with_points()
+            self.db.image_table.update({"labels": [label for label in image_data.get("labels", []) if not (abs(label[0] - pos.x()) < tolerance and abs(label[1] - pos.y()) < tolerance)]}, image_query.file_path == file_path)
+            item, index, total, points = self.image_manager.get_item(show_labels=True)
+            return item, index, total, points
+        else:
+            print(f"Image not found in database {file_path}")
+            return None, None, None, None
+
+    def load_image(self, index):
+        self.image_manager.set_index(index)
+        item, index, total, points = self.image_manager.get_item(show_labels=True)
+        return item, index, total, points
+
+    def next_image(self):
+        self.image_manager.next_image()
+        item, index, total, points = self.image_manager.get_item(show_labels=True)
+        return item, index, total, points

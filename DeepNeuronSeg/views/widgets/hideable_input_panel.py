@@ -115,5 +115,5 @@ class HideableInputPanel(QWidget):
             except ValueError:
                 value = self.input_boxes[key].text()
             self.augmentations[key] = value
-            print(self.augmentations)
+            # print(self.augmentations)
         return handler
