@@ -1,18 +1,14 @@
 from tqdm import tqdm
 from tinydb import Query
-from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
 from DeepNeuronSeg.utils.utils import save_label
 from DeepNeuronSeg.models.segmentation_model import segment, composite_mask
+from DeepNeuronSeg.models.image_manager import ImageManager
 
 class GenerateLabelsModel:
     def __init__(self, db):
         super().__init__()
         self.db = db
-
-        self.current_index = 0
-        self.uploaded_files = []
-        self.metadata_labels = []
-        self.data = []
+        self.image_manager = ImageManager(self.db)
 
     def generate_labels(self):
         

@@ -3,7 +3,6 @@ import tempfile
 from PIL import Image
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QPushButton, QLabel, QFileDialog
-from tinydb import Query
 from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
 
 class ModelZooView(QWidget):

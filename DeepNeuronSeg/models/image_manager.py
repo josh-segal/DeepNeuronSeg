@@ -51,17 +51,30 @@ class ImageManager:
         self.dataset_path = None
         self.current_index = 0  # Reset index when changing source
 
-    def _load_directory_images(self) -> List[str]:
-        """Load image paths from the dataset directory"""
+    def _load_directory_images(self, subdir: Optional[str] = None) -> List[str]:
+        """Load image paths from the dataset directory
+        
+        Args:
+            subdir: Optional subdirectory path relative to dataset_path to load images from
+            
+        Returns:
+            List of image file paths
+        """
         if not self.dataset_path:
             return []
             
+        search_path = self.dataset_path
+        if subdir:
+            search_path = Path(os.path.join(search_path, subdir))
+            if not search_path.exists() or not search_path.is_dir():
+                return []
+            
         return sorted([
-            str(f) for f in self.dataset_path.iterdir()
+            str(f) for f in search_path.iterdir()
             if f.suffix.lower() in self.SUPPORTED_FORMATS
         ])
 
-    def get_item(self, show_masks=False) -> Tuple[Optional[str], int, int, Optional[List]]:
+    def get_item(self, show_masks=False, show_labels=False, subdir: Optional[str] = None) -> Tuple[Optional[str], int, int, Optional[List]]:
         """
         Get information about the current image
         
@@ -73,11 +86,11 @@ class ImageManager:
             - Points data (List or None)
         """
         if self.dataset_path:
-            items = self._load_directory_images()
+            items = self._load_directory_images(subdir)
             points = None  # No points data for directory-based images
         else:
             items = self.db.load_masks() if show_masks else self.db.load_images()
-            points = self.db.load_labels()[self.current_index] if self.db.load_labels() else None
+            points = self.db.load_labels()[self.current_index] if show_labels else None
         
         if not items:
             return None, 0, 0, None
@@ -90,9 +103,9 @@ class ImageManager:
         
         return current_item, self.current_index, total_items, points
 
-    def next_image(self) -> None:
+    def next_image(self, subdir: Optional[str] = None) -> None:
         """Move to the next image in the sequence"""
-        items = self._load_directory_images() if self.dataset_path else self.db.load_images()
+        items = self._load_directory_images(subdir) if self.dataset_path else self.db.load_images()
         if items:
             self.current_index = (self.current_index + 1) % len(items)
 
@@ -100,8 +113,15 @@ class ImageManager:
         """Set the current image index"""
         self.current_index = index
 
-    def get_total_images(self) -> int:
+    def get_total_images(self, subdir: Optional[str] = None) -> int:
         """Get the total number of images in the current source"""
         if self.dataset_path:
-            return len(self._load_directory_images())
+            return len(self._load_directory_images(subdir))
         return len(self.db.load_images() if self.db else [])
+    
+    def get_images(self, subdir: Optional[str] = None):
+        if self.dataset_path:
+            images = self._load_directory_images(subdir)
+            # print(images)
+            return images
+        return self.db.load_images() if self.db else []

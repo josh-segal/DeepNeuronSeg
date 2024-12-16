@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QComboBox, QPushButton, QLabel, QCheckBox
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QComboBox, QPushButton, QLabel, QCheckBox, QListWidget
 from PyQt5.QtCore import pyqtSignal
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -12,18 +12,23 @@ class EvaluationView(QWidget):
     display_graph_signal = pyqtSignal(bool)
     download_data_signal = pyqtSignal(str)
     update_signal = pyqtSignal()
-
+    dataset_changed_signal = pyqtSignal(str)
+    load_image_signal = pyqtSignal(int)
+    
     def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout()
         metrics_layout = QGridLayout()
         self.metrics = None
         self.image_display = ImageDisplay()
-        
+
+        self.file_list = QListWidget()
+        self.file_list.itemClicked.connect(lambda item: self.load_image(index=self.file_list.row(item)))
         # Model selection
         self.model_selector = QComboBox()
 
         self.dataset_selector = QComboBox()
+        self.dataset_selector.activated.connect(self.on_dataset_changed)
         
         # Visualization area (placeholder for distribution plots)
         self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
@@ -101,7 +106,7 @@ class EvaluationView(QWidget):
         self.layout.addWidget(self.calculate_metrics_btn)
         self.layout.addWidget(self.display_graph_checkbox)
         self.layout.addWidget(self.downoad_data_btn)
-
+        self.layout.addWidget(self.file_list)
         # Adding metric labels to self.layout
         metrics_layout.addWidget(self.confidence_mean_mean_label, 0, 0)
         metrics_layout.addWidget(self.confidence_mean_std_label, 0, 1)
@@ -126,6 +131,10 @@ class EvaluationView(QWidget):
         # display metrics and distributions in meaningful way
         # in analyze data return quality score of inferenced image
 
+    def on_dataset_changed(self, dataset_index):
+        dataset_name = self.dataset_selector.itemText(dataset_index)
+        self.dataset_changed_signal.emit(dataset_name)
+
     def next_image(self):
         self.next_image_signal.emit()
 
@@ -140,7 +149,6 @@ class EvaluationView(QWidget):
         self.layout.insertWidget(5, self.next_btn)
         self.next_btn.show()
         self.curr_image_signal.emit()
-        # self.image_display.show_item()
 
     def handle_graph_display(self, sorted_num_dets, sorted_conf_mean):
         if sorted_num_dets is not None and sorted_conf_mean is not None:
@@ -207,12 +215,17 @@ class EvaluationView(QWidget):
         self.download_data_signal.emit(dataset_name)
 
     def update(self):
-        self.curr_image_signal.emit()
         self.update_signal.emit()
 
-    def update_response(self, models, datasets):
+    def load_image(self, index):
+        self.load_image_signal.emit(index)
+
+    def update_response(self, models, datasets, images):
         self.model_selector.clear()
         self.dataset_selector.clear()
         
         self.model_selector.addItems(models)
         self.dataset_selector.addItems(datasets)
+
+        self.file_list.clear()
+        self.file_list.addItems(images)

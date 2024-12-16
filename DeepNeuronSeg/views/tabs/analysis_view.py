@@ -1,17 +1,8 @@
-from DeepNeuronSeg.models.denoise_model import DenoiseModel
-from DeepNeuronSeg.models.qa_metrics import DetectionQAMetrics
 from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
-import shutil
-import tempfile
-import numpy as np
-import os
-from PIL import Image
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QLabel, QComboBox, QPushButton, QFileDialog, QCheckBox
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QLabel, QComboBox, QPushButton, QFileDialog, QCheckBox, QListWidget
 from PyQt5.QtCore import pyqtSignal
 from matplotlib.backends.backend_qt5agg import FigureCanvas
 from matplotlib.figure import Figure
-from tinydb import Query
-
 
 class AnalysisView(QWidget):
 
@@ -20,6 +11,9 @@ class AnalysisView(QWidget):
     download_data_signal = pyqtSignal()
     update_signal = pyqtSignal()
     display_graph_signal = pyqtSignal(bool)
+    curr_image_signal = pyqtSignal()
+    next_image_signal = pyqtSignal()
+    load_image_signal = pyqtSignal(int)
 
     def __init__(self):
         super().__init__()
@@ -28,7 +22,9 @@ class AnalysisView(QWidget):
         self.image_display = ImageDisplay()
         # Model selection
         self.model_selector = QComboBox()
-        # self.model_selector.addItems(map(lambda model: model['model_name'], self.db.load_models()))
+
+        self.file_list = QListWidget()
+        self.file_list.itemClicked.connect(lambda item: self.load_image(index=self.file_list.row(item)))
         
         # Image upload/selection
         self.select_btn = QPushButton("Select Images")
@@ -144,7 +140,7 @@ class AnalysisView(QWidget):
         self.inference_btn.clicked.connect(self.inference_images)
         self.save_btn.clicked.connect(self.save_inferences)
         self.download_btn.clicked.connect(self.download_data)
-        self.next_btn.clicked.connect(lambda: self.image_display.show_item(next_item=True))
+        self.next_btn.clicked.connect(self.next_image)
 
         self.layout.addWidget(QLabel("Trained Model:"))
         self.layout.addWidget(self.model_selector)
@@ -157,7 +153,7 @@ class AnalysisView(QWidget):
         self.layout.addWidget(self.display_graph_checkbox)
         self.layout.addWidget(self.save_btn)
         self.layout.addWidget(self.canvas)
-
+        self.layout.addWidget(self.file_list)
         metrics_layout.addWidget(self.confidence_mean_mean_label, 0, 0)
         metrics_layout.addWidget(self.confidence_mean_std_label, 0, 1)
         metrics_layout.addWidget(self.confidence_std_mean_label, 0, 2)
@@ -189,6 +185,12 @@ class AnalysisView(QWidget):
         self.layout.addLayout(metrics_layout)
         self.setLayout(self.layout)
 
+    def next_image(self):
+        self.next_image_signal.emit()
+
+    def load_image(self, index):
+        self.load_image_signal.emit(index)
+
     def toggle_image_display_visibility(self, checked):
         self.display_graph_signal.emit(checked)
 
@@ -199,7 +201,7 @@ class AnalysisView(QWidget):
         self.image_display.show()
         self.layout.insertWidget(5, self.next_btn)
         self.next_btn.show()
-        self.image_display.show_item()
+        self.curr_image_signal.emit()
 
     def handle_graph_display(self, sorted_all_num_dets, sorted_all_conf_mean, colors):
         if sorted_all_num_dets is not None and sorted_all_conf_mean is not None and colors is not None:
@@ -294,6 +296,9 @@ class AnalysisView(QWidget):
     def update(self):
         self.update_signal.emit()
 
-    def update_response(self, models):
+    def update_response(self, models, images):
         self.model_selector.clear()
         self.model_selector.addItems(models)
+
+        self.file_list.clear()
+        self.file_list.addItems(images)

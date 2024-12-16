@@ -5,9 +5,10 @@ from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
 
 class UploadView(QWidget):
 
-    curr_image_signal = pyqtSignal()
     upload_images_signal = pyqtSignal(list, str, str, str, str)
     update_signal = pyqtSignal()
+    load_image_signal = pyqtSignal(int)
+    next_image_signal = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -21,8 +22,6 @@ class UploadView(QWidget):
         # File selection
         self.upload_btn = QPushButton("Upload Images")
         self.next_btn = QPushButton("Next Image")
-        self.load_btn = QPushButton("Display Data")
-        self.set_text_btn = QPushButton("Update Image Metadata")
 
         self.upload_btn.clicked.connect(self.upload_images)
         self.next_btn.clicked.connect(self.next_image)
@@ -47,7 +46,6 @@ class UploadView(QWidget):
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.upload_btn)
         button_layout.addWidget(self.next_btn)
-        button_layout.addWidget(self.load_btn)
         
         layout.addLayout(button_layout)
         layout.addLayout(metadata_layout)
@@ -69,10 +67,8 @@ class UploadView(QWidget):
     def update_images(self, items):
         self.file_list.clear()
         self.file_list.addItems([os.path.basename(file) for file in items])
-        self.curr_image_signal.emit()
 
     def update(self):
-        self.curr_image_signal.emit()
         self.update_signal.emit()
     
     def update_response(self, items):
