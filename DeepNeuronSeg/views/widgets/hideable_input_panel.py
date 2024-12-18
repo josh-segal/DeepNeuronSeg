@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QFrame
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QFrame
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QMessageBox
 
 
 class HideableInputPanel(QWidget):
@@ -36,12 +36,6 @@ class HideableInputPanel(QWidget):
         # Main layout
         self.main_layout = QVBoxLayout(self)
         
-        # Toggle Button
-        self.toggle_button = QPushButton("Advanced Augmentation Settings")
-        self.toggle_button.setCheckable(True)
-        self.toggle_button.toggled.connect(self.toggle_inputs)
-        self.main_layout.addWidget(self.toggle_button)
-
         # Input Panel
         self.input_panel = QFrame()
         self.input_panel_layout = QVBoxLayout(self.input_panel)
@@ -52,6 +46,17 @@ class HideableInputPanel(QWidget):
 
         self.main_layout.addWidget(self.input_panel)
         self.input_panel.setVisible(False)
+        
+        # Add stretch to push button to bottom
+        self.main_layout.addStretch()
+        
+        # Toggle Button
+        self.toggle_button = QPushButton("Advanced Augmentation Settings...")
+        self.toggle_button.setCheckable(True)
+        self.toggle_button.toggled.connect(self.toggle_inputs)
+        
+        # Add button directly to main layout with center alignment
+        self.main_layout.addWidget(self.toggle_button)
 
     def add_input_row(self, key, value):
         """
@@ -74,6 +79,7 @@ class HideableInputPanel(QWidget):
 
     def toggle_inputs(self, checked):
         self.input_panel.setVisible(checked)
+        self.toggle_button.setText("Close Advanced Augmentation Settings" if checked else "Advanced Augmentation Settings...")
 
     def update(self, augmentations):
         """
@@ -115,5 +121,5 @@ class HideableInputPanel(QWidget):
             except ValueError:
                 value = self.input_boxes[key].text()
             self.augmentations[key] = value
-            # print(self.augmentations)
+
         return handler

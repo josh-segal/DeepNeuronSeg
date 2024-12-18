@@ -10,7 +10,9 @@ class ModelZooView(QWidget):
     inference_images_signal = pyqtSignal(str, list)
     save_inferences_signal = pyqtSignal()
     update_index_signal = pyqtSignal(int)
-
+    download_data_signal = pyqtSignal()
+    update_signal = pyqtSignal()
+    next_image_signal = pyqtSignal()
     def __init__(self):
         super().__init__()
         layout = QVBoxLayout()
@@ -34,6 +36,8 @@ class ModelZooView(QWidget):
         self.save_btn = QPushButton("Save Inferences")
 
         self.next_btn = QPushButton("Next Image")
+
+        self.download_btn = QPushButton("Download Data")
         
         layout.addWidget(QLabel("Trained Model:"))
         layout.addWidget(self.model_selector)
@@ -46,12 +50,18 @@ class ModelZooView(QWidget):
 
         layout.addWidget(self.next_btn)
         layout.addLayout(image_layout)
+        layout.addWidget(self.download_btn)
+        layout.addStretch()
         self.setLayout(layout)
         
         self.select_btn.clicked.connect(self.select_images)
         self.inference_btn.clicked.connect(self.inference_images)
         self.save_btn.clicked.connect(self.save_inferences)
-        self.next_btn.clicked.connect(self.display_images)
+        self.next_btn.clicked.connect(self.next_image)
+        self.download_btn.clicked.connect(self.download_data)
+
+    def download_data(self):
+        self.download_data_signal.emit()
         
     def select_images(self):
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
@@ -60,27 +70,19 @@ class ModelZooView(QWidget):
         self.model_name = self.model_selector.currentText() 
         self.inference_images_signal.emit(self.model_name, self.uploaded_files)
 
-    def display_images(self, uploaded_files, inference_results, current_index):
-        if len(inference_results) > 0 and len(uploaded_files) > 0:
-            
-            self.left_image._display_image(uploaded_files[current_index], current_index + 1, len(uploaded_files))
-            self._show_pred()
-
-            current_index = (current_index + 1) % len(uploaded_files)
-
-        self.update_index_signal.emit(current_index)
-            
+    def display_images(self, uploaded_file, inference_result, current_index, total_items):
+        self.left_image.display_frame(uploaded_file, current_index + 1, total_items)
+        self.right_image.display_frame(inference_result, current_index + 1, total_items, pred=True)
 
     def save_inferences(self):
         self.save_inferences_signal.emit()
-
-    def _show_pred(self):
-        result = self.inference_result[self.current_index]
-        mask_image = result.plot(labels=False, conf=False, boxes=False)
-        mask_image = Image.fromarray(mask_image)
-        temp_image_path = os.path.join(tempfile.gettempdir(), "temp_mask_image.png")
-        mask_image.save(temp_image_path, format='PNG')
-        self.right_image._display_image(temp_image_path, self.current_index + 1, len(self.inference_result))
+    
+    def next_image(self):
+        self.next_image_signal.emit()
 
     def update(self):
-        pass
+        self.update_signal.emit()
+
+    def update_response(self, models):
+        self.model_selector.clear()
+        self.model_selector.addItems(models)

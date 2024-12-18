@@ -1,6 +1,7 @@
 import os
 from tinydb import TinyDB, Query
 from pathlib import Path
+from PyQt5.QtWidgets import QMessageBox
 
 class DataManager:
     def __init__(self, db_path='data/db.json'):
@@ -24,7 +25,7 @@ class DataManager:
 
         uploaded_files = [image['file_path'] for image in images if 'file_path' in image]
         if not uploaded_files:
-            print("No images found")
+            QMessageBox.warning(self, "No Images", "No images found")
             return []
         else:
             return uploaded_files
@@ -34,7 +35,7 @@ class DataManager:
 
         labels = [image['labels'] for image in images if 'labels' in image]
         if not labels:
-            print("No labels found")
+            QMessageBox.warning(self, "No Labels", "No labels found")
             return []
         else:
             return labels
@@ -44,7 +45,7 @@ class DataManager:
 
         masks = [item['mask_data']['mask_path'] for item in items if 'mask_data' in item]
         if not masks:
-            print("No masks found")
+            QMessageBox.warning(self, "No Masks", "No masks found")
             return []
         else:
             return masks
@@ -54,3 +55,6 @@ class DataManager:
 
     def load_models(self):
         return self.model_table.all()
+    
+    def get_models(self):
+        return map(lambda model: model['model_name'], self.load_models())

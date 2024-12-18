@@ -5,22 +5,37 @@ import os
 import tempfile
 from PIL import Image
 from DeepNeuronSeg.views.widgets.image_label import ImageLabel
+from PyQt5.QtWidgets import QMessageBox
 
 class ImageDisplay(QWidget):
     """Widget for displaying and interacting with images"""
     
     def __init__(self):
         super().__init__()
-        self.layout = QVBoxLayout(self)
+        
+        # Create a container widget with fixed minimum size
+        self.container = QWidget()
+        self.container.setMinimumSize(512, 550)  # Height includes space for text
+        
+        # Create layout for container
+        container_layout = QVBoxLayout(self.container)
+        container_layout.setSpacing(5)
+        
+        # Setup image and text labels
         self.image_label = ImageLabel()
-        self.text_label = QLabel()
-
         self.image_label.setMinimumSize(512, 512)
         self.image_label.setAlignment(Qt.AlignCenter)
-        self.text_label.setAlignment(Qt.AlignCenter)    
-
-        self.layout.addWidget(self.image_label)
-        self.layout.addWidget(self.text_label)
+        
+        self.text_label = QLabel()
+        self.text_label.setAlignment(Qt.AlignCenter)
+        
+        # Add to container layout
+        container_layout.addWidget(self.image_label)
+        container_layout.addWidget(self.text_label)
+        
+        # Main layout holds the container
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(self.container)
 
     def clear(self):
         """Clear the image display and reset labels"""
@@ -34,14 +49,24 @@ class ImageDisplay(QWidget):
             self.image_label.set_pixmap(self.pixmap)
             self.text_label.setText(f"{image_num} / {total_images}")
         else:
-            print("Failed to load image")
+            QMessageBox.warning(self, "Image Load Error", "Failed to load image")
 
-    def display_frame(self, image_path, frame_number, total_frames, points=None):
+    def _show_pred(self, pred, curr_index, total_images):
+        """Display the prediction for the current image"""
+        mask_image = pred.plot(labels=False, conf=False, boxes=False)
+        mask_image = Image.fromarray(mask_image)
+        temp_image_path = os.path.join(tempfile.gettempdir(), "temp_mask_image.png")
+        mask_image.save(temp_image_path, format='PNG')
+        self._display_image(temp_image_path, curr_index + 1, total_images)
+
+    def display_frame(self, image_path, frame_number, total_frames, points=None, pred=False):
         """Display a specific frame from an image file with optional points"""
-        if image_path.lower().endswith('.tif'):
-            image_path = self._convert_tif_frame(image_path, frame_number)
-            
-        self._display_image(image_path, frame_number + 1, total_frames)
+        if pred:
+            self._show_pred(image_path, frame_number, total_frames)
+        else:
+            if image_path.lower().endswith('.tif'):
+                image_path = self._convert_tif_frame(image_path, frame_number)
+            self._display_image(image_path, frame_number + 1, total_frames)
         
         if points:
             self.image_label._draw_points(points)

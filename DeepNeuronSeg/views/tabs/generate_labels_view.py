@@ -15,7 +15,6 @@ class GenerateLabelsView(QWidget):
         super().__init__()
         layout = QVBoxLayout()
         image_layout = QHBoxLayout()
-        config_layout = QHBoxLayout()
 
         self.left_image = ImageDisplay()
         self.right_image = ImageDisplay()
@@ -27,17 +26,15 @@ class GenerateLabelsView(QWidget):
         self.generate_btn.clicked.connect(self.generate_labels)
         self.next_btn.clicked.connect(self.next_image)
         self.file_list.itemClicked.connect(lambda item: self.load_image(index=self.file_list.row(item)))
-        
-        config_layout.addWidget(self.generate_btn)
-        config_layout.addWidget(self.next_btn)
 
         image_layout.addWidget(self.left_image)
         image_layout.addWidget(self.right_image)
 
+        layout.addWidget(self.generate_btn)
         layout.addLayout(image_layout)
-        layout.addLayout(config_layout)
         layout.addWidget(self.file_list)
-
+        layout.addWidget(self.next_btn)
+        layout.addStretch()
         self.setLayout(layout)
 
     def generate_labels(self):

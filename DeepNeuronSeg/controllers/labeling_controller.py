@@ -27,18 +27,25 @@ class LabelingController(QObject):
 
     def upload_labels(self, labels):
         self.model.parse_labels(labels)
+        self.update_view()
 
     def load_image(self, index):
         self.model.image_manager.set_index(index)
         item, index, total, points = self.model.image_manager.get_item(show_labels=True)
         if item:
             self.view.image_display.display_frame(item, index, total, points)
+        else:
+            self.view.image_display.clear()
+            self.view.image_display.text_label.setText("No image found")
 
     def next_image(self):
         self.model.image_manager.next_image()
         item, index, total, points = self.model.image_manager.get_item(show_labels=True)
         if item:
             self.view.image_display.display_frame(item, index, total, points)
+        else:
+            self.view.image_display.clear()
+            self.view.image_display.text_label.setText("No image found")
 
     def update_view(self):
         images = self.model.image_manager.get_images()
@@ -46,3 +53,7 @@ class LabelingController(QObject):
         if item:
             self.view.update_response(images)
             self.view.image_display.display_frame(item, index, total, points)
+        else:
+            self.view.image_display.clear()
+            self.view.image_display.text_label.setText("No image found")
+

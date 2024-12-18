@@ -3,6 +3,7 @@ from tinydb import Query
 from DeepNeuronSeg.utils.utils import save_label
 from DeepNeuronSeg.models.segmentation_model import segment, composite_mask
 from DeepNeuronSeg.models.image_manager import ImageManager
+from PyQt5.QtWidgets import QMessageBox
 
 class GenerateLabelsModel:
     def __init__(self, db):
@@ -21,7 +22,7 @@ class GenerateLabelsModel:
             file_path = item.get("file_path", "")
 
             if not label:
-                print("No labels provided for image", file_path)
+                QMessageBox.warning(self, "No Labels", "No labels provided for image", file_path)
                 continue
 
             mask_data = self.generate_label(file_path, label)

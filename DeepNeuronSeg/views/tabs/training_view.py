@@ -27,8 +27,10 @@ class TrainingView(QWidget):
 
         self.epochs = QSpinBox()
         self.epochs.setRange(1, 1000)
+        self.epochs.setValue(70)
         self.batch_size = QSpinBox()
         self.batch_size.setRange(1, 128)
+        self.batch_size.setValue(4)
         self.model_name = QLineEdit()
         self.denoise = QCheckBox("Train and Use Custom Denoising Network")
         self.denoise_base = QCheckBox("Use DeepNeuronSeg pretrained denoise model")
@@ -167,7 +169,6 @@ class TrainingView(QWidget):
         params_layout.addWidget(self.denoise, 4, 1)
         params_layout.addWidget(self.denoise_base, 5, 1)
         params_layout.addWidget(self.use_augmentations, 6, 1)
-        params_layout.addWidget(self.augmentation_panel, 7, 1)
         
         # Control buttons
         self.train_btn = QPushButton("Start Training")
@@ -180,7 +181,9 @@ class TrainingView(QWidget):
         layout.addWidget(label)
         layout.addWidget(self.model_selector)
         layout.addLayout(params_layout)
+        layout.addWidget(self.augmentation_panel)
         layout.addWidget(self.train_btn)
+        layout.addStretch()
         self.setLayout(layout)
 
     def trainer(self):

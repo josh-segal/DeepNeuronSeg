@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QLabel, QComboBox
 from PyQt5.QtCore import pyqtSignal
 from matplotlib.backends.backend_qt5agg import FigureCanvas
 from matplotlib.figure import Figure
+from PyQt5.QtWidgets import QMessageBox
 
 class AnalysisView(QWidget):
 
@@ -135,6 +136,7 @@ class AnalysisView(QWidget):
         """)
         
         self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
+        self.canvas.hide()
 
         self.select_btn.clicked.connect(self.select_images)
         self.inference_btn.clicked.connect(self.inference_images)
@@ -144,16 +146,16 @@ class AnalysisView(QWidget):
 
         self.layout.addWidget(QLabel("Trained Model:"))
         self.layout.addWidget(self.model_selector)
-        self.layout.addWidget(self.image_display)
-        self.layout.addWidget(self.next_btn)
-        self.image_display.hide()
-        self.next_btn.hide()
         self.layout.addWidget(self.select_btn)
         self.layout.addWidget(self.inference_btn)
-        self.layout.addWidget(self.display_graph_checkbox)
-        self.layout.addWidget(self.save_btn)
+        self.layout.addWidget(self.image_display)
         self.layout.addWidget(self.canvas)
+        self.canvas.hide()
         self.layout.addWidget(self.file_list)
+        self.layout.addWidget(self.display_graph_checkbox)
+        self.layout.addWidget(self.next_btn)
+        self.layout.addWidget(self.save_btn)
+        
         metrics_layout.addWidget(self.confidence_mean_mean_label, 0, 0)
         metrics_layout.addWidget(self.confidence_mean_std_label, 0, 1)
         metrics_layout.addWidget(self.confidence_std_mean_label, 0, 2)
@@ -183,6 +185,7 @@ class AnalysisView(QWidget):
         metrics_layout.addWidget(self.analysis_overlap_ratio_std_label, 3, 5)
 
         self.layout.addLayout(metrics_layout)
+        self.layout.addStretch()
         self.setLayout(self.layout)
 
     def next_image(self):
@@ -199,7 +202,10 @@ class AnalysisView(QWidget):
         self.canvas.hide()
         self.layout.insertWidget(4, self.image_display)
         self.image_display.show()
-        self.layout.insertWidget(5, self.next_btn)
+        self.layout.insertWidget(5, self.file_list)
+        self.file_list.show()
+        self.update()
+        self.layout.insertWidget(6, self.next_btn)
         self.next_btn.show()
         self.curr_image_signal.emit()
 
@@ -209,7 +215,7 @@ class AnalysisView(QWidget):
         else:
             self.display_graph_checkbox.setChecked(False)
             self.clear_graph()
-            print("No metrics to display, please calculate metrics first.")
+            QMessageBox.warning(self, "No Metrics", "No metrics to display, please calculate metrics first.")
 
     def switch_to_graph_view(self, sorted_all_num_dets, sorted_all_conf_mean, colors):
         self.image_display.clear()
@@ -217,6 +223,9 @@ class AnalysisView(QWidget):
         self.image_display.hide()
         self.layout.removeWidget(self.next_btn)
         self.next_btn.hide()
+        self.layout.removeWidget(self.file_list)
+        self.file_list.clear()
+        self.file_list.hide()
         self.layout.insertWidget(4, self.canvas)
         self.canvas.show()
         self.update_graph(sorted_all_num_dets, sorted_all_conf_mean, colors)
@@ -224,7 +233,6 @@ class AnalysisView(QWidget):
     def inference_images(self):
         self.model_name = self.model_selector.currentText()
         self.inference_images_signal.emit(self.model_name, self.uploaded_files)
-        # print("view inference_images_signal emitted")
 
     def save_inferences(self):
         self.save_inferences_signal.emit()
@@ -232,7 +240,6 @@ class AnalysisView(QWidget):
     def download_data(self):
         self.download_data_signal.emit()
 
-    # TODO: select multiple models and compare results / ensemble ?
     def select_images(self):
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
         
@@ -265,7 +272,6 @@ class AnalysisView(QWidget):
         self.canvas.draw()
 
     def update_dataset_metrics(self, metrics):
-        #TODO: how to know what variance is acceptable, n-fold cross variation as baseline, how to calculate?
         self.confidence_mean_mean_label.setText(f"Average Confidence Score: {metrics['confidence_mean_mean']:.2f}")
         self.confidence_mean_std_label.setText(f"Confidence Score Variability: {metrics['confidence_mean_std']:.2f}")
         self.confidence_std_mean_label.setText(f"Average Confidence Spread: {metrics['confidence_std_mean']:.2f}")

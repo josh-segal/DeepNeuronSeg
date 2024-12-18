@@ -11,13 +11,11 @@ class OutlierModel(QObject):
             self.image_display._display_image(image_path, self.outlier_list.row(item) + 1, self.outlier_list.count())
             # if relabel button clicked, add to db, calculate pseudo labels from masks and display labels for refining 
             # should remove prediction from pred table ? do I need pred table ?
-            #TODO: should model data store db was trained on ?
 
     def update_outlier_threshold(self, value):
         self.outlier_threshold = value
 
     def receive_outlier_data(self, data):
-        #TODO: filter the dict by score instead so can surface the score in the UI
         outlier_list = []
         for item in data:
             for file, score in item.items():

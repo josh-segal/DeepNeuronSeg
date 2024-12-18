@@ -2,7 +2,9 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QComboBox, QPushB
 from PyQt5.QtCore import pyqtSignal
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+from PyQt5.QtWidgets import QMessageBox
 from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
+from PyQt5.QtWidgets import QMessageBox
 
 class EvaluationView(QWidget):
 
@@ -14,7 +16,7 @@ class EvaluationView(QWidget):
     update_signal = pyqtSignal()
     dataset_changed_signal = pyqtSignal(str)
     load_image_signal = pyqtSignal(int)
-    
+
     def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout()
@@ -32,11 +34,11 @@ class EvaluationView(QWidget):
         
         # Visualization area (placeholder for distribution plots)
         self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
+        self.canvas.hide()
 
         self.calculate_metrics_btn = QPushButton("Calculate Metrics")
         self.calculate_metrics_btn.clicked.connect(self.calculate_metrics)
 
-        #TODO: display individual images when graph hidden (?)
         self.display_graph_checkbox = QCheckBox("Display Graph")
         self.display_graph_checkbox.toggled.connect(self.toggle_image_display_visibility)
 
@@ -101,12 +103,13 @@ class EvaluationView(QWidget):
         self.layout.addWidget(QLabel("Dataset:"))
         self.layout.addWidget(self.dataset_selector)
         self.layout.addWidget(self.image_display)
-        self.layout.addWidget(self.next_btn)
         self.layout.addWidget(self.canvas)
-        self.layout.addWidget(self.calculate_metrics_btn)
-        self.layout.addWidget(self.display_graph_checkbox)
-        self.layout.addWidget(self.downoad_data_btn)
+        self.canvas.hide()
         self.layout.addWidget(self.file_list)
+        self.layout.addWidget(self.display_graph_checkbox)
+        self.layout.addWidget(self.next_btn)
+        self.layout.addWidget(self.calculate_metrics_btn)
+        self.layout.addWidget(self.downoad_data_btn)
         # Adding metric labels to self.layout
         metrics_layout.addWidget(self.confidence_mean_mean_label, 0, 0)
         metrics_layout.addWidget(self.confidence_mean_std_label, 0, 1)
@@ -122,6 +125,7 @@ class EvaluationView(QWidget):
         metrics_layout.addWidget(self.overlap_ratio_std_label, 1, 5)
 
         self.layout.addLayout(metrics_layout)
+        self.layout.addStretch()
         self.setLayout(self.layout)
     
         # check if metrics already calculated for model
@@ -146,7 +150,10 @@ class EvaluationView(QWidget):
         self.canvas.hide()
         self.layout.insertWidget(4, self.image_display)
         self.image_display.show()
-        self.layout.insertWidget(5, self.next_btn)
+        self.layout.insertWidget(5, self.file_list)
+        self.file_list.show()
+        self.update()
+        self.layout.insertWidget(7, self.next_btn)
         self.next_btn.show()
         self.curr_image_signal.emit()
 
@@ -156,7 +163,7 @@ class EvaluationView(QWidget):
         else:
             self.display_graph_checkbox.setChecked(False)
             self.clear_graph()
-            print("No metrics to display, please calculate metrics first.")
+            QMessageBox.warning(self, "No Metrics", "No metrics to display, please calculate metrics first.")
 
     def switch_to_graph_view(self, sorted_num_dets, sorted_conf_mean):
         self.image_display.clear()
@@ -164,6 +171,9 @@ class EvaluationView(QWidget):
         self.image_display.hide()
         self.layout.removeWidget(self.next_btn)
         self.next_btn.hide()
+        self.layout.removeWidget(self.file_list)
+        self.file_list.clear()
+        self.file_list.hide()
         self.layout.insertWidget(4, self.canvas)
         self.canvas.show()
         self.update_graph(sorted_num_dets, sorted_conf_mean)
