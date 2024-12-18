@@ -12,7 +12,6 @@ class DetectionQAMetrics:
         self.model_path = model_path
         self.model = self.load_model(model_path)
         print('loaded model')
-        #TODO: misses case where not_temp and denoised
         self.denoised = os.path.basename(dataset_path) == 'denoised'
         self.dataset = self.load_dataset(dataset_path)
         print('loaded dataset')
@@ -103,7 +102,6 @@ class DetectionQAMetrics:
         }
 
     def get_analysis_metrics(self):
-        #TODO: this among other "dataset" metrics should be refactored into some sort of dataclass for easier access and manipulation
         return {
             'analysis_confidence_mean_mean': self.dataset_metrics['confidence_mean'],
             'analysis_confidence_std_std': self.dataset_metrics['confidence_std'],

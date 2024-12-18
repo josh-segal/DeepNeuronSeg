@@ -42,7 +42,6 @@ class AnalysisModel(QObject):
             print("No images selected")
             return  
         if self.model_denoise:
-            #TODO: NEED TO TEST WITH A REAL MODEL
             dn_model = DenoiseModel(dataset_path='idc update to not need', model_path=self.model_denoise)
             uploaded_images = [
                 dn_model.denoise_image(Image.open(image_path).convert('L')) 
@@ -107,7 +106,7 @@ class AnalysisModel(QObject):
                 mask_image = Image.fromarray(mask_image)
                 # print(save_path)
                 mask_image.save(save_path)
-                #TODO: save name, masks, and confs to db
+                
 
     def compute_analysis(self):
         sorted_num_detections, sorted_conf_mean = self.sort_metrics()
@@ -174,7 +173,7 @@ class AnalysisModel(QObject):
             print('-'*50)
             quality_score = self.compute_quality_score(variance_list)
             # quality_score_list.append({self.uploaded_files[i]: quality_score})
-            quality_score_list.append({self.uploaded_files[i]: 10}) #TODO: make better quality score equation
+            quality_score_list.append({self.uploaded_files[i]: 10}) 
             print(f"Image {i+1} quality score: {quality_score} from {self.uploaded_files[i]}")
             print('-'*50)
         

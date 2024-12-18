@@ -19,9 +19,6 @@ model.to(device)
 
 def segment(image_path, input_points, batch_size=64):
 
-    #TODO: make run in background so that it doesn't block the main thread
-    #TODO: figure out why masks not generating exactly the same as reference masks
-
     masks = []
     scores = []
 

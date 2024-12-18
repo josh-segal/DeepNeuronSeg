@@ -54,3 +54,6 @@ class DataManager:
 
     def load_models(self):
         return self.model_table.all()
+    
+    def get_models(self):
+        return map(lambda model: model['model_name'], self.load_models())

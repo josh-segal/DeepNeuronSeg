@@ -33,7 +33,6 @@ class DatasetModel:
 
         dataset_dir = 'dataset'
         counter = 0
-        #TODO: possibly broken for module logic ?
         dataset_path = os.path.abspath(os.path.join(dataset_parent_dir, f"{dataset_dir}_{counter}"))
         while os.path.exists(dataset_path):
             counter += 1
@@ -84,7 +83,6 @@ class DatasetModel:
     def create_shuffle(self, dataset_path, train_split):
         image_paths, mask_paths, label_paths = get_image_mask_label_tuples(dataset_path)
 
-        #TODO: would train test split be more appropriate here?
         combined = list(zip(image_paths, mask_paths, label_paths))
         random.shuffle(combined)
         shuffled_image_paths, shuffled_mask_paths, shuffled_label_paths = zip(*combined)

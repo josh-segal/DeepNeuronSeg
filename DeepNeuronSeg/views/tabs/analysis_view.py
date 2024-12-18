@@ -135,6 +135,7 @@ class AnalysisView(QWidget):
         """)
         
         self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
+        self.canvas.hide()
 
         self.select_btn.clicked.connect(self.select_images)
         self.inference_btn.clicked.connect(self.inference_images)
@@ -183,6 +184,7 @@ class AnalysisView(QWidget):
         metrics_layout.addWidget(self.analysis_overlap_ratio_std_label, 3, 5)
 
         self.layout.addLayout(metrics_layout)
+        # self.layout.addStretch()
         self.setLayout(self.layout)
 
     def next_image(self):
@@ -232,7 +234,6 @@ class AnalysisView(QWidget):
     def download_data(self):
         self.download_data_signal.emit()
 
-    # TODO: select multiple models and compare results / ensemble ?
     def select_images(self):
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
         
@@ -265,7 +266,6 @@ class AnalysisView(QWidget):
         self.canvas.draw()
 
     def update_dataset_metrics(self, metrics):
-        #TODO: how to know what variance is acceptable, n-fold cross variation as baseline, how to calculate?
         self.confidence_mean_mean_label.setText(f"Average Confidence Score: {metrics['confidence_mean_mean']:.2f}")
         self.confidence_mean_std_label.setText(f"Confidence Score Variability: {metrics['confidence_mean_std']:.2f}")
         self.confidence_std_mean_label.setText(f"Average Confidence Spread: {metrics['confidence_std_mean']:.2f}")

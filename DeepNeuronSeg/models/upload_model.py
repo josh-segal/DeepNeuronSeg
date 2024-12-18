@@ -35,7 +35,6 @@ class UploadModel(QObject):
             image_name = trim_underscores(image_name)
             image_name = image_name.replace(".tif", ".png")
 
-            #TODO: store this path somewhere so not hardcoded ?
             image_path = os.path.join('data', 'data_images', image_name)
 
             if self.db.image_table.get(image_data.file_path == image_name):
@@ -68,7 +67,6 @@ class UploadModel(QObject):
             file = image_path
 
             # add to db
-            #TODO: add an apply to all for some metadata get rid of or automate per image ones, don't need metadata not a database.
             self.db.image_table.insert({
                 "file_path": image_path, 
                 "project": project, 

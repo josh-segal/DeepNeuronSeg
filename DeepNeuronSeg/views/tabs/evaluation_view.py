@@ -14,7 +14,7 @@ class EvaluationView(QWidget):
     update_signal = pyqtSignal()
     dataset_changed_signal = pyqtSignal(str)
     load_image_signal = pyqtSignal(int)
-    
+
     def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout()
@@ -32,11 +32,11 @@ class EvaluationView(QWidget):
         
         # Visualization area (placeholder for distribution plots)
         self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
+        self.canvas.hide()
 
         self.calculate_metrics_btn = QPushButton("Calculate Metrics")
         self.calculate_metrics_btn.clicked.connect(self.calculate_metrics)
 
-        #TODO: display individual images when graph hidden (?)
         self.display_graph_checkbox = QCheckBox("Display Graph")
         self.display_graph_checkbox.toggled.connect(self.toggle_image_display_visibility)
 

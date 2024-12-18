@@ -110,7 +110,7 @@ class UNet(nn.Module):
 
 
 class DenoiseModel:
-    #TODO: does this make sense as a class? Sometimes I just want to load the model and denoise an image, maybe dataset_path should not be required?
+
     def __init__(self, dataset_path, model_path=(Path(__file__).resolve().parents[1] / "ml" / "denoise_model.pth").resolve()):
         self.model = None
         self.dataset_path = dataset_path

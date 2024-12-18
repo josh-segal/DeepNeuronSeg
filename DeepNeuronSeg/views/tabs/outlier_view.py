@@ -55,12 +55,9 @@ class OutlierView(QWidget):
 
     def display_outlier_image(self, item):
             image_path = item.text()
-            #TODO: display model preds, convert masks to dots (?) and display for user
             self.image_display._display_image(image_path, self.outlier_list.row(item) + 1, self.outlier_list.count())
             # if relabel button clicked, add to db, calculate pseudo labels from masks and display labels for refining 
-            # should remove prediction from pred table ? do I need pred table ?
-            #TODO: should model data store db was trained on ?
-    
+            # should remove prediction from pred table ? do I need pred table ?    
 
     def update_outliers(self, data):
         print("outlier list...")

@@ -128,7 +128,6 @@ class TrainingModel:
             self.model = YOLO((Path(__file__).resolve().parents[2] / "ml" / "yolov8n-seg.pt").resolve())
             # self.model = YOLO("ml/yolov8n-seg.pt")
             self.model.train(
-                #TODO: if denoised use denoised data dir, recreate yaml (?)
                 data = os.path.abspath(f'{dataset_path}/data.yaml'),
                 project = f'{dataset_path}/results',
                 name = model_name,

@@ -9,12 +9,15 @@ my_stylesheet = """
     QWidget {
         background-color: #2b2b2b;
         color: #ffffff;
+        margin: 0px;
+        padding: 0px;
     }
     
     QPushButton {
         background-color: #3d3d3d;
         border: 1px solid #555555;
-        padding: 5px;
+        padding: 4px;
+        margin: 1px;
         border-radius: 3px;
     }
     
@@ -74,13 +77,15 @@ my_stylesheet = """
     QTabWidget::pane {
         background-color: #2b2b2b;
         border: 1px solid #3d3d3d;
+        margin: 2px;
+        padding: 2px;
     }
 
     QTabBar::tab {
         background-color: #2b2b2b;
         color: #ffffff;
         border: 1px solid #3d3d3d;
-        padding: 5px;
+        padding: 4px;
         border-top-left-radius: 3px;
         border-top-right-radius: 3px;
     }
@@ -93,7 +98,17 @@ my_stylesheet = """
     QTabBar::tab:hover {
         background-color: #4f4f4f;
     }
-"""
+    
+    QVBoxLayout, QHBoxLayout {
+        margin: 2px;
+        padding: 2px;
+        spacing: 2px;
+    }
+    
+    QListWidget {
+        margin: 2px;
+    }
+"""  
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
