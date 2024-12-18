@@ -44,6 +44,7 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("DeepNeuronSeg")
         self.setMinimumSize(1024, 768)
+        self.resize(1280, 900)
         
         # Create main widget and layout
         main_widget = QWidget()
