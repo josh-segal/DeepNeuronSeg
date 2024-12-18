@@ -3,7 +3,7 @@ import shutil
 import random
 from tinydb import Query
 from DeepNeuronSeg.utils.utils import get_image_mask_label_tuples, create_yaml
-from PyQt5.QtCore import QObject
+from PyQt5.QtWidgets import QMessageBox
 
 class DatasetModel:
     def __init__(self, db):
@@ -39,10 +39,10 @@ class DatasetModel:
             dataset_path = os.path.abspath(os.path.join(dataset_parent_dir, f"{dataset_dir}_{counter}"))
 
         if not dataset_name:
-            print("Please enter a dataset name")
+            QMessageBox.warning(self, "No Dataset Name", "Please enter a dataset name")
             return
         if self.db.dataset_table.get(Query().dataset_name == dataset_name):
-            print("Dataset name already exists, please choose a different name")
+            QMessageBox.warning(self, "Dataset Name", "Dataset name already exists, please choose a different name")
             return
 
         self.db.dataset_table.insert({
@@ -50,15 +50,12 @@ class DatasetModel:
             "dataset_path": dataset_path
         })
 
-        # set_data(file_path=os.path.join(dataset_parent_dir, 'dataset_metadata.json'), metadata=dataset_metadata)
-
         os.makedirs(dataset_path, exist_ok=False)
         os.makedirs(os.path.join(dataset_path, "images"), exist_ok=False)
         os.makedirs(os.path.join(dataset_path, "masks"), exist_ok=False)
         os.makedirs(os.path.join(dataset_path, "labels"), exist_ok=False)
 
         for image, mask, labels in zip(selected_images, selected_masks, selected_labels):
-            # print(labels,"\n", "\n")
             image_name = os.path.basename(image)
             mask_name = os.path.basename(mask)
             
@@ -71,11 +68,8 @@ class DatasetModel:
 
             with open(label_path, "w") as f:
                 for label in labels:
-                    # print(label, "\n")
                     label_seg = label["segmentation"]
                     normalized_label = [format(float(coord) / 512 if i % 2 == 0 else float(coord) / 512, ".6f") for i, coord in enumerate(label_seg)]
-                    # print("label", label_seg)
-                    # print("normalized label", normalized_label)
                     f.write(f"0 " + " ".join(normalized_label) + "\n")
 
         self.create_shuffle(dataset_path, train_split)

@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QLabel, QComboBox
 from PyQt5.QtCore import pyqtSignal
 from matplotlib.backends.backend_qt5agg import FigureCanvas
 from matplotlib.figure import Figure
+from PyQt5.QtWidgets import QMessageBox
 
 class AnalysisView(QWidget):
 
@@ -214,7 +215,7 @@ class AnalysisView(QWidget):
         else:
             self.display_graph_checkbox.setChecked(False)
             self.clear_graph()
-            print("No metrics to display, please calculate metrics first.")
+            QMessageBox.warning(self, "No Metrics", "No metrics to display, please calculate metrics first.")
 
     def switch_to_graph_view(self, sorted_all_num_dets, sorted_all_conf_mean, colors):
         self.image_display.clear()
@@ -232,7 +233,6 @@ class AnalysisView(QWidget):
     def inference_images(self):
         self.model_name = self.model_selector.currentText()
         self.inference_images_signal.emit(self.model_name, self.uploaded_files)
-        # print("view inference_images_signal emitted")
 
     def save_inferences(self):
         self.save_inferences_signal.emit()

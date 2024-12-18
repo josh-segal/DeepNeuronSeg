@@ -5,7 +5,7 @@ from DeepNeuronSeg.utils.utils import trim_underscores
 from DeepNeuronSeg.models.image_manager import ImageManager
 import os
 from PyQt5.QtCore import QObject
-
+from PyQt5.QtWidgets import QMessageBox
 
 class LabelingModel(QObject):
     def __init__(self, db):
@@ -33,17 +33,16 @@ class LabelingModel(QObject):
                 elif label_file.endswith(".xml"):
                     label_data = parse_xml_label(label_file)
                 else:
-                    print("Invalid label format")
+                    QMessageBox.warning(self, "Invalid Label Format", "Invalid label format")
                     label_data = []
 
                 if label_data:
                     self.db.image_table.update({"labels": label_data}, image_data.file_path == label_name)
             else:
-                print(f"Image not found in database {label_name}")
+                QMessageBox.warning(self, "Image Not Found", f"Image not found in database {label_name}")
                 continue
         
     def add_cell_marker(self, pos):
-        # print("adding cell")
         if not (0 <= pos.x() <= 512 and 0 <= pos.y() <= 512):
             return None, None, None, None
 
@@ -60,7 +59,7 @@ class LabelingModel(QObject):
             item, index, total, points = self.image_manager.get_item(show_labels=True)
             return item, index, total, points
         else:
-            print(f"Image not found in database {file_path}")
+            QMessageBox.warning(self, "Image Not Found", f"Image not found in database {file_path}")
             return None, None, None, None
 
     def remove_cell_marker(self, pos, tolerance=5):
@@ -81,7 +80,7 @@ class LabelingModel(QObject):
             item, index, total, points = self.image_manager.get_item(show_labels=True)
             return item, index, total, points
         else:
-            print(f"Image not found in database {file_path}")
+            QMessageBox.warning(self, "Image Not Found", f"Image not found in database {file_path}")
             return None, None, None, None
 
     def load_image(self, index):

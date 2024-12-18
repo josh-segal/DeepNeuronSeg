@@ -1,13 +1,8 @@
-import json
 import os
 from PIL import Image
 import numpy as np
 import yaml
-import pandas as pd
-import xml.etree.ElementTree as ET
-import cv2
 import shutil
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QSpinBox, QCheckBox, QPushButton
 
 def norm_coords(coordinates, max_x=None, max_y=None):
     if max_x is not None:
@@ -90,7 +85,6 @@ def copy_files(original_dir, target_dir, destination_dir):
         target_file = os.path.join(target_dir, original_file)
         if os.path.exists(target_file):
             shutil.copy(target_file, destination_dir)
-            print(f"copied {target_file} to {destination_dir}")
 
 def get_image_mask_label_tuples(data_dir):
     image_paths = []

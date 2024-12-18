@@ -12,7 +12,7 @@ def parse_png_label(label_file):
     _, _, _, centroids = cv2.connectedComponentsWithStats(label_array)
 
     coordinates = [tuple(map(int, cent)) for cent in centroids[1:]]
-    # print(coordinates)
+
     return coordinates
 
 def parse_txt_label(label_file):
@@ -32,7 +32,6 @@ def parse_txt_label(label_file):
                 largest_y = y
 
             coordinates.append((x, y))
-        # print(coordinates)  
 
     if largest_x > 512 and largest_y > 512:
         coordinates = norm_coords(coordinates, max_x=largest_x, max_y=largest_y)
@@ -62,7 +61,6 @@ def parse_csv_label(label_file):
     elif largest_y > 512:
         coordinates = norm_coords(coordinates, max_y=largest_y)
     
-    # print(coordinates)
     return coordinates
 
 def parse_xml_label(label_file):
@@ -90,5 +88,4 @@ def parse_xml_label(label_file):
     elif largest_y > 512:
         coordinates = norm_coords(coordinates, max_y=largest_y)
 
-    # print(coordinates)  
     return coordinates

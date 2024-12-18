@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QFrame
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QMessageBox
 
 
 class HideableInputPanel(QWidget):
@@ -121,5 +121,5 @@ class HideableInputPanel(QWidget):
             except ValueError:
                 value = self.input_boxes[key].text()
             self.augmentations[key] = value
-            # print(self.augmentations)
+
         return handler

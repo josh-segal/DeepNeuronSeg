@@ -6,6 +6,7 @@ from tinydb import Query
 from ultralytics import YOLO
 from DeepNeuronSeg.models.denoise_model import DenoiseModel
 import pandas as pd
+from PyQt5.QtWidgets import QMessageBox
 
 class ModelZooModel(QObject):
 
@@ -20,7 +21,7 @@ class ModelZooModel(QObject):
 
     def download_data(self):
         if not hasattr(self, 'inference_result') or not hasattr(self, 'uploaded_files'):
-            print("No inference results to download")
+            QMessageBox.warning(self, "No Inference Results", "No inference results to download")
             return
         # Create data for each image
         data = []
@@ -42,10 +43,9 @@ class ModelZooModel(QObject):
                                                  "CSV Files (*.csv)")
         if save_path:
             df.to_csv(save_path, index=False)
-            print(f"Metrics saved to {save_path}")
+            QMessageBox.information(self, "Metrics Saved", f"Metrics saved to {save_path}")
 
     def inference_images(self, name_of_model, uploaded_files):
-        print("model inferencing images")
         self.uploaded_files = uploaded_files
         model_path = self.db.model_table.get(Query().model_name == name_of_model).get('model_path')
         model_denoise = self.db.model_table.get(Query().model_name == name_of_model).get('denoise')
@@ -53,7 +53,7 @@ class ModelZooModel(QObject):
         self.inference_dir = os.path.join('data', 'inferences', name_of_model)
         os.makedirs(self.inference_dir, exist_ok=True)
         if not uploaded_files:
-            print("No images selected")
+            QMessageBox.warning(self, "No Images", "No images selected")
             return  
         if model_denoise:
             dn_model = DenoiseModel(dataset_path='idc update to not need', model_path=model_denoise)
@@ -80,14 +80,12 @@ class ModelZooModel(QObject):
         for file, result in zip(self.uploaded_files, self.inference_result):
                 masks = result.masks
                 mask_num = len(masks)
-                # print(file, '------------')
                 default_file_name = f"{os.path.splitext(os.path.basename(file))[0]}_{mask_num}.png"
                 save_path, _ = QFileDialog.getSaveFileName(self, "Save Inference", default_file_name, "Images (*.png)")
                 if not save_path:
                     continue
                 mask_image = result.plot(labels=False, conf=False, boxes=False)
                 mask_image = Image.fromarray(mask_image)
-                # print(save_path)
                 mask_image.save(save_path)
 
     def update_index(self, index):

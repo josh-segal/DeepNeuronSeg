@@ -6,15 +6,14 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 from DeepNeuronSeg.utils.data_loader import ImageDataset
 from DeepNeuronSeg.models.denoise_model import DenoiseModel
+from PyQt5.QtWidgets import QMessageBox
 
 class DetectionQAMetrics:
     def __init__(self, model_path, dataset_path):
         self.model_path = model_path
         self.model = self.load_model(model_path)
-        print('loaded model')
         self.denoised = os.path.basename(dataset_path) == 'denoised'
         self.dataset = self.load_dataset(dataset_path)
-        print('loaded dataset')
         self.dataset_metrics = {
             'confidence_mean': [],
             'confidence_std': [],
@@ -33,13 +32,11 @@ class DetectionQAMetrics:
             self.image_names = image_names
             # Get the predictions
             preds = self.model.predict(images, conf=0.3, max_det=1000, verbose=False)
-            # print('got predictions from batch')
             # Format the predictions
             self.format_predictions(preds)
 
         self.img_level_metrics = []
         for img_conf, img_bboxes, img_name in tqdm(zip(self.confidences, self.bbox_bounds, image_names), total=len(self.confidences), desc="Computing Metrics", unit="image"):
-            # print("computing metrics for image")
             img_metrics = self.compute_image_metrics(img_conf, img_bboxes)
 
             self.img_level_metrics.append(img_metrics)
@@ -47,7 +44,6 @@ class DetectionQAMetrics:
             for key, value in img_metrics.items():
                 self.dataset_metrics[key].append(value)
             
-        # print("computing dataset metrics")
         self.dataset_metrics_mean_std = {
             'confidence_mean_mean': np.mean(self.dataset_metrics['confidence_mean']),
             'confidence_mean_std': np.std(self.dataset_metrics['confidence_mean']),
@@ -62,18 +58,17 @@ class DetectionQAMetrics:
             'overlap_ratio_mean': np.mean(self.dataset_metrics['overlap_ratio']),
             'overlap_ratio_std': np.std(self.dataset_metrics['overlap_ratio'])
         }
-        # print('done computing image and dataset metrics')
 
     def export_image_metrics_to_csv(self, filename='inference_image_metrics.csv'):
         if not self.img_level_metrics:
-            print("No metrics to export.")
+            QMessageBox.warning(self, "No Metrics", "No metrics to export.")
             return
         
         df = pd.DataFrame(self.img_level_metrics, index=self.image_names)
         df = df.rename_axis("image_names", axis="index")
         df.to_csv(filename)
         
-        print(f"Metrics exported to {filename}")
+        QMessageBox.information(self, "Metrics Exported", f"Metrics exported to {filename}")
 
     def format_predictions(self, predictions):
         for pred in predictions:
@@ -155,7 +150,6 @@ class DetectionQAMetrics:
         elif self.denoised:
             if os.path.exists(os.path.join(dataset_path, 'denoise_model.pth')):
                 model_path = os.abspath(os.path.join(dataset_path, 'denoise_model.pth'))
-                print(model_path)
                 dn_model = DenoiseModel(dataset_path, model_path=model_path)
                 
             else:

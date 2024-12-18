@@ -2,7 +2,9 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QComboBox, QPushB
 from PyQt5.QtCore import pyqtSignal
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+from PyQt5.QtWidgets import QMessageBox
 from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
+from PyQt5.QtWidgets import QMessageBox
 
 class EvaluationView(QWidget):
 
@@ -161,7 +163,7 @@ class EvaluationView(QWidget):
         else:
             self.display_graph_checkbox.setChecked(False)
             self.clear_graph()
-            print("No metrics to display, please calculate metrics first.")
+            QMessageBox.warning(self, "No Metrics", "No metrics to display, please calculate metrics first.")
 
     def switch_to_graph_view(self, sorted_num_dets, sorted_conf_mean):
         self.image_display.clear()

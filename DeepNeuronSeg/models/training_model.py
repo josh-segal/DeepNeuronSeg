@@ -3,7 +3,7 @@ from tinydb import Query
 import os
 from DeepNeuronSeg.models.denoise_model import DenoiseModel
 from pathlib import Path
-
+from PyQt5.QtWidgets import QMessageBox
 
 class TrainingModel:
     def __init__(self, db):
@@ -60,15 +60,13 @@ class TrainingModel:
     def set_augmentations(self, checked):
         if checked:
             self.augmentations = self.default_augmentations.copy()
-            print(self.augmentations)
         else:
             self.augmentations = self.no_augmentations.copy()
-            print(self.augmentations)
         return self.augmentations.copy()
 
     def trainer(self, model_name, base_model, dataset_name, denoise, denoise_base, epochs, batch_size):
         if not model_name:
-            print("Model name required")
+            QMessageBox.warning(self, "Model Name", "Model name required")
             return
         
         dataset = self.db.dataset_table.get(Query().dataset_name == dataset_name)
@@ -76,11 +74,10 @@ class TrainingModel:
 
         model_name_exists = self.db.model_table.contains(Query()["model_name"] == model_name)
         if model_name_exists:
-            print("Model name already exists, please choose a different name")
+            QMessageBox.warning(self, "Model Name", "Model name already exists, please choose a different name")
             return
 
         if denoise:
-            print("Training denoising network")
             denoise_path = os.path.join(dataset_path, "denoise_model.pth")
             os.makedirs(denoise_path, exist_ok=True)
 
@@ -94,15 +91,12 @@ class TrainingModel:
                 dataset_data.dataset_path == os.path.abspath(dataset_path)
             )
 
-            print(f"Denoising images in {os.path.abspath(dataset_path)} and saving to {os.path.abspath(dn_dataset_path)}")
+            QMessageBox.information(self, "Denoising", f"Denoising images in {os.path.abspath(dataset_path)} and saving to {os.path.abspath(dn_dataset_path)}")
 
             dataset_path = os.path.abspath(dataset_path)
 
         elif denoise_base:
-            print("Using pretrained denoising network")
             denoise_path = (Path(__file__).resolve().parents[2] / "ml" / "denoise_model.pth").resolve()
-            print('denoise path: ', denoise_path)
-            # denoise_path = os.path.abspath("ml/denoise_model.pth")
             dn_model = DenoiseModel(dataset_path=dataset_path)
             dn_dataset_path = dn_model.create_dn_shuffle()
 
@@ -112,7 +106,7 @@ class TrainingModel:
                 dataset_data.dataset_path == os.path.abspath(dataset_path)
             )
 
-            print(f"Denoising images in {os.path.abspath(dataset_path)} and saving to {os.path.abspath(dn_dataset_path)}")
+            QMessageBox.information(self, "Denoising", f"Denoising images in {os.path.abspath(dataset_path)} and saving to {os.path.abspath(dn_dataset_path)}")
 
             dataset_path = os.path.abspath(dataset_path)
         else:
@@ -121,7 +115,7 @@ class TrainingModel:
         if base_model == "YOLOv8n-seg":
             # offset program load times by loading model here
             from ultralytics import YOLO
-            print("Training YOLOv8n-seg")
+            QMessageBox.information(self, "Training", "Training YOLOv8n-seg")
 
             
 

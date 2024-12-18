@@ -1,13 +1,11 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 import os
 from PIL import Image
 from tqdm import tqdm
 import shutil
-from tinydb import Query
 from DeepNeuronSeg.utils.utils import create_yaml, copy_files
 from pathlib import Path
 
@@ -23,7 +21,7 @@ class ImageDataset(Dataset):
     def __getitem__(self, idx):
         image_path = os.path.join(self.data_dir, self.image_files[idx])
         image = Image.open(image_path).convert('L')
-        mask_dir = data_dir.replace('COCO_train_X', 'COCO_train_y')
+        mask_dir = self.data_dir.replace('COCO_train_X', 'COCO_train_y')
         mask_path = os.path.join(mask_dir, self.image_files[idx])
         mask = Image.open(mask_path).convert('L')
         if self.transform:
@@ -116,7 +114,6 @@ class DenoiseModel:
         self.dataset_path = dataset_path
         self.images_path = os.path.join(dataset_path, 'images') if os.path.exists(os.path.join(dataset_path, 'images')) else dataset_path 
         self.model_path = model_path
-        print("init model path:", self.model_path)
 
     def unet_trainer(self, num_epochs=3, batch_size=4):
         # build the dataset
@@ -159,8 +156,6 @@ class DenoiseModel:
 
                     pbar.set_postfix({'loss': loss.item()})
 
-            # print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
-
         # Save the model
         torch.save(model.state_dict(), self.model_path)
 
@@ -181,11 +176,9 @@ class DenoiseModel:
         for image in os.listdir(self.images_path):
             image_path = os.path.join(self.images_path, image)
             save_path = os.path.join(dn_images_path, image)
-            print(image_path)
             image = Image.open(image_path).convert('L')
             image = self.denoise_image(image)
             image.save(save_path)
-            print(f"Saved denoised image to: {save_path}")
 
         train_images_dir = os.path.join("train", "images")
         val_images_dir = os.path.join("val", "images")

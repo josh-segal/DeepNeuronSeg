@@ -61,7 +61,6 @@ class OutlierView(QWidget):
             # should remove prediction from pred table ? do I need pred table ?    
 
     def update_outliers(self, data):
-        print("outlier list...")
         self.outlier_list.addItems(data)
                 
 

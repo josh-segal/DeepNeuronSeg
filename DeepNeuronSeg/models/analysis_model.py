@@ -8,7 +8,7 @@ import os
 from PIL import Image
 from PyQt5.QtCore import pyqtSignal, QObject
 from tinydb import Query
-
+from PyQt5.QtWidgets import QMessageBox
 
 class AnalysisModel(QObject):
 
@@ -32,10 +32,9 @@ class AnalysisModel(QObject):
 
     def inference_images(self, name_of_model, uploaded_files):
         if self.analysis_metrics is None:
-            print("No analysis metrics, please calculate metrics first in Evaluation Tab.")
+            QMessageBox.warning(self, "No Metrics", "No metrics to display, please calculate metrics first in Evaluation Tab.")
             return
         
-        print("model inferencing images")
         from ultralytics import YOLO
         self.uploaded_files = uploaded_files
         self.model_path = self.db.model_table.get(Query().model_name == name_of_model).get('model_path')
@@ -44,7 +43,7 @@ class AnalysisModel(QObject):
         self.inference_dir = os.path.join('data', 'inferences', name_of_model)
         os.makedirs(self.inference_dir, exist_ok=True)
         if not uploaded_files:
-            print("No images selected")
+            QMessageBox.warning(self, "No Images", "No images selected")
             return  
         if self.model_denoise:
             dn_model = DenoiseModel(dataset_path='idc update to not need', model_path=self.model_denoise)
@@ -80,11 +79,11 @@ class AnalysisModel(QObject):
             self.dataset_metrics_signal.emit(self.dataset_metrics)
             self.update_analysis_metrics_labels()
         else:
-            print("No dataset metrics, please calculate metrics first in Evaluation Tab.")
+            QMessageBox.warning(self, "No Metrics", "No dataset metrics, please calculate metrics first in Evaluation Tab.")
 
     def update_analysis_metrics_labels(self):
         if not self.uploaded_files:
-            print("No uploaded files to process.")
+            QMessageBox.warning(self, "No Images", "No uploaded files to process.")
             return
         for file in self.uploaded_files:
             shutil.copy(file, self.dataset_path)
@@ -97,20 +96,19 @@ class AnalysisModel(QObject):
         if self.analysis_metrics_model is not None:
             self.analysis_metrics_model.export_image_metrics_to_csv()
         else:
-            print("No metrics to download, please calculate metrics first.")
+            QMessageBox.warning(self, "No Metrics", "No metrics to download, please calculate metrics first.")
 
     def save_inferences(self):
+        if not self.uploaded_files:
+            QMessageBox.warning(self, "No Images", "No images to save")
+            return
         for file, result in zip(self.uploaded_files, self.inference_result):
-                masks = result.masks
-                # boxes = result.boxes.xyxy
-                confs = result.boxes.conf
-                mask_num = len(masks)
-                # print(file, '------------')
-                save_path = os.path.join(self.inference_dir, f'{os.path.splitext(os.path.basename(file))[0]}_{mask_num}.png')
-                mask_image = result.plot(labels=False, conf=False, boxes=False)
-                mask_image = Image.fromarray(mask_image)
-                # print(save_path)
-                mask_image.save(save_path)
+            masks = result.masks
+            mask_num = len(masks)
+            save_path = os.path.join(self.inference_dir, f'{os.path.splitext(os.path.basename(file))[0]}_{mask_num}.png')
+            mask_image = result.plot(labels=False, conf=False, boxes=False)
+            mask_image = Image.fromarray(mask_image)
+            mask_image.save(save_path)
                 
 
     def compute_analysis(self):
@@ -164,33 +162,22 @@ class AnalysisModel(QObject):
 
     def calculate_variance(self):
         analysis_metrics = self.analysis_metrics_model.get_analysis_metrics()
-        print(analysis_metrics)
         reshaped_analysis_list_of_list = [dict(zip(analysis_metrics.keys(), values)) for values in zip(*analysis_metrics.values())]
-        print(reshaped_analysis_list_of_list)
         variance_list_of_list = []
         quality_score_list = []
         for i, image in enumerate(reshaped_analysis_list_of_list):
-            print(f"Image {i+1} metrics: {image}")
-            print('-'*50)
             variance_list = self.compute_variance(image)
             variance_list_of_list.append(variance_list)
-            print(f"Image {i+1} variance: {variance_list}")
-            print('-'*50)
             quality_score = self.compute_quality_score(variance_list)
-            # quality_score_list.append({self.uploaded_files[i]: quality_score})
-            quality_score_list.append({self.uploaded_files[i]: 10}) 
-            print(f"Image {i+1} quality score: {quality_score} from {self.uploaded_files[i]}")
-            print('-'*50)
+            quality_score_list.append({self.uploaded_files[i]: quality_score}) 
         
         self.calculated_outlier_data.emit(quality_score_list)
 
 
     def compute_variance(self, analysis_metrics):
         """ Compute the variance of the computed metrics """
-        print("analysis_metrics: ", analysis_metrics)
         metric_variance = {}
         for metric, value in self.dataset_metrics.items():
-            print(f"metric: {metric}")
             analysis_metric = "analysis_" + metric
             if analysis_metric in analysis_metrics:
                 variance_metric = "variance_" + metric
@@ -210,7 +197,6 @@ class AnalysisModel(QObject):
         
 
     def format_preds(self, predictions):
-        # print("formatting preds")
         num_detections_list = []
         mean_confidence_list = []
         for pred in predictions:

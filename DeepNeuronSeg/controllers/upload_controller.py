@@ -16,7 +16,6 @@ class UploadController(QObject):
         self.update_view()
 
     def upload_images(self, images, project, cohort, brain_region, image_id):
-        print("upload images controller")
         self.model.upload_images(images, project, cohort, brain_region, image_id)
         self.update_view()
         

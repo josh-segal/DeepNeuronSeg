@@ -1,6 +1,7 @@
 from PyQt5.QtCore import pyqtSignal, QPointF, Qt
 from PyQt5.QtGui import QPainter, QPen
 from PyQt5.QtWidgets import QLabel
+from PyQt5.QtWidgets import QMessageBox
 
 class ImageLabel(QLabel):
     """Custom QLabel to handle mouse clicks on the image area only."""
@@ -16,9 +17,7 @@ class ImageLabel(QLabel):
         self.setPixmap(pixmap)
 
     def mousePressEvent(self, event):
-        # print("mouse click")
         if self.pixmap:
-            # print("pixmap present")
             click_pos = event.pos()
             if event.button() == Qt.LeftButton:
                 self.left_click_registered.emit(click_pos)
@@ -33,7 +32,6 @@ class ImageLabel(QLabel):
 
     def _draw_points(self, labels):
         """Draw a point on the image at the given position."""
-        # print(f"drawing {len(labels)} points")
         painter = QPainter(self.pixmap)
         painter.setPen(QPen(Qt.red, 5))
         for pos in labels:
