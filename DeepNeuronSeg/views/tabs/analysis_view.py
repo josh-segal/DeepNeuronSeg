@@ -145,16 +145,16 @@ class AnalysisView(QWidget):
 
         self.layout.addWidget(QLabel("Trained Model:"))
         self.layout.addWidget(self.model_selector)
-        self.layout.addWidget(self.image_display)
-        self.layout.addWidget(self.next_btn)
-        self.image_display.hide()
-        self.next_btn.hide()
         self.layout.addWidget(self.select_btn)
         self.layout.addWidget(self.inference_btn)
-        self.layout.addWidget(self.display_graph_checkbox)
-        self.layout.addWidget(self.save_btn)
+        self.layout.addWidget(self.image_display)
         self.layout.addWidget(self.canvas)
+        self.canvas.hide()
         self.layout.addWidget(self.file_list)
+        self.layout.addWidget(self.display_graph_checkbox)
+        self.layout.addWidget(self.next_btn)
+        self.layout.addWidget(self.save_btn)
+        
         metrics_layout.addWidget(self.confidence_mean_mean_label, 0, 0)
         metrics_layout.addWidget(self.confidence_mean_std_label, 0, 1)
         metrics_layout.addWidget(self.confidence_std_mean_label, 0, 2)
@@ -184,7 +184,7 @@ class AnalysisView(QWidget):
         metrics_layout.addWidget(self.analysis_overlap_ratio_std_label, 3, 5)
 
         self.layout.addLayout(metrics_layout)
-        # self.layout.addStretch()
+        self.layout.addStretch()
         self.setLayout(self.layout)
 
     def next_image(self):
@@ -201,7 +201,10 @@ class AnalysisView(QWidget):
         self.canvas.hide()
         self.layout.insertWidget(4, self.image_display)
         self.image_display.show()
-        self.layout.insertWidget(5, self.next_btn)
+        self.layout.insertWidget(5, self.file_list)
+        self.file_list.show()
+        self.update()
+        self.layout.insertWidget(6, self.next_btn)
         self.next_btn.show()
         self.curr_image_signal.emit()
 
@@ -219,6 +222,9 @@ class AnalysisView(QWidget):
         self.image_display.hide()
         self.layout.removeWidget(self.next_btn)
         self.next_btn.hide()
+        self.layout.removeWidget(self.file_list)
+        self.file_list.clear()
+        self.file_list.hide()
         self.layout.insertWidget(4, self.canvas)
         self.canvas.show()
         self.update_graph(sorted_all_num_dets, sorted_all_conf_mean, colors)

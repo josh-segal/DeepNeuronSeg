@@ -41,6 +41,7 @@ class OutlierView(QWidget):
         layout.addWidget(self.outlier_list)
         layout.addLayout(controls_layout)
         layout.addLayout(threshold_layout)
+        layout.addStretch()
         self.setLayout(layout)
         
         """

@@ -101,12 +101,13 @@ class EvaluationView(QWidget):
         self.layout.addWidget(QLabel("Dataset:"))
         self.layout.addWidget(self.dataset_selector)
         self.layout.addWidget(self.image_display)
-        self.layout.addWidget(self.next_btn)
         self.layout.addWidget(self.canvas)
-        self.layout.addWidget(self.calculate_metrics_btn)
-        self.layout.addWidget(self.display_graph_checkbox)
-        self.layout.addWidget(self.downoad_data_btn)
+        self.canvas.hide()
         self.layout.addWidget(self.file_list)
+        self.layout.addWidget(self.display_graph_checkbox)
+        self.layout.addWidget(self.next_btn)
+        self.layout.addWidget(self.calculate_metrics_btn)
+        self.layout.addWidget(self.downoad_data_btn)
         # Adding metric labels to self.layout
         metrics_layout.addWidget(self.confidence_mean_mean_label, 0, 0)
         metrics_layout.addWidget(self.confidence_mean_std_label, 0, 1)
@@ -122,6 +123,7 @@ class EvaluationView(QWidget):
         metrics_layout.addWidget(self.overlap_ratio_std_label, 1, 5)
 
         self.layout.addLayout(metrics_layout)
+        self.layout.addStretch()
         self.setLayout(self.layout)
     
         # check if metrics already calculated for model
@@ -146,7 +148,10 @@ class EvaluationView(QWidget):
         self.canvas.hide()
         self.layout.insertWidget(4, self.image_display)
         self.image_display.show()
-        self.layout.insertWidget(5, self.next_btn)
+        self.layout.insertWidget(5, self.file_list)
+        self.file_list.show()
+        self.update()
+        self.layout.insertWidget(7, self.next_btn)
         self.next_btn.show()
         self.curr_image_signal.emit()
 
@@ -164,6 +169,9 @@ class EvaluationView(QWidget):
         self.image_display.hide()
         self.layout.removeWidget(self.next_btn)
         self.next_btn.hide()
+        self.layout.removeWidget(self.file_list)
+        self.file_list.clear()
+        self.file_list.hide()
         self.layout.insertWidget(4, self.canvas)
         self.canvas.show()
         self.update_graph(sorted_num_dets, sorted_conf_mean)

@@ -51,6 +51,7 @@ class ModelZooView(QWidget):
         layout.addWidget(self.next_btn)
         layout.addLayout(image_layout)
         layout.addWidget(self.download_btn)
+        layout.addStretch()
         self.setLayout(layout)
         
         self.select_btn.clicked.connect(self.select_images)

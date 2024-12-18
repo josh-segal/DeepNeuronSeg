@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QSizePolicy
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 import os
@@ -14,7 +14,7 @@ class ImageDisplay(QWidget):
         
         # Create a container widget with fixed minimum size
         self.container = QWidget()
-        self.container.setMinimumSize(512, 580)  # Height includes space for text
+        self.container.setMinimumSize(512, 550)  # Height includes space for text
         
         # Create layout for container
         container_layout = QVBoxLayout(self.container)

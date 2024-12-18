@@ -21,6 +21,7 @@ class AnalysisModel(QObject):
         super().__init__()
         self.db = db
         self.dataset_metrics = None
+        self.analysis_metrics = None
         self.sorted_all_num_detections, self.sorted_all_conf_mean, self.colors = None, None, None
 
         self.dataset_path = tempfile.mkdtemp()
@@ -30,6 +31,10 @@ class AnalysisModel(QObject):
         return self.db.load_models()
 
     def inference_images(self, name_of_model, uploaded_files):
+        if self.analysis_metrics is None:
+            print("No analysis metrics, please calculate metrics first in Evaluation Tab.")
+            return
+        
         print("model inferencing images")
         from ultralytics import YOLO
         self.uploaded_files = uploaded_files

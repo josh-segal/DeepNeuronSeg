@@ -107,6 +107,7 @@ my_stylesheet = """
     
     QListWidget {
         margin: 2px;
+        max-height: 200px;
     }
 """  
 

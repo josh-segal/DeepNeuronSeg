@@ -35,6 +35,7 @@ class DatasetView(QWidget):
         layout.addLayout(config_layout)
         layout.addWidget(self.image_list)
         layout.addWidget(self.create_btn)
+        layout.addStretch()
         self.setLayout(layout)
     
     def create_dataset(self):

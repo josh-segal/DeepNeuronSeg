@@ -28,9 +28,9 @@ class LabelingView(QWidget):
         
         layout.addWidget(self.upload_label_btn)
         layout.addWidget(self.image_display)
-        layout.addWidget(self.next_btn)
         layout.addWidget(self.file_list)
-
+        layout.addWidget(self.next_btn)
+        layout.addStretch()
         self.setLayout(layout)
 
     def upload_labels(self):

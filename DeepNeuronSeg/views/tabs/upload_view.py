@@ -42,15 +42,13 @@ class UploadView(QWidget):
         metadata_layout.addWidget(self.brain_region, 1, 1)
         metadata_layout.addWidget(QLabel("Image ID:"), 1, 2)
         metadata_layout.addWidget(self.image_id, 1, 3)
-
-        button_layout = QHBoxLayout()
-        button_layout.addWidget(self.upload_btn)
-        button_layout.addWidget(self.next_btn)
         
-        layout.addLayout(button_layout)
+        layout.addWidget(self.upload_btn)
         layout.addLayout(metadata_layout)
         layout.addWidget(self.image_display)
         layout.addWidget(self.file_list)
+        layout.addWidget(self.next_btn)
+        layout.addStretch()
         self.setLayout(layout)
 
     def next_image(self):
