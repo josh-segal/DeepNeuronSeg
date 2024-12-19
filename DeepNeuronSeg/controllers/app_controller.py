@@ -96,6 +96,7 @@ class MainWindow(QMainWindow):
 
         self.evaluation_model.update_metrics_labels_signal.connect(self.analysis_controller.receive_dataset_metrics)
         self.analysis_model.calculated_outlier_data.connect(self.outlier_controller.receive_outlier_data)
+        self.upload_view.blinded_signal.connect(self.data_manager.set_blinded)
         
         # Create and add all self.tabs
         self.tabs.addTab(self.upload_view, "Upload Data")
