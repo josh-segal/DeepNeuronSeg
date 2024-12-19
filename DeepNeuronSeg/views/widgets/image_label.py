@@ -1,7 +1,6 @@
 from PyQt5.QtCore import pyqtSignal, QPointF, Qt
 from PyQt5.QtGui import QPainter, QPen
 from PyQt5.QtWidgets import QLabel
-from PyQt5.QtWidgets import QMessageBox
 
 class ImageLabel(QLabel):
     """Custom QLabel to handle mouse clicks on the image area only."""

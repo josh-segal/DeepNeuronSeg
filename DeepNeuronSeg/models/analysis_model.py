@@ -41,7 +41,7 @@ class AnalysisModel(QObject):
 
     def inference_images(self, name_of_model, uploaded_files):
         if self.analysis_metrics is None:
-            QMessageBox.warning(self, "No Metrics", "No metrics to display, please calculate metrics first in Evaluation Tab.")
+            QMessageBox.warning(None, "No Metrics", "No metrics to display, please calculate metrics first in Evaluation Tab.")
             return
         
         from ultralytics import YOLO

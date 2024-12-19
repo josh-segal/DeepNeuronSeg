@@ -25,7 +25,7 @@ class DataManager:
 
         uploaded_files = [image['file_path'] for image in images if 'file_path' in image]
         if not uploaded_files:
-            QMessageBox.warning(self, "No Images", "No images found")
+            QMessageBox.warning(None, "No Images", "No images found")
             return []
         else:
             return uploaded_files

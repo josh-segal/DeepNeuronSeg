@@ -2,7 +2,6 @@ import os
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QListWidget, QFileDialog
 from PyQt5.QtCore import pyqtSignal
 from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
-from PyQt5.QtWidgets import QMessageBox
 
 class UploadView(QWidget):
 

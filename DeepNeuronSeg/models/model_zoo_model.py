@@ -21,7 +21,7 @@ class ModelZooModel(QObject):
 
     def download_data(self):
         if not hasattr(self, 'inference_result') or not hasattr(self, 'uploaded_files'):
-            QMessageBox.warning(self, "No Inference Results", "No inference results to download")
+            QMessageBox.warning(None, "No Inference Results", "No inference results to download")
             return
         # Create data for each image
         data = []
@@ -43,7 +43,7 @@ class ModelZooModel(QObject):
                                                  "CSV Files (*.csv)")
         if save_path:
             df.to_csv(save_path, index=False)
-            QMessageBox.information(self, "Metrics Saved", f"Metrics saved to {save_path}")
+            QMessageBox.information(None, "Metrics Saved", f"Metrics saved to {save_path}")
 
     def inference_images(self, name_of_model, uploaded_files, confidence):
         self.uploaded_files = uploaded_files
@@ -53,7 +53,7 @@ class ModelZooModel(QObject):
         self.inference_dir = os.path.join('data', 'inferences', name_of_model)
         os.makedirs(self.inference_dir, exist_ok=True)
         if not uploaded_files:
-            QMessageBox.warning(self, "No Images", "No images selected")
+            QMessageBox.warning(None, "No Images", "No images selected")
             return  
         if model_denoise:
             dn_model = DenoiseModel(dataset_path='idc update to not need', model_path=model_denoise)

@@ -61,7 +61,7 @@ class EvaluationModel(QObject):
         if self.metrics is not None:
             self.metrics.export_image_metrics_to_csv(filename=f'{dataset_name}_image_metrics.csv')
         else:
-            QMessageBox.warning(self, "No Metrics", "No metrics to download, please calculate metrics first.")
+            QMessageBox.warning(None, "No Metrics", "No metrics to download, please calculate metrics first.")
 
     def get_models(self):
         return map(lambda model: model['model_name'], self.db.load_models())

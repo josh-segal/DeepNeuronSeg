@@ -1,7 +1,6 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QFrame
 )
-from PyQt5.QtWidgets import QMessageBox
 
 
 class HideableInputPanel(QWidget):
