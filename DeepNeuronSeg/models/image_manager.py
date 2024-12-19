@@ -12,11 +12,6 @@ class ImageManager:
         self.dataset_path = None
         self.current_index = 0
         self.selected_frame = 0
-        
-        # Validate inputs
-        if not (db or dataset_path):
-            raise ValueError("Either db or dataset_path must be provided")
-            
         if dataset_path:
             self.set_dataset_path(dataset_path)
 
@@ -96,7 +91,7 @@ class ImageManager:
             points = None  # No points data for directory-based images
         else:
             items = self.db.load_masks() if show_masks else self.db.load_images()
-            points = self.db.load_labels()[self.current_index] if show_labels else None
+            points = self.db.load_labels() if show_labels else None
         
         if not items:
             return None, 0, 0, None
@@ -107,9 +102,10 @@ class ImageManager:
             return None, 0, 0, None
             
         current_item = items[self.current_index]
+        current_points = points[self.current_index] if points else None
         total_items = len(items)
         
-        return current_item, self.current_index, total_items, points
+        return current_item, self.current_index, total_items, current_points
 
     def next_image(self, subdir: Optional[str] = None) -> None:
         """Move to the next image in the sequence"""
@@ -130,8 +126,8 @@ class ImageManager:
     def get_images(self, subdir: Optional[str] = None):
         if self.dataset_path:
             images = self._load_directory_images(subdir)
-            images = [os.path.splitext(os.path.basename(path))[0] for path in images]
+            # images = [os.path.splitext(os.path.basename(path))[0] for path in images]
             return images
         images = self.db.load_images() if self.db else []
-        images = [os.path.splitext(os.path.basename(path))[0] for path in images]
+        # images = [os.path.splitext(os.path.basename(path))[0] for path in images]
         return images

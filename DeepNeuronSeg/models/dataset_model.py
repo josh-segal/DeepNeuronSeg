@@ -4,8 +4,9 @@ import random
 from tinydb import Query
 from DeepNeuronSeg.utils.utils import get_image_mask_label_tuples, create_yaml
 from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtCore import QObject
 
-class DatasetModel:
+class DatasetModel(QObject):
     def __init__(self, db):
         super().__init__()
         self.db = db
@@ -39,10 +40,10 @@ class DatasetModel:
             dataset_path = os.path.abspath(os.path.join(dataset_parent_dir, f"{dataset_dir}_{counter}"))
 
         if not dataset_name:
-            QMessageBox.warning(self, "No Dataset Name", "Please enter a dataset name")
+            # QMessageBox.warning(self, "No Dataset Name", "Please enter a dataset name")
             return
         if self.db.dataset_table.get(Query().dataset_name == dataset_name):
-            QMessageBox.warning(self, "Dataset Name", "Dataset name already exists, please choose a different name")
+            # QMessageBox.warning(self, "Dataset Name", "Dataset name already exists, please choose a different name")
             return
 
         self.db.dataset_table.insert({

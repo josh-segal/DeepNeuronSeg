@@ -5,7 +5,6 @@ import os
 import tempfile
 from PIL import Image
 from DeepNeuronSeg.views.widgets.image_label import ImageLabel
-from PyQt5.QtWidgets import QMessageBox
 
 class ImageDisplay(QWidget):
     """Widget for displaying and interacting with images"""
@@ -49,7 +48,8 @@ class ImageDisplay(QWidget):
             self.image_label.set_pixmap(self.pixmap)
             self.text_label.setText(f"{image_num} / {total_images}")
         else:
-            QMessageBox.warning(self, "Image Load Error", "Failed to load image")
+            # QMessageBox.warning(self, "Image Load Error", "Failed to load image")
+            something = 1
 
     def _show_pred(self, pred, curr_index, total_images):
         """Display the prediction for the current image"""

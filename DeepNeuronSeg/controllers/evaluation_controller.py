@@ -65,13 +65,18 @@ class EvaluationController(QObject):
             self.view.image_display.text_label.setText("No image found")
 
     def update(self):
+        self.model.set_first_dataset_path()
         images = self.model.image_manager.get_images(subdir='images')
         models = self.model.get_models()
         datasets = self.model.get_datasets()
         self.view.update_response(models, datasets, images)
-        item, index, total, points = self.model.image_manager.get_item(subdir='images')
-        if item:
-            self.view.image_display.display_frame(item, index, total, points)
+        if self.model.image_manager.dataset_path is not None:
+            item, index, total, points = self.model.image_manager.get_item(subdir='images')
+            if item:
+                self.view.image_display.display_frame(item, index, total, points)
+            else:
+                self.view.image_display.clear()
+                self.view.image_display.text_label.setText("No image found")
         else:
             self.view.image_display.clear()
-            self.view.image_display.text_label.setText("No image found")
+            self.view.image_display.text_label.setText("No dataset found")

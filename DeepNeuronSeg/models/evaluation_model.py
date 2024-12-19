@@ -14,13 +14,18 @@ class EvaluationModel(QObject):
         self.db = db
         self.metrics = None
         # get first dataset path
-        dataset_name = next(map(lambda dataset: dataset['dataset_name'], self.db.load_datasets()), None)
-        self.dataset_path = self.get_dataset_path(dataset_name) if dataset_name else None
-        self.image_manager = ImageManager(dataset_path=self.dataset_path)
+        self.image_manager = ImageManager()
+        self.set_first_dataset_path()
         self.confidence = 0.3
 
     def set_confidence(self, value):
         self.confidence = value
+
+    def set_first_dataset_path(self):
+        dataset_name = next(map(lambda dataset: dataset['dataset_name'], self.db.load_datasets()), None)
+        self.dataset_path = self.get_dataset_path(dataset_name) if dataset_name else None
+        if self.dataset_path is not None:
+            self.image_manager.set_dataset_path(self.dataset_path)
 
     def get_dataset_path(self, dataset_name):
         if " (denoised)" in dataset_name:
@@ -61,7 +66,8 @@ class EvaluationModel(QObject):
         if self.metrics is not None:
             self.metrics.export_image_metrics_to_csv(filename=f'{dataset_name}_image_metrics.csv')
         else:
-            QMessageBox.warning(self, "No Metrics", "No metrics to download, please calculate metrics first.")
+            # QMessageBox.warning(self, "No Metrics", "No metrics to download, please calculate metrics first.")
+            something = 1
 
     def get_models(self):
         return map(lambda model: model['model_name'], self.db.load_models())

@@ -22,7 +22,7 @@ class UploadModel(QObject):
         self.uploaded_files = []
         self.image_manager = ImageManager(self.db)
     
-    def upload_images(self, uploaded_files, project, cohort, brain_region, image_id):
+    def upload_images(self, uploaded_files):
 
         self.use_selected_frame_for_all = False
         self.selected_frame = 0
@@ -37,7 +37,7 @@ class UploadModel(QObject):
             image_path = os.path.join('data', 'data_images', image_name)
 
             if self.db.image_table.get(image_data.file_path == image_name):
-                QMessageBox.warning(self, "Image Already Exists", f"Image already exists in database {image_name}")
+                # QMessageBox.warning(self, "Image Already Exists", f"Image already exists in database {image_name}")
                 uploaded_files.remove(file)
                 continue
         
@@ -66,11 +66,7 @@ class UploadModel(QObject):
 
             # add to db
             self.db.image_table.insert({
-                "file_path": image_path, 
-                "project": project, 
-                "cohort": cohort, 
-                "brain_region": brain_region, 
-                "image_id": image_id if image_id else len(self.db.image_table),
+                "file_path": image_path,
                 "labels": []
                 })
 

@@ -33,13 +33,13 @@ class LabelingModel(QObject):
                 elif label_file.endswith(".xml"):
                     label_data = parse_xml_label(label_file)
                 else:
-                    QMessageBox.warning(self, "Invalid Label Format", "Invalid label format")
+                    # QMessageBox.warning(self, "Invalid Label Format", "Invalid label format")
                     label_data = []
 
                 if label_data:
                     self.db.image_table.update({"labels": label_data}, image_data.file_path == label_name)
             else:
-                QMessageBox.warning(self, "Image Not Found", f"Image not found in database {label_name}")
+                # QMessageBox.warning(self, "Image Not Found", f"Image not found in database {label_name}")
                 continue
         
     def add_cell_marker(self, pos):
@@ -48,10 +48,8 @@ class LabelingModel(QObject):
 
         # Get all records from the image_table
         images = self.image_manager.get_images()
-
         # Define file_path based on self.current_index
         file_path = images[self.image_manager.current_index] if 0 <= self.image_manager.current_index < len(images) else None
-
         image_query = Query()
         image_data = self.db.image_table.get(image_query.file_path == file_path)
         if image_data:
@@ -59,7 +57,7 @@ class LabelingModel(QObject):
             item, index, total, points = self.image_manager.get_item(show_labels=True)
             return item, index, total, points
         else:
-            QMessageBox.warning(self, "Image Not Found", f"Image not found in database {file_path}")
+            # QMessageBox.warning(self, "Image Not Found", f"Image not found in database {file_path}")
             return None, None, None, None
 
     def remove_cell_marker(self, pos, tolerance=5):
@@ -71,7 +69,6 @@ class LabelingModel(QObject):
 
         # Define file_path based on self.current_index
         file_path = images[self.image_manager.current_index] if 0 <= self.image_manager.current_index < len(images) else None
-
         image_query = Query()
         image_data = self.db.image_table.get(image_query.file_path == file_path)
         if image_data:
@@ -80,7 +77,7 @@ class LabelingModel(QObject):
             item, index, total, points = self.image_manager.get_item(show_labels=True)
             return item, index, total, points
         else:
-            QMessageBox.warning(self, "Image Not Found", f"Image not found in database {file_path}")
+            # QMessageBox.warning(self, "Image Not Found", f"Image not found in database {file_path}")
             return None, None, None, None
 
     def load_image(self, index):

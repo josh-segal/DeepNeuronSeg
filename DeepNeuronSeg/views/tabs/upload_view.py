@@ -5,7 +5,7 @@ from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
 
 class UploadView(QWidget):
 
-    upload_images_signal = pyqtSignal(list, str, str, str, str)
+    upload_images_signal = pyqtSignal(list)
     update_signal = pyqtSignal()
     load_image_signal = pyqtSignal(int)
     next_image_signal = pyqtSignal()
@@ -43,7 +43,7 @@ class UploadView(QWidget):
     
     def upload_images(self):
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png *.tif)")
-        self.upload_images_signal.emit(self.uploaded_files, self.project.text(), self.cohort.text(), self.brain_region.text(), self.image_id.text())
+        self.upload_images_signal.emit(self.uploaded_files)
 
     def update_images(self, items):
         self.file_list.clear()

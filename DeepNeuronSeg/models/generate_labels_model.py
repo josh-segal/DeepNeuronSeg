@@ -22,7 +22,7 @@ class GenerateLabelsModel:
             file_path = item.get("file_path", "")
 
             if not label:
-                QMessageBox.warning(self, "No Labels", "No labels provided for image", file_path)
+                # QMessageBox.warning(self, "No Labels", "No labels provided for image", file_path)
                 continue
 
             mask_data = self.generate_label(file_path, label)

@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QFileDialog, QListWidget, QLabel
 from PyQt5.QtCore import QPointF, pyqtSignal, Qt
 from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
+
 class LabelingView(QWidget):
 
     add_cell_marker_signal = pyqtSignal(QPointF)

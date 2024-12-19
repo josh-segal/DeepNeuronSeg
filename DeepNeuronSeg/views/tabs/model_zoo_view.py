@@ -15,6 +15,7 @@ class ModelZooView(QWidget):
     next_image_signal = pyqtSignal()
     def __init__(self):
         super().__init__()
+        self.uploaded_files = []
         layout = QVBoxLayout()
         image_layout = QHBoxLayout()
 
@@ -80,13 +81,17 @@ class ModelZooView(QWidget):
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
 
     def inference_images(self):
-        self.model_name = self.model_selector.currentText() 
-        self.confidence = self.conf.value() 
-        self.inference_images_signal.emit(self.model_name, self.uploaded_files, self.confidence)
+        if self.uploaded_files:
+            self.model_name = self.model_selector.currentText() 
+            self.confidence = self.conf.value()     
+            self.inference_images_signal.emit(self.model_name, self.uploaded_files, self.confidence)
+        else:
+            #QMessageBox.warning(self, "No Images", "No images selected.")
+            something = 1
 
     def display_images(self, uploaded_file, inference_result, current_index, total_items):
-        self.left_image.display_frame(uploaded_file, current_index + 1, total_items)
-        self.right_image.display_frame(inference_result, current_index + 1, total_items, pred=True)
+        self.left_image.display_frame(uploaded_file, current_index, total_items)
+        self.right_image.display_frame(inference_result, current_index, total_items, pred=True)
 
     def save_inferences(self):
         self.save_inferences_signal.emit()
