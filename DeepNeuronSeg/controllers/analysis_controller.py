@@ -14,6 +14,7 @@ class AnalysisController(QObject):
         self.model.analysis_metrics_signal.connect(self.update_analysis_metrics)
         self.view.update_signal.connect(self.update)
         self.view.display_graph_signal.connect(self.display_graph)
+        self.model.display_graph_signal.connect(self.check_display_graph)
         self.view.curr_image_signal.connect(self.curr_image)
         self.view.load_image_signal.connect(self.load_image)
         self.view.next_image_signal.connect(self.next_image)
@@ -36,6 +37,10 @@ class AnalysisController(QObject):
         else:
             self.view.image_display.clear()
             self.view.image_display.text_label.setText("No image found")
+
+    def check_display_graph(self):
+        checked = self.view.display_status()
+        self.display_graph(checked)
 
     def display_graph(self, checked):
         if checked:
