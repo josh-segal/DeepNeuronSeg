@@ -41,7 +41,7 @@ class AnalysisModel(QObject):
 
     def inference_images(self, name_of_model, uploaded_files):
         if self.analysis_metrics is None:
-            QMessageBox.warning(None, "No Metrics", "No metrics to display, please calculate metrics first in Evaluation Tab.")
+            QMessageBox.warning(self, "No Metrics", "No metrics to display, please calculate metrics first in Evaluation Tab.")
             return
         
         from ultralytics import YOLO
@@ -52,7 +52,7 @@ class AnalysisModel(QObject):
         self.inference_dir = os.path.join('data', 'inferences', name_of_model)
         os.makedirs(self.inference_dir, exist_ok=True)
         if not uploaded_files:
-            QMessageBox.warning(None, "No Images", "No images selected")
+            QMessageBox.warning(self, "No Images", "No images selected")
             return  
         if self.model_denoise:
             dn_model = DenoiseModel(dataset_path='idc update to not need', model_path=self.model_denoise)
@@ -91,11 +91,11 @@ class AnalysisModel(QObject):
             self.dataset_metrics_signal.emit(self.dataset_metrics)
             self.update_analysis_metrics_labels()
         else:
-            QMessageBox.warning(None, "No Metrics", "No dataset metrics, please calculate metrics first in Evaluation Tab.")
+            QMessageBox.warning(self, "No Metrics", "No dataset metrics, please calculate metrics first in Evaluation Tab.")
 
     def update_analysis_metrics_labels(self):
         if not self.uploaded_files:
-            QMessageBox.warning(None, "No Images", "No uploaded files to process.")
+            QMessageBox.warning(self, "No Images", "No uploaded files to process.")
             return
         for file in self.uploaded_files:
             shutil.copy(file, self.dataset_path)
@@ -108,11 +108,11 @@ class AnalysisModel(QObject):
         if self.analysis_metrics_model is not None:
             self.analysis_metrics_model.export_image_metrics_to_csv()
         else:
-            QMessageBox.warning(None, "No Metrics", "No metrics to download, please calculate metrics first.")
+            QMessageBox.warning(self, "No Metrics", "No metrics to download, please calculate metrics first.")
 
     def save_inferences(self):
         if not self.uploaded_files:
-            QMessageBox.warning(None, "No Images", "No images to save")
+            QMessageBox.warning(self, "No Images", "No images to save")
             return
         for file, result in zip(self.uploaded_files, self.inference_result):
             masks = result.masks

@@ -39,10 +39,10 @@ class DatasetModel:
             dataset_path = os.path.abspath(os.path.join(dataset_parent_dir, f"{dataset_dir}_{counter}"))
 
         if not dataset_name:
-            QMessageBox.warning(None, "No Dataset Name", "Please enter a dataset name")
+            QMessageBox.warning(self, "No Dataset Name", "Please enter a dataset name")
             return
         if self.db.dataset_table.get(Query().dataset_name == dataset_name):
-            QMessageBox.warning(None, "Dataset Name", "Dataset name already exists, please choose a different name")
+            QMessageBox.warning(self, "Dataset Name", "Dataset name already exists, please choose a different name")
             return
 
         self.db.dataset_table.insert({

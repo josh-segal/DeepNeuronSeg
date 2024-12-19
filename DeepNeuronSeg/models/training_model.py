@@ -66,7 +66,7 @@ class TrainingModel:
 
     def trainer(self, model_name, base_model, dataset_name, denoise, denoise_base, epochs, batch_size):
         if not model_name:
-            QMessageBox.warning(None, "Model Name", "Model name required")
+            QMessageBox.warning(self, "Model Name", "Model name required")
             return
         
         dataset = self.db.dataset_table.get(Query().dataset_name == dataset_name)
@@ -74,7 +74,7 @@ class TrainingModel:
 
         model_name_exists = self.db.model_table.contains(Query()["model_name"] == model_name)
         if model_name_exists:
-            QMessageBox.warning(None, "Model Name", "Model name already exists, please choose a different name")
+            QMessageBox.warning(self, "Model Name", "Model name already exists, please choose a different name")
             return
 
         if denoise:
@@ -91,7 +91,7 @@ class TrainingModel:
                 dataset_data.dataset_path == os.path.abspath(dataset_path)
             )
 
-            QMessageBox.information(None, "Denoising", f"Denoising images in {os.path.abspath(dataset_path)} and saving to {os.path.abspath(dn_dataset_path)}")
+            QMessageBox.information(self, "Denoising", f"Denoising images in {os.path.abspath(dataset_path)} and saving to {os.path.abspath(dn_dataset_path)}")
 
             dataset_path = os.path.abspath(dataset_path)
 
@@ -106,7 +106,7 @@ class TrainingModel:
                 dataset_data.dataset_path == os.path.abspath(dataset_path)
             )
 
-            QMessageBox.information(None, "Denoising", f"Denoising images in {os.path.abspath(dataset_path)} and saving to {os.path.abspath(dn_dataset_path)}")
+            QMessageBox.information(self, "Denoising", f"Denoising images in {os.path.abspath(dataset_path)} and saving to {os.path.abspath(dn_dataset_path)}")
 
             dataset_path = os.path.abspath(dataset_path)
         else:
@@ -115,7 +115,7 @@ class TrainingModel:
         if base_model == "YOLOv8n-seg":
             # offset program load times by loading model here
             from ultralytics import YOLO
-            QMessageBox.information(None, "Training", "Training YOLOv8n-seg")
+            QMessageBox.information(self, "Training", "Training YOLOv8n-seg")
 
             
 
