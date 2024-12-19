@@ -26,9 +26,15 @@ class AnalysisModel(QObject):
         self.dataset_metrics = None
         self.analysis_metrics = None
         self.sorted_all_num_detections, self.sorted_all_conf_mean, self.colors = None, None, None
+        self.inference_result = None
 
         self.dataset_path = tempfile.mkdtemp()
         self.image_manager = ImageManager(dataset_path=self.dataset_path)
+
+    def get_inference_result(self, index):
+        if self.inference_result is None:
+            return None
+        return self.inference_result[index]
 
     def load_models(self):
         return self.db.load_models()

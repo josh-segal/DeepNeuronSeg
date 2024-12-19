@@ -45,7 +45,7 @@ class ModelZooModel(QObject):
             df.to_csv(save_path, index=False)
             QMessageBox.information(self, "Metrics Saved", f"Metrics saved to {save_path}")
 
-    def inference_images(self, name_of_model, uploaded_files):
+    def inference_images(self, name_of_model, uploaded_files, confidence):
         self.uploaded_files = uploaded_files
         model_path = self.db.model_table.get(Query().model_name == name_of_model).get('model_path')
         model_denoise = self.db.model_table.get(Query().model_name == name_of_model).get('denoise')
@@ -64,7 +64,7 @@ class ModelZooModel(QObject):
         else:
             uploaded_images = [Image.open(image_path) for image_path in uploaded_files]
             
-        self.inference_result = model.predict(uploaded_images, conf=0.3, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
+        self.inference_result = model.predict(uploaded_images, conf=confidence, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
 
         self.display_images()
 

@@ -13,8 +13,12 @@ class EvaluationController(QObject):
         self.view.next_image_signal.connect(self.next_image)
         self.view.dataset_changed_signal.connect(self.on_dataset_changed)
         self.view.load_image_signal.connect(self.load_image)
+        self.view.update_confidence_signal.connect(self.update_confidence)
 
         self.update()
+
+    def update_confidence(self, value):
+        self.model.set_confidence(value)
 
     def on_dataset_changed(self, dataset_name):
         dataset_path = self.model.get_dataset_path(dataset_name)
@@ -38,6 +42,8 @@ class EvaluationController(QObject):
     def calculate_metrics(self, model_name, dataset_name):
         dataset_metrics = self.model.calculate_metrics(model_name, dataset_name)
         self.view.update_metrics_labels(dataset_metrics)
+        checked = self.view.display_graph_checkbox.isChecked()
+        self.display_graph(checked)
 
     def display_graph(self, checked):
         if checked:

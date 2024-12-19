@@ -33,7 +33,12 @@ class AnalysisController(QObject):
     def curr_image(self):
         item, index, total, points = self.model.image_manager.get_item()
         if item:
-            self.view.image_display.display_frame(item, index, total, points)
+            inference_result = self.model.get_inference_result(index)
+            if inference_result is None:
+                self.view.image_display.clear()
+                self.view.image_display.text_label.setText("No inference result found")
+                return
+            self.view.image_display.display_frame(inference_result, index, total, points, pred=True)
         else:
             self.view.image_display.clear()
             self.view.image_display.text_label.setText("No image found")

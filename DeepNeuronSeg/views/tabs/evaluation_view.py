@@ -1,10 +1,9 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QComboBox, QPushButton, QLabel, QCheckBox, QListWidget
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QComboBox, QPushButton, QLabel, QCheckBox, QListWidget, QHBoxLayout
 from PyQt5.QtCore import pyqtSignal
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QDoubleSpinBox
 from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
-from PyQt5.QtWidgets import QMessageBox
 
 class EvaluationView(QWidget):
 
@@ -16,7 +15,7 @@ class EvaluationView(QWidget):
     update_signal = pyqtSignal()
     dataset_changed_signal = pyqtSignal(str)
     load_image_signal = pyqtSignal(int)
-
+    update_confidence_signal = pyqtSignal(float)
     def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout()
@@ -35,6 +34,18 @@ class EvaluationView(QWidget):
         # Visualization area (placeholder for distribution plots)
         self.canvas = FigureCanvas(Figure(figsize=(12, 5)))
         self.canvas.hide()
+
+        self.conf_label = QLabel("Confidence Threshold:")
+        self.conf = QDoubleSpinBox()
+        self.conf.setRange(0.0, 1.0)
+        self.conf.setSingleStep(0.05)
+        self.conf.setValue(0.3)
+        self.conf.setToolTip("""
+        Sets the minimum confidence threshold for detections. Detections with confidence below this threshold are discarded. 
+        Default is 0.3. Increasing this value will reduce the recall of the model and improve the precision, 
+        decreasing this value will increase the recall of the model and decrease the precision.
+        """)
+        self.conf.valueChanged.connect(self.update_confidence)
 
         self.calculate_metrics_btn = QPushButton("Calculate Metrics")
         self.calculate_metrics_btn.clicked.connect(self.calculate_metrics)
@@ -108,6 +119,10 @@ class EvaluationView(QWidget):
         self.layout.addWidget(self.file_list)
         self.layout.addWidget(self.display_graph_checkbox)
         self.layout.addWidget(self.next_btn)
+        self.conf_layout = QHBoxLayout()
+        self.conf_layout.addWidget(self.conf_label)
+        self.conf_layout.addWidget(self.conf)
+        self.layout.addLayout(self.conf_layout)
         self.layout.addWidget(self.calculate_metrics_btn)
         self.layout.addWidget(self.downoad_data_btn)
         # Adding metric labels to self.layout
@@ -134,6 +149,9 @@ class EvaluationView(QWidget):
         # calculate metrics / distributions across inferences
         # display metrics and distributions in meaningful way
         # in analyze data return quality score of inferenced image
+
+    def update_confidence(self, value):
+        self.update_confidence_signal.emit(value)
 
     def on_dataset_changed(self, dataset_index):
         dataset_name = self.dataset_selector.itemText(dataset_index)
