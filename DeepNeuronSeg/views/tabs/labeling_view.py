@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QFileDialog, QListWidget
-from PyQt5.QtCore import QPointF, pyqtSignal
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QFileDialog, QListWidget, QLabel
+from PyQt5.QtCore import QPointF, pyqtSignal, Qt
 from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
 class LabelingView(QWidget):
 
@@ -28,6 +28,7 @@ class LabelingView(QWidget):
         
         layout.addWidget(self.upload_label_btn)
         layout.addWidget(self.image_display)
+        layout.addWidget(QLabel("Left click: Add ROI | Right click: Remove ROI"), alignment=Qt.AlignCenter)
         layout.addWidget(self.file_list)
         layout.addWidget(self.next_btn)
         layout.addStretch()

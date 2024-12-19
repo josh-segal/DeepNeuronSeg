@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "DeepNeuronSeg"
+version = "0.1.0"
+description = "ML Workflow for Neuron Instance Segmentation and Analysis"
+authors = [
+    { name = "Joshua Segal", email = "segalsfly@gmail.com" }
+]
+urls = { "Homepage" = "https://github.com/josh-segal/DeepNeuronSeg" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent"
+]
+requires-python = ">=3.10"
+dependencies = [
+    "torch",
+    "torchvision",
+    "opencv-python",
+    "transformers",
+    "ultralytics",
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "Pillow",
+    "PyQt5",
+    "PyQt5-sip",
+    "PyYAML",
+    "tqdm",
+    "tinydb"
+]

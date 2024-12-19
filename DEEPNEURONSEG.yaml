@@ -1,0 +1,16 @@
+# DeepNeuronSeg Environment Configuration
+# This file sets up the environment for the DeepNeuronSeg project.
+# Repository: https://github.com/josh-segal/DeepNeuronSeg
+# Ensure you have the appropriate CUDA and GPU driver installed for optimal performance.
+#
+# Install: conda env create -f DEEPNEURONSEG.yaml
+# Update: conda env update -f DEEPNEURONSEG.yaml
+name: DEEPNEURONSEG
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+    - "git+https://github.com/josh-segal/DeepNeuronSeg.git@main#egg=DeepNeuronSeg"
