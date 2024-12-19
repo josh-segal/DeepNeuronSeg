@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QMessageBox
 class EvaluationModel(QObject):
 
     calculated_dataset_metrics_signal = pyqtSignal(dict)
-    update_metrics_labels_signal = pyqtSignal(dict, dict, dict, str)
+    update_metrics_labels_signal = pyqtSignal(dict, dict, dict, str, float)
 
     def __init__(self, db):
         super().__init__()
@@ -36,7 +36,7 @@ class EvaluationModel(QObject):
 
         self.image_manager.set_dataset_path(self.dataset_path)
         self.metrics = DetectionQAMetrics(self.model_path, self.dataset_path, self.confidence)
-        self.update_metrics_labels_signal.emit(self.metrics.dataset_metrics_mean_std, self.metrics.dataset_metrics, self.metrics.get_analysis_metrics(), self.metrics.model_path)
+        self.update_metrics_labels_signal.emit(self.metrics.dataset_metrics_mean_std, self.metrics.dataset_metrics, self.metrics.get_analysis_metrics(), self.metrics.model_path, self.confidence)
         return self.metrics.dataset_metrics_mean_std 
     
     def display_graph(self):

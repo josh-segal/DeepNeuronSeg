@@ -69,8 +69,8 @@ class AnalysisController(QObject):
         self.view.update_response(models, images)
         self.curr_image()
 
-    def receive_dataset_metrics(self, dataset_metrics, analysis_metrics, variance_baselines, model_path):
-            self.model.receive_dataset_metrics(dataset_metrics, analysis_metrics, variance_baselines, model_path)
+    def receive_dataset_metrics(self, dataset_metrics, analysis_metrics, variance_baselines, model_path, confidence):
+            self.model.receive_dataset_metrics(dataset_metrics, analysis_metrics, variance_baselines, model_path, confidence)
 
     def update_dataset_metrics(self, dataset_metrics):
         self.view.update_dataset_metrics(dataset_metrics)

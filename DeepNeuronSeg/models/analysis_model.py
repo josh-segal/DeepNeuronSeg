@@ -79,11 +79,12 @@ class AnalysisModel(QObject):
         else:
             return None, None, None
 
-    def receive_dataset_metrics(self, dataset_metrics, analysis_metrics, variance_baselines, model_path):
+    def receive_dataset_metrics(self, dataset_metrics, analysis_metrics, variance_baselines, model_path, confidence):
         self.dataset_metrics = dataset_metrics
         self.analysis_metrics = analysis_metrics
         self.variance_baselines = variance_baselines
         self.analysis_model_path = model_path
+        self.confidence = confidence
 
     def update_metrics_labels(self):
         if self.dataset_metrics is not None:
@@ -100,7 +101,7 @@ class AnalysisModel(QObject):
             shutil.copy(file, self.dataset_path)
         
         self.update_images_signal.emit()
-        self.analysis_metrics_model = DetectionQAMetrics(self.analysis_model_path, self.dataset_path)
+        self.analysis_metrics_model = DetectionQAMetrics(self.analysis_model_path, self.dataset_path, self.confidence)
         self.analysis_metrics_signal.emit(self.analysis_metrics_model.dataset_metrics_mean_std)
 
     def download_data(self):

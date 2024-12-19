@@ -9,11 +9,13 @@ class OutlierView(QWidget):
 
     update_outlier_threshold_signal = pyqtSignal(float)
     next_image_signal = pyqtSignal()
+    remove_outlier_signal = pyqtSignal()
 
     def __init__(self):
         super().__init__()
         layout = QVBoxLayout()
         self.outlier_files = []
+        self.outlier_data = {}
         
         # Image display
         self.image_display = ImageDisplay()
@@ -24,6 +26,8 @@ class OutlierView(QWidget):
         self.relabel_btn = QPushButton("Relabel")
         self.next_btn = QPushButton("Next")
         self.next_btn.clicked.connect(self.next_image)    
+        self.confirm_btn.clicked.connect(self.confirm_outlier)
+        self.relabel_btn.clicked.connect(self.relabel_outlier)
         controls_layout.addWidget(self.confirm_btn)
         controls_layout.addWidget(self.relabel_btn)
 
@@ -49,6 +53,21 @@ class OutlierView(QWidget):
         layout.addStretch()
         self.setLayout(layout)
 
+    def confirm_outlier(self):
+        self.remove_outlier_signal.emit()
+
+    def remove_outlier(self, index):
+        if len(self.outlier_files) > index:
+            removed_path = self.outlier_files.pop(index)
+            self.outlier_data.pop(removed_path)
+            self.update_outliers(self.outlier_data)
+        else:
+            self.update()
+
+    def relabel_outlier(self):
+        pass
+        
+
     def next_image(self):
         self.next_image_signal.emit()
 
@@ -62,18 +81,26 @@ class OutlierView(QWidget):
         # should remove prediction from pred table ? do I need pred table ?    
 
     def update_outliers(self, data):
+        self.outlier_list.clear()
         self.outlier_files = list(data.keys())
+        self.outlier_data = data
         basename_data = [f"{os.path.splitext(os.path.basename(path))[0]} (Score: {data[path]:.2f})" for path in self.outlier_files]
         self.outlier_list.addItems(basename_data)
+        self.update()
                 
     def update(self):
         self.update_signal.emit()
 
     def update_response(self):
-        if self.outlier_files:
-            self.image_display.display_frame(self.outlier_files[0], 1, len(self.outlier_files))
+        if len(self.outlier_files) > 0:
+            self.image_display.display_frame(self.outlier_files[0], 0, len(self.outlier_files))
         else:
+            self.image_display.clear()
             self.image_display.image_label.setText("No outliers found")
 
     def display_outlier_image(self, item, index, total, points):
-        self.image_display.display_frame(item, index, total, points)
+        if item in self.outlier_files:
+            self.image_display.display_frame(item, index, total, points)
+        else:
+            self.image_display.clear()
+            self.image_display.image_label.setText("Outlier removed")
