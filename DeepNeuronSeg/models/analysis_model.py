@@ -9,9 +9,12 @@ from PIL import Image
 from PyQt5.QtCore import pyqtSignal, QObject
 from tinydb import Query
 from PyQt5.QtWidgets import QMessageBox
+import shutil
+import os
 
 class AnalysisModel(QObject):
 
+    display_graph_signal = pyqtSignal()
     calculated_outlier_data = pyqtSignal(list)
     dataset_metrics_signal = pyqtSignal(dict)
     analysis_metrics_signal = pyqtSignal(dict)
@@ -23,9 +26,15 @@ class AnalysisModel(QObject):
         self.dataset_metrics = None
         self.analysis_metrics = None
         self.sorted_all_num_detections, self.sorted_all_conf_mean, self.colors = None, None, None
+        self.inference_result = None
 
         self.dataset_path = tempfile.mkdtemp()
         self.image_manager = ImageManager(dataset_path=self.dataset_path)
+
+    def get_inference_result(self, index):
+        if self.inference_result is None:
+            return None
+        return self.inference_result[index]
 
     def load_models(self):
         return self.db.load_models()
@@ -62,17 +71,20 @@ class AnalysisModel(QObject):
 
         self.calculate_variance()
 
+        self.display_graph_signal.emit()
+
     def display_graph(self):
         if self.sorted_all_num_detections is not None and self.sorted_all_conf_mean is not None and self.colors is not None:
             return self.sorted_all_num_detections, self.sorted_all_conf_mean, self.colors
         else:
             return None, None, None
 
-    def receive_dataset_metrics(self, dataset_metrics, analysis_metrics, variance_baselines, model_path):
+    def receive_dataset_metrics(self, dataset_metrics, analysis_metrics, variance_baselines, model_path, confidence):
         self.dataset_metrics = dataset_metrics
         self.analysis_metrics = analysis_metrics
         self.variance_baselines = variance_baselines
         self.analysis_model_path = model_path
+        self.confidence = confidence
 
     def update_metrics_labels(self):
         if self.dataset_metrics is not None:
@@ -89,7 +101,7 @@ class AnalysisModel(QObject):
             shutil.copy(file, self.dataset_path)
         
         self.update_images_signal.emit()
-        self.analysis_metrics_model = DetectionQAMetrics(self.analysis_model_path, self.dataset_path)
+        self.analysis_metrics_model = DetectionQAMetrics(self.analysis_model_path, self.dataset_path, self.confidence)
         self.analysis_metrics_signal.emit(self.analysis_metrics_model.dataset_metrics_mean_std)
 
     def download_data(self):
@@ -165,17 +177,27 @@ class AnalysisModel(QObject):
         reshaped_analysis_list_of_list = [dict(zip(analysis_metrics.keys(), values)) for values in zip(*analysis_metrics.values())]
         variance_list_of_list = []
         quality_score_list = []
-        for i, image in enumerate(reshaped_analysis_list_of_list):
-            variance_list = self.compute_variance(image)
+        
+        # Ensure we only process the current batch of files
+        for i, (image_metrics, image_path) in enumerate(zip(reshaped_analysis_list_of_list, self.uploaded_files)):
+            variance_list = self.compute_variance(image_metrics)
             variance_list_of_list.append(variance_list)
             quality_score = self.compute_quality_score(variance_list)
-            quality_score_list.append({self.uploaded_files[i]: quality_score}) 
+            # Copy outlier image to dataset path for relabeling
+            quality_score_list.append({image_path: quality_score})
         
         self.calculated_outlier_data.emit(quality_score_list)
 
 
     def compute_variance(self, analysis_metrics):
-        """ Compute the variance of the computed metrics """
+        """ Compute the variance of the computed metrics 
+        'variance_confidence_mean_mean': np.float32(), 
+        'variance_confidence_std_std': np.float32(), 
+        'variance_num_detections_mean': np.float64(), 
+        'variance_area_mean_mean': np.float32(),
+        'variance_area_std_std': np.float32(),
+        'variance_overlap_ratio_mean': np.float64()
+        """
         metric_variance = {}
         for metric, value in self.dataset_metrics.items():
             analysis_metric = "analysis_" + metric
@@ -183,12 +205,18 @@ class AnalysisModel(QObject):
                 variance_metric = "variance_" + metric
                 std_metric = self.change_last_to_std(metric)
 
-                metric_variance[variance_metric] = (analysis_metrics[analysis_metric] - value) / self.dataset_metrics[std_metric]
-        
+                metric_variance[variance_metric] = (analysis_metrics[analysis_metric] - value) / self.dataset_metrics[std_metric] if self.dataset_metrics[std_metric] != 0 else 0
         return metric_variance
 
     def compute_quality_score(self, variances):
-        return np.mean(np.array(list(variances.values())))
+        return np.mean(np.array(
+            [
+                variances['variance_confidence_mean_mean'], 
+                variances['variance_confidence_std_std'], 
+                variances['variance_num_detections_mean'], 
+                variances['variance_area_mean_mean'], 
+                variances['variance_area_std_std']
+            ]))
 
     def change_last_to_std(self, var_name):
         parts = var_name.split('_')

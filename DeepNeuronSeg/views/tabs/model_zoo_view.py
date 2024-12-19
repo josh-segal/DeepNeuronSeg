@@ -2,12 +2,12 @@ import os
 import tempfile
 from PIL import Image
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QPushButton, QLabel, QFileDialog
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QPushButton, QLabel, QFileDialog, QDoubleSpinBox
 from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
 
 class ModelZooView(QWidget):
 
-    inference_images_signal = pyqtSignal(str, list)
+    inference_images_signal = pyqtSignal(str, list, float)
     save_inferences_signal = pyqtSignal()
     update_index_signal = pyqtSignal(int)
     download_data_signal = pyqtSignal()
@@ -29,6 +29,15 @@ class ModelZooView(QWidget):
         # Image selection for inference
         self.select_btn = QPushButton("Select Images")
         
+
+        self.conf_label = QLabel("Confidence Threshold:")
+        self.conf = QDoubleSpinBox()
+        self.conf.setRange(0.0, 1.0)
+        self.conf.setSingleStep(0.05)
+        self.conf.setValue(0.3)
+        self.conf.setToolTip("""
+                             Sets the minimum confidence threshold for detections. Detections with confidence below this threshold are discarded. Default is 0.3. Increasing this value will reduce the recall of the model and improve the precision, decreasing this value will increase the recall of the model and decrease the precision.
+        """)
         # Run inference button
         self.inference_btn = QPushButton("Inference Images")
         
@@ -42,6 +51,10 @@ class ModelZooView(QWidget):
         layout.addWidget(QLabel("Trained Model:"))
         layout.addWidget(self.model_selector)
         layout.addWidget(self.select_btn)
+        self.conf_layout = QHBoxLayout()
+        self.conf_layout.addWidget(self.conf_label)
+        self.conf_layout.addWidget(self.conf)
+        layout.addLayout(self.conf_layout)
         layout.addWidget(self.inference_btn)
         layout.addWidget(self.save_btn)
 
@@ -68,7 +81,8 @@ class ModelZooView(QWidget):
 
     def inference_images(self):
         self.model_name = self.model_selector.currentText() 
-        self.inference_images_signal.emit(self.model_name, self.uploaded_files)
+        self.confidence = self.conf.value() 
+        self.inference_images_signal.emit(self.model_name, self.uploaded_files, self.confidence)
 
     def display_images(self, uploaded_file, inference_result, current_index, total_items):
         self.left_image.display_frame(uploaded_file, current_index + 1, total_items)

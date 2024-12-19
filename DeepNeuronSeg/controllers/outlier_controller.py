@@ -7,8 +7,22 @@ class OutlierController(QObject):
         self.view = view
 
         self.view.update_outlier_threshold_signal.connect(self.model.update_outlier_threshold)
+        self.view.update_signal.connect(self.update)
+        self.view.next_image_signal.connect(self.next_image)
+        self.view.remove_outlier_signal.connect(self.remove_outlier)
 
     def receive_outlier_data(self, data):
-        outlier_list = self.model.receive_outlier_data(data)
-        outlier_list = [os.path.splitext(os.path.basename(path))[0] for path in outlier_list]
-        self.view.update_outliers(outlier_list)
+        outlier_dict = self.model.receive_outlier_data(data)
+        self.view.update_outliers(outlier_dict)
+    
+    def update(self):
+        self.view.update_response()
+
+    def next_image(self):
+        self.model.image_manager.next_image()
+        item, index, total, points = self.model.image_manager.get_item()
+        self.view.display_outlier_image(item, index, total, points)
+
+    def remove_outlier(self):
+        index = self.model.image_manager.get_index()
+        self.view.remove_outlier(index)

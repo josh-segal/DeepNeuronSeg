@@ -14,6 +14,7 @@ class AnalysisController(QObject):
         self.model.analysis_metrics_signal.connect(self.update_analysis_metrics)
         self.view.update_signal.connect(self.update)
         self.view.display_graph_signal.connect(self.display_graph)
+        self.model.display_graph_signal.connect(self.check_display_graph)
         self.view.curr_image_signal.connect(self.curr_image)
         self.view.load_image_signal.connect(self.load_image)
         self.view.next_image_signal.connect(self.next_image)
@@ -32,10 +33,19 @@ class AnalysisController(QObject):
     def curr_image(self):
         item, index, total, points = self.model.image_manager.get_item()
         if item:
-            self.view.image_display.display_frame(item, index, total, points)
+            inference_result = self.model.get_inference_result(index)
+            if inference_result is None:
+                self.view.image_display.clear()
+                self.view.image_display.text_label.setText("No inference result found")
+                return
+            self.view.image_display.display_frame(inference_result, index, total, points, pred=True)
         else:
             self.view.image_display.clear()
             self.view.image_display.text_label.setText("No image found")
+
+    def check_display_graph(self):
+        checked = self.view.display_status()
+        self.display_graph(checked)
 
     def display_graph(self, checked):
         if checked:
@@ -59,8 +69,8 @@ class AnalysisController(QObject):
         self.view.update_response(models, images)
         self.curr_image()
 
-    def receive_dataset_metrics(self, dataset_metrics, analysis_metrics, variance_baselines, model_path):
-            self.model.receive_dataset_metrics(dataset_metrics, analysis_metrics, variance_baselines, model_path)
+    def receive_dataset_metrics(self, dataset_metrics, analysis_metrics, variance_baselines, model_path, confidence):
+            self.model.receive_dataset_metrics(dataset_metrics, analysis_metrics, variance_baselines, model_path, confidence)
 
     def update_dataset_metrics(self, dataset_metrics):
         self.view.update_dataset_metrics(dataset_metrics)

@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QMessageBox
 class EvaluationModel(QObject):
 
     calculated_dataset_metrics_signal = pyqtSignal(dict)
-    update_metrics_labels_signal = pyqtSignal(dict, dict, dict, str)
+    update_metrics_labels_signal = pyqtSignal(dict, dict, dict, str, float)
 
     def __init__(self, db):
         super().__init__()
@@ -17,6 +17,10 @@ class EvaluationModel(QObject):
         dataset_name = next(map(lambda dataset: dataset['dataset_name'], self.db.load_datasets()), None)
         self.dataset_path = self.get_dataset_path(dataset_name) if dataset_name else None
         self.image_manager = ImageManager(dataset_path=self.dataset_path)
+        self.confidence = 0.3
+
+    def set_confidence(self, value):
+        self.confidence = value
 
     def get_dataset_path(self, dataset_name):
         if " (denoised)" in dataset_name:
@@ -31,8 +35,8 @@ class EvaluationModel(QObject):
         self.dataset_path = self.get_dataset_path(dataset_name)
 
         self.image_manager.set_dataset_path(self.dataset_path)
-        self.metrics = DetectionQAMetrics(self.model_path, self.dataset_path)
-        self.update_metrics_labels_signal.emit(self.metrics.dataset_metrics_mean_std, self.metrics.dataset_metrics, self.metrics.get_analysis_metrics(), self.metrics.model_path)
+        self.metrics = DetectionQAMetrics(self.model_path, self.dataset_path, self.confidence)
+        self.update_metrics_labels_signal.emit(self.metrics.dataset_metrics_mean_std, self.metrics.dataset_metrics, self.metrics.get_analysis_metrics(), self.metrics.model_path, self.confidence)
         return self.metrics.dataset_metrics_mean_std 
     
     def display_graph(self):
@@ -44,7 +48,6 @@ class EvaluationModel(QObject):
 
     def sort_metrics(self):
         metrics = self.metrics.dataset_metrics
-        metrics_mean_std = self.metrics.dataset_metrics_mean_std
 
         # Sort by num_detections and apply the same order to confidence_mean
         sorted_indices = sorted(range(len(metrics["num_detections"])), key=lambda i: metrics["num_detections"][i])

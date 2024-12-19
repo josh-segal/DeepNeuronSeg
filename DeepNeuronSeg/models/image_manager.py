@@ -20,6 +20,12 @@ class ImageManager:
         if dataset_path:
             self.set_dataset_path(dataset_path)
 
+    def get_index(self):
+        return self.current_index
+
+    def remove_outlier(self):
+        self.outlier_files = []
+
     def set_dataset_path(self, path: str) -> None:
         """
         Set a new dataset directory path

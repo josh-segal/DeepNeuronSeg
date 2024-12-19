@@ -9,7 +9,7 @@ from DeepNeuronSeg.models.denoise_model import DenoiseModel
 from PyQt5.QtWidgets import QMessageBox
 
 class DetectionQAMetrics:
-    def __init__(self, model_path, dataset_path):
+    def __init__(self, model_path, dataset_path, confidence):
         self.model_path = model_path
         self.model = self.load_model(model_path)
         self.denoised = os.path.basename(dataset_path) == 'denoised'
@@ -24,6 +24,7 @@ class DetectionQAMetrics:
         }
         self.confidences = []
         self.bbox_bounds = []
+        self.confidence = confidence
 
         self.compute_metrics()
 
@@ -31,7 +32,7 @@ class DetectionQAMetrics:
         for images, image_names in tqdm(self.dataset, desc="Processing Images", unit=f"{self.batch_size} image(s)"):
             self.image_names = image_names
             # Get the predictions
-            preds = self.model.predict(images, conf=0.3, max_det=1000, verbose=False)
+            preds = self.model.predict(images, conf=self.confidence, max_det=1000, verbose=False)
             # Format the predictions
             self.format_predictions(preds)
 

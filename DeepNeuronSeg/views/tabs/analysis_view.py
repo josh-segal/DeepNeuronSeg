@@ -23,6 +23,7 @@ class AnalysisView(QWidget):
         self.image_display = ImageDisplay()
         # Model selection
         self.model_selector = QComboBox()
+        self.uploaded_files = []
 
         self.file_list = QListWidget()
         self.file_list.itemClicked.connect(lambda item: self.load_image(index=self.file_list.row(item)))
@@ -188,6 +189,9 @@ class AnalysisView(QWidget):
         self.layout.addStretch()
         self.setLayout(self.layout)
 
+    def display_status(self):
+        return self.display_graph_checkbox.isChecked()
+
     def next_image(self):
         self.next_image_signal.emit()
 
@@ -231,8 +235,11 @@ class AnalysisView(QWidget):
         self.update_graph(sorted_all_num_dets, sorted_all_conf_mean, colors)
 
     def inference_images(self):
-        self.model_name = self.model_selector.currentText()
-        self.inference_images_signal.emit(self.model_name, self.uploaded_files)
+        if self.uploaded_files:
+            self.model_name = self.model_selector.currentText()
+            self.inference_images_signal.emit(self.model_name, self.uploaded_files)
+        else:
+            QMessageBox.warning(self, "No Images", "No images selected.")
 
     def save_inferences(self):
         self.save_inferences_signal.emit()
@@ -243,7 +250,7 @@ class AnalysisView(QWidget):
     def select_images(self):
         self.uploaded_files, _ = QFileDialog.getOpenFileNames(self, "Select Images", "", "Images (*.png)")
         
-    def update_graph(self, sorted_conf_mean, sorted_num_detections, colors):
+    def update_graph(self, sorted_num_detections, sorted_conf_mean, colors):
         self.canvas.figure.clf()
         self.canvas.setMinimumSize(800, 400)
         ax1, ax2 = self.canvas.figure.subplots(1, 2)
