@@ -49,7 +49,7 @@ class ImageDisplay(QWidget):
             self.image_label.set_pixmap(self.pixmap)
             self.text_label.setText(f"{image_num} / {total_images}")
         else:
-            QMessageBox.warning(self, "Image Load Error", "Failed to load image")
+            QMessageBox.warning(None, "Image Load Error", "Failed to load image")
 
     def _show_pred(self, pred, curr_index, total_images):
         """Display the prediction for the current image"""

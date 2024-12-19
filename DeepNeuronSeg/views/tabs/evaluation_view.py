@@ -181,7 +181,7 @@ class EvaluationView(QWidget):
         else:
             self.display_graph_checkbox.setChecked(False)
             self.clear_graph()
-            QMessageBox.warning(self, "No Metrics", "No metrics to display, please calculate metrics first.")
+            QMessageBox.warning(None, "No Metrics", "No metrics to display, please calculate metrics first.")
 
     def switch_to_graph_view(self, sorted_num_dets, sorted_conf_mean):
         self.image_display.clear()
