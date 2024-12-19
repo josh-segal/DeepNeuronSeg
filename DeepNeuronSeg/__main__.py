@@ -1,5 +1,6 @@
 print("Launching DeepNeuronSeg...")
 
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication
 from DeepNeuronSeg.controllers.app_controller import MainWindow
 
@@ -115,6 +116,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyleSheet(my_stylesheet)
     window = MainWindow()
+    app.setWindowIcon(QIcon('DeepNeuronSeg/assets/garner_lab.png'))
     window.show()
     sys.exit(app.exec_())
 

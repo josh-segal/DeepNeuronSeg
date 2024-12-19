@@ -1,6 +1,3 @@
-import os
-import tempfile
-from PIL import Image
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QPushButton, QLabel, QFileDialog, QDoubleSpinBox
 from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
