@@ -5,12 +5,17 @@ class OutlierController(QObject):
         super().__init__()
         self.model = model
         self.view = view
+        self._blinded = False
 
         self.view.update_outlier_threshold_signal.connect(self.model.update_outlier_threshold)
         self.view.update_signal.connect(self.update)
         self.view.next_image_signal.connect(self.next_image)
         self.view.remove_outlier_signal.connect(self.remove_outlier)
 
+    def set_blinded(self, value):
+        self._blinded = value
+        self.update()
+    
     def receive_outlier_data(self, data):
         outlier_dict = self.model.receive_outlier_data(data)
         self.view.update_outliers(outlier_dict)

@@ -4,6 +4,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt5.QtWidgets import QMessageBox, QDoubleSpinBox
 from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
+import os
 
 class EvaluationView(QWidget):
 
@@ -248,6 +249,14 @@ class EvaluationView(QWidget):
     def load_image(self, index):
         self.load_image_signal.emit(index)
 
+    def update_images(self, images):
+        self.file_list.clear()
+        if images:  
+            if isinstance(images[0], str) and os.path.isfile(images[0]):
+                self.file_list.addItems([os.path.basename(file) for file in images])
+            else:
+                self.file_list.addItems([str(item) for item in images])
+
     def update_response(self, models, datasets, images):
         self.model_selector.clear()
         self.dataset_selector.clear()
@@ -255,5 +264,4 @@ class EvaluationView(QWidget):
         self.model_selector.addItems(models)
         self.dataset_selector.addItems(datasets)
 
-        self.file_list.clear()
-        self.file_list.addItems(images)
+        self.update_images(images)

@@ -9,7 +9,6 @@ class UploadView(QWidget):
     update_signal = pyqtSignal()
     load_image_signal = pyqtSignal(int)
     next_image_signal = pyqtSignal()
-    blinded_signal = pyqtSignal(bool)
 
     def __init__(self):
         super().__init__()
@@ -21,8 +20,6 @@ class UploadView(QWidget):
         # File list
         self.file_list = QListWidget()
         # File selection
-        self.blinded_btn = QCheckBox("Blinded")
-        self.blinded_btn.toggled.connect(self.blinded_signal.emit)
         self.upload_btn = QPushButton("Upload Images")
 
         self.next_btn = QPushButton("Next Image")
@@ -32,7 +29,6 @@ class UploadView(QWidget):
         
         self.file_list.itemClicked.connect(lambda item: self.load_image(index=self.file_list.row(item)))
         
-        layout.addWidget(self.blinded_btn)
         layout.addWidget(self.upload_btn)
         layout.addWidget(self.image_display)
         layout.addWidget(self.file_list)
@@ -52,12 +48,11 @@ class UploadView(QWidget):
 
     def update_images(self, items):
         self.file_list.clear()
-        self.file_list.addItems([os.path.basename(file) for file in items])
+        self.file_list.addItems(items)
 
     def update(self):
         self.update_signal.emit()
     
     def update_response(self, items):
-        self.file_list.clear()
-        self.file_list.addItems([os.path.basename(file) for file in items])
+        self.update_images(items)
         

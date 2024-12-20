@@ -5,6 +5,7 @@ class ModelZooController(QObject):
         super().__init__()
         self.model = model
         self.view = view
+        self._blinded = False
 
         self.view.inference_images_signal.connect(self.model.inference_images)
         self.view.save_inferences_signal.connect(self.model.save_inferences)
@@ -13,6 +14,10 @@ class ModelZooController(QObject):
         self.view.download_data_signal.connect(self.model.download_data)
         self.view.update_signal.connect(self.update)
         self.view.next_image_signal.connect(self.model.next_image)
+
+    def set_blinded(self, value):
+        self._blinded = value
+        self.update()
 
     def update(self):
         models = self.model.db.get_models()

@@ -5,6 +5,7 @@ class EvaluationController(QObject):
         super().__init__()
         self.model = model
         self.view = view
+        self._blinded = False
 
         self.view.calculate_metrics_signal.connect(self.calculate_metrics)
         self.view.display_graph_signal.connect(self.display_graph)
@@ -15,6 +16,10 @@ class EvaluationController(QObject):
         self.view.load_image_signal.connect(self.load_image)
         self.view.update_confidence_signal.connect(self.update_confidence)
 
+        self.update()
+
+    def set_blinded(self, value):
+        self._blinded = value
         self.update()
 
     def update_confidence(self, value):
@@ -67,6 +72,10 @@ class EvaluationController(QObject):
     def update(self):
         self.model.set_first_dataset_path()
         images = self.model.image_manager.get_images(subdir='images')
+        if self._blinded:
+            images = [img[1] for img in images]
+        else:
+            images = [img[0] for img in images]
         models = self.model.get_models()
         datasets = self.model.get_datasets()
         self.view.update_response(models, datasets, images)

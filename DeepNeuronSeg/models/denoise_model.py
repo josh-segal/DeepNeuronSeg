@@ -178,6 +178,7 @@ class DenoiseModel:
             save_path = os.path.join(dn_images_path, image)
             image = Image.open(image_path).convert('L')
             image = self.denoise_image(image)
+            image = image.convert('RGB')
             image.save(save_path)
 
         train_images_dir = os.path.join("train", "images")

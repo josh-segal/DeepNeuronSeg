@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget
 from PyQt5.QtCore import pyqtSignal
 from DeepNeuronSeg.views.widgets.image_display import ImageDisplay
-
+import os
 
 
 class GenerateLabelsView(QWidget):
@@ -49,6 +49,10 @@ class GenerateLabelsView(QWidget):
     def update(self):
         self.update_signal.emit()
 
-    def update_response(self, images):
+    def update_response(self, items):
         self.file_list.clear()
-        self.file_list.addItems(images)
+        if items:
+            if isinstance(items[0], str) and os.path.isfile(items[0]):
+                self.file_list.addItems([os.path.basename(file) for file in items])
+            else:
+                self.file_list.addItems([str(item) for item in items])

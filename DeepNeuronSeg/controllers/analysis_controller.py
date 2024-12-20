@@ -6,6 +6,7 @@ class AnalysisController(QObject):
         super().__init__()
         self.model = model
         self.view = view
+        self._blinded = False
 
         self.view.inference_images_signal.connect(self.inference_images)
         self.view.save_inferences_signal.connect(self.save_inferences)
@@ -20,6 +21,10 @@ class AnalysisController(QObject):
         self.view.next_image_signal.connect(self.next_image)
         self.model.update_images_signal.connect(self.update)
 
+        self.update()
+
+    def set_blinded(self, value):
+        self._blinded = value
         self.update()
 
     def next_image(self):
@@ -66,6 +71,10 @@ class AnalysisController(QObject):
     def update(self):
         models = map(lambda model: model['model_name'], self.model.load_models())
         images = self.model.image_manager.get_images()
+        if self._blinded:
+            images = [img[1] for img in images]
+        else:
+            images = [img[0] for img in images]
         self.view.update_response(models, images)
         self.curr_image()
 

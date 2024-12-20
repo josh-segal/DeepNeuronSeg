@@ -52,14 +52,14 @@ class ImageManager:
         self.dataset_path = None
         self.current_index = 0  # Reset index when changing source
 
-    def _load_directory_images(self, subdir: Optional[str] = None) -> List[str]:
+    def _load_directory_images(self, subdir: Optional[str] = None) -> List[Tuple[str, int]]:
         """Load image paths from the dataset directory
         
         Args:
             subdir: Optional subdirectory path relative to dataset_path to load images from
             
         Returns:
-            List of image file paths
+            List of tuples containing (image file path, index)
         """
         if not self.dataset_path:
             return []
@@ -70,10 +70,12 @@ class ImageManager:
             if not search_path.exists() or not search_path.is_dir():
                 return []
             
-        return sorted([
-            str(f) for f in search_path.iterdir()
+        files = sorted([
+            (str(f), str(i)) for i, f in enumerate(search_path.iterdir())
             if f.suffix.lower() in self.SUPPORTED_FORMATS
         ])
+        
+        return files
 
     def get_item(self, show_masks=False, show_labels=False, no_wrap=False, subdir: Optional[str] = None) -> Tuple[Optional[str], int, int, Optional[List]]:
         """

@@ -48,6 +48,7 @@ class LabelingModel(QObject):
 
         # Get all records from the image_table
         images = self.image_manager.get_images()
+        images = [img[0] for img in images]
         # Define file_path based on self.current_index
         file_path = images[self.image_manager.current_index] if 0 <= self.image_manager.current_index < len(images) else None
         image_query = Query()
@@ -66,7 +67,7 @@ class LabelingModel(QObject):
 
         # Get all records from the image_table
         images = self.image_manager.get_images()
-
+        images = [img[0] for img in images]
         # Define file_path based on self.current_index
         file_path = images[self.image_manager.current_index] if 0 <= self.image_manager.current_index < len(images) else None
         image_query = Query()

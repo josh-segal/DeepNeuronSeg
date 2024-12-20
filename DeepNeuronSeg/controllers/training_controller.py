@@ -5,6 +5,7 @@ class TrainingController(QObject):
         super().__init__()
         self.model = model
         self.view = view
+        self._blinded = False
 
         self.view.update_signal.connect(self.update)
         self.view.set_augmentations_signal.connect(self.set_augmentations)
@@ -12,6 +13,10 @@ class TrainingController(QObject):
 
         self.update_dataset_selector()
 
+    def set_blinded(self, value):
+        self._blinded = value
+        self.update()
+    
     def set_augmentations(self, checked):
         augmentations = self.model.set_augmentations(checked)
         self.view.update_augmentations(augmentations)

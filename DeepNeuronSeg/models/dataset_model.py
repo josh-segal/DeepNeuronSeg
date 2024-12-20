@@ -14,8 +14,9 @@ class DatasetModel(QObject):
     def load_images(self):
         return self.db.load_images()
     
-    def create_dataset(self, images, dataset_name, train_split):
-        selected_images = [os.path.join("data", "data_images", item.text()) for item in images]
+    def create_dataset(self, selected_images, dataset_name, train_split):
+
+        print('selected images', selected_images)
 
         selected_masks = [
             record["mask_data"]["mask_path"]

@@ -61,6 +61,7 @@ class ImageDisplay(QWidget):
 
     def display_frame(self, image_path, frame_number, total_frames, points=None, pred=False):
         """Display a specific frame from an image file with optional points"""
+        image_path = image_path[0]
         if pred:
             self._show_pred(image_path, frame_number, total_frames)
         else:

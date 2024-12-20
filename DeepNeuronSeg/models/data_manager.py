@@ -9,7 +9,6 @@ class DataManager:
         self.image_table = self.db.table('images')
         self.dataset_table = self.db.table('datasets')
         self.model_table = self.db.table('models')
-        self.blinded = False
 
         if not self.model_table.search(Query()["model_name"] == "DeepNeuronSegBaseModel"):
             self.model_table.insert({
@@ -21,13 +20,9 @@ class DataManager:
                 # os.path.abspath("ml/denoise_model.pth")
             })
 
-    def set_blinded(self, blinded):
-        self.blinded = blinded
-
     def load_images(self):
         images = self.image_table.all()
-
-        uploaded_files = [image['file_path'] for image in images if 'file_path' in image] if not self.blinded else [i for i in range(len(images))]
+        uploaded_files = [(image['file_path'], str(i)) for i, image in enumerate(images) if 'file_path' in image]
         if not uploaded_files:
             # QMessageBox.warning(self, "No Images", "No images found")
             return []
@@ -47,7 +42,7 @@ class DataManager:
     def load_masks(self):
         items = self.image_table.all()
 
-        masks = [item['mask_data']['mask_path'] for item in items if 'mask_data' in item]
+        masks = [(item['mask_data']['mask_path'], str(i)) for i, item in enumerate(items) if 'mask_data' in item]
         if not masks:
             # QMessageBox.warning(self, "No Masks", "No masks found")
             return []

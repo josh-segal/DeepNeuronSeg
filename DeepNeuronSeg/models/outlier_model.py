@@ -10,7 +10,7 @@ class OutlierModel(QObject):
         self.db = db
         self.outlier_threshold = 3
         self.dataset_path = tempfile.mkdtemp()
-        self.image_manager = ImageManager(dataset_path=self.dataset_path)
+        self.image_manager = ImageManager(self.db, dataset_path=self.dataset_path)
 
     def update_outlier_threshold(self, value):
         self.outlier_threshold = value

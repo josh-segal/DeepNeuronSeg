@@ -14,7 +14,7 @@ class EvaluationModel(QObject):
         self.db = db
         self.metrics = None
         # get first dataset path
-        self.image_manager = ImageManager()
+        self.image_manager = ImageManager(self.db)
         self.set_first_dataset_path()
         self.confidence = 0.3
 

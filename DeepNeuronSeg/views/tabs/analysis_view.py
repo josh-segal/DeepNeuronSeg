@@ -4,6 +4,7 @@ from PyQt5.QtCore import pyqtSignal
 from matplotlib.backends.backend_qt5agg import FigureCanvas
 from matplotlib.figure import Figure
 from PyQt5.QtWidgets import QMessageBox
+import os
 
 class AnalysisView(QWidget):
 
@@ -315,4 +316,8 @@ class AnalysisView(QWidget):
         self.model_selector.addItems(models)
 
         self.file_list.clear()
-        self.file_list.addItems(images)
+        if images:
+            if isinstance(images[0], str) and os.path.isfile(images[0]):
+                self.file_list.addItems([os.path.basename(file) for file in images])
+            else:
+                self.file_list.addItems([str(item) for item in images])

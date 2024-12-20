@@ -29,7 +29,7 @@ class AnalysisModel(QObject):
         self.inference_result = None
 
         self.dataset_path = tempfile.mkdtemp()
-        self.image_manager = ImageManager(dataset_path=self.dataset_path)
+        self.image_manager = ImageManager(self.db, dataset_path=self.dataset_path)
 
     def get_inference_result(self, index):
         if self.inference_result is None:

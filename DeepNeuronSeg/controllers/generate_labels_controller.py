@@ -5,12 +5,17 @@ class GenerateLabelsController(QObject):
         super().__init__()
         self.model = model
         self.view = view
+        self._blinded = False
 
         self.view.generate_labels_signal.connect(self.generate_labels)
         self.view.update_signal.connect(self.update_view)
         self.view.next_image_signal.connect(self.next_image)
         self.view.load_image_signal.connect(self.load_image)
 
+    def set_blinded(self, value):
+        self._blinded = value
+        self.update_view()
+    
     def generate_labels(self):
         self.model.generate_labels()
         self.update_view()
@@ -34,6 +39,7 @@ class GenerateLabelsController(QObject):
         self.model.image_manager.next_image()
         left_item, left_index, left_total, left_points = self.model.image_manager.get_item(show_labels=True)
         right_item, right_index, right_total, right_points = self.model.image_manager.get_item(show_masks=True, no_wrap=True)
+        
         if left_item:
             self.view.left_image.display_frame(left_item, left_index, left_total, left_points)
         else:
@@ -47,6 +53,10 @@ class GenerateLabelsController(QObject):
 
     def update_view(self):
         images = self.model.image_manager.get_images()
+        if self._blinded:
+            images = [img[1] for img in images]
+        else:
+            images = [img[0] for img in images]
         left_item, left_index, left_total, left_points = self.model.image_manager.get_item(show_labels=True)
         right_item, right_index, right_total, right_points = self.model.image_manager.get_item(show_masks=True, no_wrap=True)
         if left_item:
