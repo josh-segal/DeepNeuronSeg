@@ -27,11 +27,15 @@ class AnalysisModel(QObject):
         self.analysis_metrics = None
         self.sorted_all_num_detections, self.sorted_all_conf_mean, self.colors = None, None, None
         self.inference_result = None
+        self.confidence = 0.3
 
         self.dataset_path = tempfile.mkdtemp()
         self.image_manager = ImageManager(self.db, dataset_path=self.dataset_path)
 
     def get_inference_result(self, index):
+        if index > len(self.inference_result):
+            index = 0
+            self.image_manager.set_index(index)
         if self.inference_result is None:
             return None
         return self.inference_result[index]
@@ -46,6 +50,10 @@ class AnalysisModel(QObject):
         
         from ultralytics import YOLO
         self.uploaded_files = uploaded_files
+        self.dataset_path = tempfile.mkdtemp()
+        for file in uploaded_files:
+            shutil.copy(file, self.dataset_path)
+        self.image_manager.set_dataset_path(self.dataset_path)
         self.model_path = self.db.model_table.get(Query().model_name == name_of_model).get('model_path')
         self.model_denoise = self.db.model_table.get(Query().model_name == name_of_model).get('denoise')
         self.model = YOLO(self.model_path)
@@ -63,7 +71,7 @@ class AnalysisModel(QObject):
         else:
             uploaded_images = [Image.open(image_path) for image_path in uploaded_files]
             
-        self.inference_result = self.model.predict(uploaded_images, conf=0.3, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
+        self.inference_result = self.model.predict(uploaded_images, conf=self.confidence, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
 
         self.update_metrics_labels()
 
@@ -99,8 +107,6 @@ class AnalysisModel(QObject):
             something = 1
             # QMessageBox.warning(self, "No Images", "No uploaded files to process.")
             return
-        for file in self.uploaded_files:
-            shutil.copy(file, self.dataset_path)
         
         self.update_images_signal.emit()
         self.analysis_metrics_model = DetectionQAMetrics(self.analysis_model_path, self.dataset_path, self.confidence)

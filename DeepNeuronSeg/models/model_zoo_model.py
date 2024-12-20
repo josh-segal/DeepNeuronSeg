@@ -81,7 +81,7 @@ class ModelZooModel(QObject):
                 masks = result.masks
                 mask_num = len(masks)
                 default_file_name = f"{os.path.splitext(os.path.basename(file))[0]}_{mask_num}.png"
-                save_path, _ = QFileDialog.getSaveFileName(self, "Save Inference", default_file_name, "Images (*.png)")
+                save_path, _ = QFileDialog.getSaveFileName(None, "Save Inference", default_file_name, "Images (*.png)")
                 if not save_path:
                     continue
                 mask_image = result.plot(labels=False, conf=False, boxes=False)

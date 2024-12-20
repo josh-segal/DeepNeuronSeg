@@ -48,6 +48,7 @@ class ImageDisplay(QWidget):
             self.image_label.set_pixmap(self.pixmap)
             self.text_label.setText(f"{image_num} / {total_images}")
         else:
+            print(f"Failed to load image {image_path}")
             # QMessageBox.warning(self, "Image Load Error", "Failed to load image")
             something = 1
 
@@ -59,12 +60,13 @@ class ImageDisplay(QWidget):
         mask_image.save(temp_image_path, format='PNG')
         self._display_image(temp_image_path, curr_index + 1, total_images)
 
+
     def display_frame(self, image_path, frame_number, total_frames, points=None, pred=False):
         """Display a specific frame from an image file with optional points"""
-        image_path = image_path[0]
         if pred:
             self._show_pred(image_path, frame_number, total_frames)
         else:
+            image_path = image_path[0]
             if image_path.lower().endswith('.tif'):
                 image_path = self._convert_tif_frame(image_path, frame_number)
             self._display_image(image_path, frame_number + 1, total_frames)

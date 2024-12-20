@@ -87,6 +87,7 @@ class ModelZooView(QWidget):
             something = 1
 
     def display_images(self, uploaded_file, inference_result, current_index, total_items):
+        uploaded_file = (uploaded_file, 0)
         self.left_image.display_frame(uploaded_file, current_index, total_items)
         self.right_image.display_frame(inference_result, current_index, total_items, pred=True)
 
