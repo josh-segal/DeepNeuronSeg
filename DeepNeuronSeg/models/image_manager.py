@@ -90,6 +90,7 @@ class ImageManager:
         """
         if self.dataset_path:
             items = self._load_directory_images(subdir)
+            print('items', items)
             points = None  # No points data for directory-based images
         else:
             items = self.db.load_masks() if show_masks else self.db.load_images()

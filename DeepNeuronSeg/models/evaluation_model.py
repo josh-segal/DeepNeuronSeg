@@ -4,6 +4,12 @@ from PyQt5.QtCore import pyqtSignal, QObject
 from DeepNeuronSeg.models.qa_metrics import DetectionQAMetrics
 from DeepNeuronSeg.models.image_manager import ImageManager
 from PyQt5.QtWidgets import QMessageBox
+from torch.utils.data import DataLoader
+from DeepNeuronSeg.utils.data_loader import ImageDataset
+import os
+from tqdm import tqdm
+from PIL import Image
+
 class EvaluationModel(QObject):
 
     calculated_dataset_metrics_signal = pyqtSignal(dict)
@@ -33,7 +39,40 @@ class EvaluationModel(QObject):
             return self.db.dataset_table.get(Query().dataset_name == dn_dataset_name).get('denoise_dataset_path')
         else:
             return self.db.dataset_table.get(Query().dataset_name == dataset_name).get('dataset_path')
+        
+    def inference_images(self, model_name):
+        images = self.image_manager.get_images(subdir='images')
+        images = [img[0] for img in images]
+        model = self.load_model(self.model_path)
+        self.inference_dir = os.path.join('data', 'inferences', model_name)
+        os.makedirs(self.inference_dir, exist_ok=True)
+        
+        self.inference_result = model.predict(images, conf=self.confidence, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
 
+        self.save_inferences(images)
+        
+        
+    def save_inferences(self, images):
+        if not images:
+            return
+        for image, result in zip(images, self.inference_result):
+            save_path = os.path.join(self.inference_dir, f'{os.path.splitext(os.path.basename(image))[0]}.png')
+            mask_image = result.plot(labels=False, conf=False, boxes=False)
+            mask_image = Image.fromarray(mask_image)
+            mask_image.save(save_path)
+
+    def get_inference_result(self, path):
+        if not os.path.exists(self.inference_dir):
+            return None
+            
+        image_name = os.path.basename(path)
+        inference_path = os.path.join(self.inference_dir, image_name)
+        
+        if not os.path.exists(inference_path):
+            return None
+            
+        return inference_path
+            
     def calculate_metrics(self, model_name, dataset_name):
         self.model_path = self.db.model_table.get(Query().model_name == model_name)
         self.model_path = self.model_path["model_path"]
@@ -80,3 +119,19 @@ class EvaluationModel(QObject):
                     self.db.load_datasets()
                 )
             )
+    
+    def load_dataset(self, dataset_path):
+        if os.path.exists(os.path.join(dataset_path, 'images')):
+            image_path = os.path.join(dataset_path, 'images')
+            dataset = ImageDataset(root_dir=image_path)
+            self.batch_size = 4
+            dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+            return dataloader
+        else:
+            return None
+        
+    def load_model(self, model_path):
+        # Load the model from the specified path
+        from ultralytics import YOLO
+        model = YOLO(model_path)
+        return model

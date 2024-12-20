@@ -15,6 +15,7 @@ class EvaluationController(QObject):
         self.view.dataset_changed_signal.connect(self.on_dataset_changed)
         self.view.load_image_signal.connect(self.load_image)
         self.view.update_confidence_signal.connect(self.update_confidence)
+        self.view.curr_image_signal.connect(self.curr_image)
 
         self.update()
 
@@ -28,25 +29,15 @@ class EvaluationController(QObject):
     def on_dataset_changed(self, dataset_name):
         dataset_path = self.model.get_dataset_path(dataset_name)
         self.model.image_manager.set_dataset_path(dataset_path)
-        item, index, total, points = self.model.image_manager.get_item(subdir='images')
-        if item:
-            self.view.image_display.display_frame(item, index, total, points)
-        else:
-            self.view.image_display.clear()
-            self.view.image_display.text_label.setText("No image found")
 
     def next_image(self):
         self.model.image_manager.next_image(subdir='images')
-        item, index, total, points = self.model.image_manager.get_item(subdir='images')
-        if item:
-            self.view.image_display.display_frame(item, index, total, points)
-        else:
-            self.view.image_display.clear()
-            self.view.image_display.text_label.setText("No image found")
+        self.curr_image()
 
     def calculate_metrics(self, model_name, dataset_name):
         dataset_metrics = self.model.calculate_metrics(model_name, dataset_name)
         self.view.update_metrics_labels(dataset_metrics)
+        self.model.inference_images(model_name)
         checked = self.view.display_graph_checkbox.isChecked()
         self.display_graph(checked)
 
@@ -60,14 +51,24 @@ class EvaluationController(QObject):
     def download_data(self, dataset_name):
         self.model.download_data(dataset_name)
 
-    def load_image(self, index):
-        self.model.image_manager.set_index(index)
+    def curr_image(self):
         item, index, total, points = self.model.image_manager.get_item(subdir='images')
+        print('curr item', item)
         if item:
-            self.view.image_display.display_frame(item, index, total, points)
+            inference_result = self.model.get_inference_result(item[0])
+            print('inference result', inference_result)
+            if inference_result is None:
+                self.view.image_display.clear()
+                self.view.image_display.text_label.setText("No inference result found")
+                return
+            self.view.image_display.display_frame((inference_result, 0), index, total, points)
         else:
             self.view.image_display.clear()
             self.view.image_display.text_label.setText("No image found")
+
+    def load_image(self, index):
+        self.model.image_manager.set_index(index)
+        self.curr_image()
 
     def update(self):
         self.model.set_first_dataset_path()
@@ -79,13 +80,6 @@ class EvaluationController(QObject):
         models = self.model.get_models()
         datasets = self.model.get_datasets()
         self.view.update_response(models, datasets, images)
-        if self.model.image_manager.dataset_path is not None:
-            item, index, total, points = self.model.image_manager.get_item(subdir='images')
-            if item:
-                self.view.image_display.display_frame(item, index, total, points)
-            else:
-                self.view.image_display.clear()
-                self.view.image_display.text_label.setText("No image found")
-        else:
+        if self.model.image_manager.dataset_path is None:
             self.view.image_display.clear()
             self.view.image_display.text_label.setText("No dataset found")

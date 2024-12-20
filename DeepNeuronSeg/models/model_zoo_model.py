@@ -66,10 +66,38 @@ class ModelZooModel(QObject):
             
         self.inference_result = model.predict(uploaded_images, conf=confidence, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
 
+        self.save_inferences_db()
         self.display_images()
+        
+
+    def save_inferences_db(self):
+        if not self.uploaded_files:
+            # QMessageBox.warning(self, "No Images", "No images to save")
+            return
+        for file, result in zip(self.uploaded_files, self.inference_result):
+            save_path = os.path.join(self.inference_dir, f'{os.path.splitext(os.path.basename(file))[0]}.png')
+            mask_image = result.plot(labels=False, conf=False, boxes=False)
+            mask_image = Image.fromarray(mask_image)
+            mask_image.save(save_path)
 
     def display_images(self):
-        self.display_image_signal.emit(self.uploaded_files[self.current_index], self.inference_result[self.current_index], self.current_index, len(self.uploaded_files))
+        if not self.uploaded_files:
+            # QMessageBox.warning(self, "No Images", "No images to display")
+            return
+        inference_image = self.get_inference_result(self.uploaded_files[self.current_index])
+        self.display_image_signal.emit(self.uploaded_files[self.current_index], (inference_image, 0), self.current_index, len(self.uploaded_files))
+
+    def get_inference_result(self, path):
+        if not os.path.exists(self.inference_dir):
+            return None
+            
+        image_name = os.path.basename(path)
+        inference_path = os.path.join(self.inference_dir, image_name)
+        
+        if not os.path.exists(inference_path):
+            return None
+            
+        return inference_path
 
     def next_image(self):
         self.current_index = (self.current_index + 1) % len(self.uploaded_files)

@@ -33,18 +33,11 @@ class AnalysisModel(QObject):
         self.image_manager = ImageManager(self.db, dataset_path=self.dataset_path)
 
     def get_inference_result(self, path):
-        print('path', path)
-        if self.model_name is None:
-            return None
-            
-        inference_dir = os.path.join('data', 'inferences', self.model_name)
-        print('inference_dir', inference_dir)
-        if not os.path.exists(inference_dir):
+        if not os.path.exists(self.inference_dir):
             return None
             
         image_name = os.path.basename(path)
-        inference_path = os.path.join(inference_dir, image_name)
-        print('inference_path', inference_path)
+        inference_path = os.path.join(self.inference_dir, image_name)
         
         if not os.path.exists(inference_path):
             return None
@@ -55,7 +48,6 @@ class AnalysisModel(QObject):
         return self.db.load_models()
 
     def inference_images(self, name_of_model, uploaded_files):
-        self.model_name = name_of_model
         if self.analysis_metrics is None:
             # QMessageBox.warning(self, "No Metrics", "No metrics to display, please calculate metrics first in Evaluation Tab.")
             return
@@ -85,13 +77,13 @@ class AnalysisModel(QObject):
             
         self.inference_result = self.model.predict(uploaded_images, conf=self.confidence, visualize=False, save=False, show_labels=False, max_det=1000, verbose=False)
 
+        self.save_inferences()
+
         self.update_metrics_labels()
 
         self.sorted_all_num_detections, self.sorted_all_conf_mean, self.colors = self.compute_analysis()
 
         self.calculate_variance()
-
-        self.save_inferences()
 
         self.display_graph_signal.emit()
 
@@ -138,8 +130,6 @@ class AnalysisModel(QObject):
             # QMessageBox.warning(self, "No Images", "No images to save")
             return
         for file, result in zip(self.uploaded_files, self.inference_result):
-            masks = result.masks
-            mask_num = len(masks)
             save_path = os.path.join(self.inference_dir, f'{os.path.splitext(os.path.basename(file))[0]}.png')
             mask_image = result.plot(labels=False, conf=False, boxes=False)
             mask_image = Image.fromarray(mask_image)
