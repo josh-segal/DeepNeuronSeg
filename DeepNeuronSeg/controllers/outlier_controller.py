@@ -11,7 +11,9 @@ class OutlierController(QObject):
         self.view.update_signal.connect(self.update)
         self.view.next_image_signal.connect(self.next_image)
         self.view.remove_outlier_signal.connect(self.model.remove_outlier)
+        self.view.load_image_signal.connect(self.load_image)
         self.model.update_signal.connect(self.update)
+        self.view.relabel_outlier_signal.connect(self.model.relabel_outlier)
 
     def set_blinded(self, value):
         self._blinded = value
@@ -24,6 +26,10 @@ class OutlierController(QObject):
     def update(self):
         images = self.model.image_manager.get_images()
         self.view.update_response(images, self._blinded)
+        self.curr_image()
+
+    def load_image(self, index):
+        self.model.image_manager.set_index(index)
         self.curr_image()
 
     def next_image(self):

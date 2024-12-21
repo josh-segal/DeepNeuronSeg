@@ -3,6 +3,7 @@ from DeepNeuronSeg.models.image_manager import ImageManager
 import tempfile
 import shutil
 import os
+from tinydb import Query
 
 class OutlierModel(QObject):
 
@@ -32,17 +33,30 @@ class OutlierModel(QObject):
     def remove_outlier(self):
         new_dataset_path = tempfile.mkdtemp()
         item, _, _, _ = self.image_manager.get_item()
-        print('item[0]', item[0])
         file_to_remove = os.path.basename(item[0])
         for file in os.listdir(self.dataset_path):
-            print('file', file)
             if file_to_remove != file:
                 shutil.copy(os.path.join(self.dataset_path, file), os.path.join(new_dataset_path, file))
         self.dataset_path = new_dataset_path
         self.image_manager.set_dataset_path(self.dataset_path)
         self.update_signal.emit()
 
+    def relabel_outlier(self):
+        item, _, _, _ = self.image_manager.get_item()
+        image_path = item[0]
+        image_name = os.path.basename(image_path)
+        
+        image_data = Query()
+        if not self.db.image_table.get(image_data.file_path == image_name):
+            
+            dst_path = os.path.join('data', 'data_images', image_name)
+            shutil.copy(image_path, dst_path)
 
+            self.db.image_table.insert({
+                "file_path": dst_path,
+                "labels": []
+            })
+        self.remove_outlier()
 
     def get_inference_result(self, path):
         if not os.path.exists(self.inference_dir):

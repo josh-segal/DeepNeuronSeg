@@ -10,7 +10,8 @@ class OutlierView(QWidget):
     update_outlier_threshold_signal = pyqtSignal(float)
     next_image_signal = pyqtSignal()
     remove_outlier_signal = pyqtSignal()
-
+    load_image_signal = pyqtSignal(int)
+    relabel_outlier_signal = pyqtSignal()
     def __init__(self):
         super().__init__()
         layout = QVBoxLayout()
@@ -61,10 +62,10 @@ class OutlierView(QWidget):
         self.update()
 
     def relabel_outlier(self):
-        pass
+        self.relabel_outlier_signal.emit()
 
-    def display_outlier_image_indexed(self, item, index, total, points):
-        pass
+    def display_outlier_image_indexed(self, index):
+        self.load_image_signal.emit(index)
 
     def update_outlier_threshold(self, value):
         self.update_outlier_threshold_signal.emit(value)
