@@ -15,7 +15,7 @@ import os
 class AnalysisModel(QObject):
 
     display_graph_signal = pyqtSignal()
-    calculated_outlier_data = pyqtSignal(list)
+    calculated_outlier_data = pyqtSignal(list, str)
     dataset_metrics_signal = pyqtSignal(dict)
     analysis_metrics_signal = pyqtSignal(dict)
     update_images_signal = pyqtSignal()
@@ -197,9 +197,9 @@ class AnalysisModel(QObject):
             variance_list_of_list.append(variance_list)
             quality_score = self.compute_quality_score(variance_list)
             # Copy outlier image to dataset path for relabeling
-            quality_score_list.append({image_path: quality_score})
+            quality_score_list.append({(image_path, str(i)): quality_score})
         
-        self.calculated_outlier_data.emit(quality_score_list)
+        self.calculated_outlier_data.emit(quality_score_list, self.inference_dir)
 
 
     def compute_variance(self, analysis_metrics):

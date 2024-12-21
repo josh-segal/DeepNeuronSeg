@@ -53,10 +53,8 @@ class EvaluationController(QObject):
 
     def curr_image(self):
         item, index, total, points = self.model.image_manager.get_item(subdir='images')
-        print('curr item', item)
         if item:
             inference_result = self.model.get_inference_result(item[0])
-            print('inference result', inference_result)
             if inference_result is None:
                 self.view.image_display.clear()
                 self.view.image_display.text_label.setText("No inference result found")

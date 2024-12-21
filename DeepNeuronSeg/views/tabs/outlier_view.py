@@ -53,54 +53,34 @@ class OutlierView(QWidget):
         layout.addStretch()
         self.setLayout(layout)
 
+    def next_image(self):
+        self.next_image_signal.emit()
+
     def confirm_outlier(self):
         self.remove_outlier_signal.emit()
-
-    def remove_outlier(self, index):
-        if len(self.outlier_files) > index:
-            removed_path = self.outlier_files.pop(index)
-            self.outlier_data.pop(removed_path)
-            self.update_outliers(self.outlier_data)
-        else:
-            self.update()
+        self.update()
 
     def relabel_outlier(self):
         pass
-        
 
-    def next_image(self):
-        self.next_image_signal.emit()
+    def display_outlier_image_indexed(self, item, index, total, points):
+        pass
 
     def update_outlier_threshold(self, value):
         self.update_outlier_threshold_signal.emit(value)
 
-    def display_outlier_image_indexed(self, item):
-        image_path = self.outlier_files[self.outlier_list.row(item)]
-        self.image_display.display_frame(image_path, self.outlier_list.row(item), self.outlier_list.count())
-        # if relabel button clicked, add to db, calculate pseudo labels from masks and display labels for refining 
-        # should remove prediction from pred table ? do I need pred table ?    
-
-    def update_outliers(self, data):
+    def update_outliers(self, data, blinded=False):
         self.outlier_list.clear()
-        self.outlier_files = list(data.keys())
         self.outlier_data = data
-        basename_data = [f"{os.path.splitext(os.path.basename(path))[0]} (Score: {data[path]:.2f})" for path in self.outlier_files]
-        self.outlier_list.addItems(basename_data)
         self.update()
                 
     def update(self):
         self.update_signal.emit()
 
-    def update_response(self):
-        if len(self.outlier_files) > 0:
-            self.image_display.display_frame(self.outlier_files[0], 0, len(self.outlier_files))
+    def update_response(self, images, blinded):
+        if blinded:
+            outlier_files = [path[1] for path in images]
         else:
-            self.image_display.clear()
-            self.image_display.image_label.setText("No outliers found")
-
-    def display_outlier_image(self, item, index, total, points):
-        if item in self.outlier_files:
-            self.image_display.display_frame(item, index, total, points)
-        else:
-            self.image_display.clear()
-            self.image_display.image_label.setText("Outlier removed")
+            outlier_files = [path[0] for path in images]
+        self.outlier_list.clear()
+        self.outlier_list.addItems(outlier_files)
