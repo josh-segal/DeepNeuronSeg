@@ -25,6 +25,7 @@ class DataManager:
         uploaded_files = [(image['file_path'], str(i)) for i, image in enumerate(images) if 'file_path' in image]
         if not uploaded_files:
             # QMessageBox.warning(self, "No Images", "No images found")
+            print('No images found')
             return []
         else:
             return uploaded_files
@@ -35,6 +36,7 @@ class DataManager:
         labels = [image['labels'] for image in images if 'labels' in image]
         if not labels:
             # QMessageBox.warning(self, "No Labels", "No labels found")
+            print('No labels found')
             return []
         else:
             return labels
@@ -45,6 +47,7 @@ class DataManager:
         masks = [(item['mask_data']['mask_path'], str(i)) for i, item in enumerate(items) if 'mask_data' in item]
         if not masks:
             # QMessageBox.warning(self, "No Masks", "No masks found")
+            print('No masks found')
             return []
         else:
             return masks

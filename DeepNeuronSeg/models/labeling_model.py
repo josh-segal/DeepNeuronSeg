@@ -34,12 +34,14 @@ class LabelingModel(QObject):
                     label_data = parse_xml_label(label_file)
                 else:
                     # QMessageBox.warning(self, "Invalid Label Format", "Invalid label format")
+                    print('Invalid label format')
                     label_data = []
 
                 if label_data:
                     self.db.image_table.update({"labels": label_data}, image_data.file_path == label_name)
             else:
                 # QMessageBox.warning(self, "Image Not Found", f"Image not found in database {label_name}")
+                print('Image not found in database', label_name)
                 continue
         
     def add_cell_marker(self, pos):
@@ -59,6 +61,7 @@ class LabelingModel(QObject):
             return item, index, total, points
         else:
             # QMessageBox.warning(self, "Image Not Found", f"Image not found in database {file_path}")
+            print('Image not found in database', file_path)
             return None, None, None, None
 
     def remove_cell_marker(self, pos, tolerance=5):
@@ -79,6 +82,7 @@ class LabelingModel(QObject):
             return item, index, total, points
         else:
             # QMessageBox.warning(self, "Image Not Found", f"Image not found in database {file_path}")
+            print('Image not found in database', file_path)
             return None, None, None, None
 
     def load_image(self, index):

@@ -38,6 +38,7 @@ class UploadModel(QObject):
 
             if self.db.image_table.get(image_data.file_path == image_name):
                 # QMessageBox.warning(self, "Image Already Exists", f"Image already exists in database {image_name}")
+                print('Image already exists in database', image_name)
                 uploaded_files.remove(file)
                 continue
         

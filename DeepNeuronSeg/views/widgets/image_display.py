@@ -50,7 +50,7 @@ class ImageDisplay(QWidget):
         else:
             print(f"Failed to load image {image_path}")
             # QMessageBox.warning(self, "Image Load Error", "Failed to load image")
-            something = 1
+            print('Failed to load image')
 
     def _show_pred(self, pred, curr_index, total_images):
         """Display the prediction for the current image"""

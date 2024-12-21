@@ -84,6 +84,7 @@ class ModelZooView(QWidget):
             self.inference_images_signal.emit(self.model_name, self.uploaded_files, self.confidence)
         else:
             #QMessageBox.warning(self, "No Images", "No images selected.")
+            print('No images selected.')
             something = 1
 
     def display_images(self, uploaded_file, inference_result, current_index, total_items):

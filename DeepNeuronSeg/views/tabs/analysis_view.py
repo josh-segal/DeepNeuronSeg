@@ -221,6 +221,7 @@ class AnalysisView(QWidget):
             self.display_graph_checkbox.setChecked(False)
             self.clear_graph()
             # QMessageBox.warning(self, "No Metrics", "No metrics to display, please calculate metrics first.")
+            print('No metrics to display, please calculate metrics first.')
 
     def switch_to_graph_view(self, sorted_all_num_dets, sorted_all_conf_mean, colors):
         self.image_display.clear()
@@ -241,7 +242,7 @@ class AnalysisView(QWidget):
             self.inference_images_signal.emit(self.model_name, self.uploaded_files)
         else:
             # QMessageBox.warning(self, "No Images", "No images selected.")
-            something = 1
+            print('No images selected.')
 
     def save_inferences(self):
         self.save_inferences_signal.emit()

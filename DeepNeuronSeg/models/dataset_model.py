@@ -39,9 +39,11 @@ class DatasetModel(QObject):
 
         if not dataset_name:
             # QMessageBox.warning(self, "No Dataset Name", "Please enter a dataset name")
+            print('Please enter a dataset name')
             return
         if self.db.dataset_table.get(Query().dataset_name == dataset_name):
             # QMessageBox.warning(self, "Dataset Name", "Dataset name already exists, please choose a different name")
+            print('Dataset name already exists, please choose a different name')
             return
 
         self.db.dataset_table.insert({

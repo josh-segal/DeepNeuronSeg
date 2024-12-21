@@ -22,6 +22,7 @@ class ModelZooModel(QObject):
     def download_data(self):
         if not hasattr(self, 'inference_result') or not hasattr(self, 'uploaded_files'):
             # QMessageBox.warning(self, "No Inference Results", "No inference results to download")
+            print('No inference results to download')
             return
         # Create data for each image
         data = []
@@ -44,6 +45,7 @@ class ModelZooModel(QObject):
         if save_path:
             df.to_csv(save_path, index=False)
             # QMessageBox.information(self, "Metrics Saved", f"Metrics saved to {save_path}")
+            print('Metrics saved to', save_path)
 
     def inference_images(self, name_of_model, uploaded_files, confidence):
         self.uploaded_files = uploaded_files
@@ -54,6 +56,7 @@ class ModelZooModel(QObject):
         os.makedirs(self.inference_dir, exist_ok=True)
         if not uploaded_files:
             # QMessageBox.warning(self, "No Images", "No images selected")
+            print('No images selected')
             return  
         if model_denoise:
             dn_model = DenoiseModel(dataset_path='idc update to not need', model_path=model_denoise)
@@ -73,6 +76,7 @@ class ModelZooModel(QObject):
     def save_inferences_db(self):
         if not self.uploaded_files:
             # QMessageBox.warning(self, "No Images", "No images to save")
+            print('No images to save')
             return
         for file, result in zip(self.uploaded_files, self.inference_result):
             save_path = os.path.join(self.inference_dir, f'{os.path.splitext(os.path.basename(file))[0]}.png')
@@ -83,18 +87,21 @@ class ModelZooModel(QObject):
     def display_images(self):
         if not self.uploaded_files:
             # QMessageBox.warning(self, "No Images", "No images to display")
+            print('No images to display')
             return
         inference_image = self.get_inference_result(self.uploaded_files[self.current_index])
         self.display_image_signal.emit(self.uploaded_files[self.current_index], (inference_image, 0), self.current_index, len(self.uploaded_files))
 
     def get_inference_result(self, path):
         if not os.path.exists(self.inference_dir):
+            print('No inference directory found')
             return None
             
         image_name = os.path.basename(path)
         inference_path = os.path.join(self.inference_dir, image_name)
         
         if not os.path.exists(inference_path):
+            print('No inference image found')
             return None
             
         return inference_path

@@ -50,6 +50,7 @@ class AnalysisModel(QObject):
     def inference_images(self, name_of_model, uploaded_files):
         if self.analysis_metrics is None:
             # QMessageBox.warning(self, "No Metrics", "No metrics to display, please calculate metrics first in Evaluation Tab.")
+            print('No metrics to display, please calculate metrics first in Evaluation Tab.')
             return
         
         from ultralytics import YOLO
@@ -65,6 +66,7 @@ class AnalysisModel(QObject):
         os.makedirs(self.inference_dir, exist_ok=True)
         if not uploaded_files:
             # QMessageBox.warning(self, "No Images", "No images selected")
+            print('No images selected')
             return  
         if self.model_denoise:
             dn_model = DenoiseModel(dataset_path='idc update to not need', model_path=self.model_denoise)
@@ -106,12 +108,12 @@ class AnalysisModel(QObject):
             self.update_analysis_metrics_labels()
         else:
             # QMessageBox.warning(self, "No Metrics", "No dataset metrics, please calculate metrics first in Evaluation Tab.")
-            something = 1
+            print('No dataset metrics, please calculate metrics first in Evaluation Tab.')
 
     def update_analysis_metrics_labels(self):
         if not self.uploaded_files:
-            something = 1
             # QMessageBox.warning(self, "No Images", "No uploaded files to process.")
+            print('No uploaded files to process.')
             return
         
         self.update_images_signal.emit()
@@ -123,11 +125,12 @@ class AnalysisModel(QObject):
             self.analysis_metrics_model.export_image_metrics_to_csv()
         else:
             # QMessageBox.warning(self, "No Metrics", "No metrics to download, please calculate metrics first.")
-            something = 1
+            print('No metrics to download, please calculate metrics first.')
 
     def save_inferences(self):
         if not self.uploaded_files:
             # QMessageBox.warning(self, "No Images", "No images to save")
+            print('No images to save')
             return
         for file, result in zip(self.uploaded_files, self.inference_result):
             save_path = os.path.join(self.inference_dir, f'{os.path.splitext(os.path.basename(file))[0]}.png')

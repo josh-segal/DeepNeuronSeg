@@ -63,6 +63,7 @@ class DetectionQAMetrics:
     def export_image_metrics_to_csv(self, filename='inference_image_metrics.csv'):
         if not self.img_level_metrics:
             # QMessageBox.warning(self, "No Metrics", "No metrics to export.")
+            print('No metrics to export')
             return
         
         df = pd.DataFrame(self.img_level_metrics, index=self.image_names)
@@ -70,6 +71,7 @@ class DetectionQAMetrics:
         df.to_csv(filename)
         
         # QMessageBox.information(self, "Metrics Exported", f"Metrics exported to {filename}")
+        print('Metrics exported to', filename)
 
     def format_predictions(self, predictions):
         for pred in predictions:
