@@ -2,9 +2,7 @@
 *.json
 *__pycache__/
 labeled_data/
-ml/
 data/
 venv/
 .DS_Store
 *.csv
-ml/
