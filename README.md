@@ -10,7 +10,7 @@ DeepNeuronSeg is a full-stack, end-to-end machine learning pipeline designed for
     - Python
     - Conda
     - Git
-- Download the DeepNeuronSeg.yaml file anywhere on your computer
+- Download the [DeepNeuronSeg.yaml](https://github.com/josh-segal/DeepNeuronSeg/blob/main/DEEPNEURONSEG.yaml) file anywhere on your computer
 - In the terminal, navigate to the folder where the DeepNeuronSeg.yaml file is located
 - run the command `conda env create -f DeepNeuronSeg.yaml` to download DeepNeuronSeg
 - activate the environment with this command `conda activate DEEPNEURONSEG`
