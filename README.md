@@ -4,6 +4,15 @@ DeepNeuronSeg is a full-stack, end-to-end machine learning pipeline designed for
 
 # Installation Guide
 
+## Build from conda env (Recommended) 
+
+- Installation requirements
+    - Python
+    - Conda
+    - Git
+
+## Build From Source
+
 - Installation requirements
     - Python
     - Git
