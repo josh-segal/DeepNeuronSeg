@@ -10,6 +10,13 @@ DeepNeuronSeg is a full-stack, end-to-end machine learning pipeline designed for
     - Python
     - Conda
     - Git
+- Download the DeepNeuronSeg.yaml file anywhere on your computer
+- In the terminal, navigate to the folder where the DeepNeuronSeg.yaml file is located
+- run the command `conda env create -f DeepNeuronSeg.yaml` to download DeepNeuronSeg
+- activate the environment with this command `conda activate DEEPNEURONSEG`
+- launch the program with `python -m DeepNeuronSeg`
+- relaunch with `python -m DeepNeuronSeg`
+- if the environment is deactivated, reactivate with `conda activate DEEPNEURONSEG` and launch with `python -m DeepNeuronSeg`
 
 ## Build From Source
 
@@ -17,23 +24,23 @@ DeepNeuronSeg is a full-stack, end-to-end machine learning pipeline designed for
     - Python
     - Git
 - In terminal at desired location write commands:
-    - mkdir test_folder
+    - `mkdir test_folder`
         - makes the desired directory for downloading the project
-    - cd test_folder
+    - `cd test_folder`
         - navigates into the desired directory
-    - Git clone https://github.com/josh-segal/DeepNeuronSeg.git
+    - `Git clone https://github.com/josh-segal/DeepNeuronSeg.git`
         - This downloads a copy of the project to your local computer
-    - cd DeepNeuronSeg
+    - `cd DeepNeuronSeg`
         - This navigates into the DeepNeuronSeg project directory
-    - python -m venv venv
+    - `python -m venv venv`
         - This creates a python virtual environment to download all the dependencies for DeepNeuronSeg without conflict from your local system/downloads
-    - venv/Scripts/activate (Windows) or source venv/bin/activate (MacOS)
+    - `venv/Scripts/activate` (Windows) or `source venv/bin/activate` (MacOS)
         - This activates the virtual environment
-    - pip install -r requirements.txt
+    - `pip install -r requirements.txt`
         - This installs the dependencies required for DeepNeuronSeg
-    - python -m DeepNeuronSeg
+    - `python -m DeepNeuronSeg`
         - This launches the DeepNeuronSeg program, start exploring!
-- To launch again navigate to DeepNeuronSeg directory and re-activate the virtual environment and use python -m DeepNeuronSeg
+- To launch again navigate to DeepNeuronSeg directory and re-activate the virtual environment and use `python -m DeepNeuronSeg`
 
 # Usage
 
